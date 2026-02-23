@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SystemOptimizer Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="app-logo">
+                    <div class="logo-icon">&#x26A1;</div>
+                    <span class="app-title">SYSTEM OPTIMIZER PRO</span>
+                    <span class="app-version">v1.0.0</span>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="status-indicators">
+                    <span class="status-dot active">MONITOR</span>
+                    <span class="status-dot active">SCHEDULER</span>
+                    <span class="status-dot active">WELLNESS</span>
+                </div>
+                <div class="system-time" id="system-time">00:00:00</div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-label">Overview</div>
+            </div>
+            <div class="nav-item active" data-page="dashboard">
+                <span class="icon">&#x1F4CA;</span>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" data-page="cleaner">
+                <span class="icon">&#x1F9F9;</span>
+                <span>System Cleaner</span>
+            </div>
+            <div class="nav-item" data-page="registry">
+                <span class="icon">&#x1F527;</span>
+                <span>Registry</span>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-label">Monitor</div>
+            </div>
+            <div class="nav-item" data-page="processes">
+                <span class="icon">&#x2699;&#xFE0F;</span>
+                <span>Processes</span>
+            </div>
+            <div class="nav-item" data-page="wellness">
+                <span class="icon">&#x1F49A;</span>
+                <span>Wellness</span>
+            </div>
+            <div class="nav-item" data-page="system">
+                <span class="icon">&#x1F5A5;&#xFE0F;</span>
+                <span>System Info</span>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-label">Configure</div>
+            </div>
+            <div class="nav-item" data-page="scheduler">
+                <span class="icon">&#x23F0;</span>
+                <span>Scheduler</span>
+            </div>
+            <div class="nav-item" data-page="settings">
+                <span class="icon">&#x2699;&#xFE0F;</span>
+                <span>Settings</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+
+            <!-- DASHBOARD PAGE -->
+            <div class="page active" id="page-dashboard">
+                <div class="metrics-grid">
+                    <div class="metric-card blue">
+                        <div class="metric-header">
+                            <span class="metric-label">CPU Usage</span>
+                            <span class="metric-icon">&#x1F4BB;</span>
+                        </div>
+                        <div class="metric-value blue" id="cpu-value">0%</div>
+                        <div class="metric-sub" id="cpu-sub">Loading...</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar blue" id="cpu-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card green">
+                        <div class="metric-header">
+                            <span class="metric-label">Memory</span>
+                            <span class="metric-icon">&#x1F9E0;</span>
+                        </div>
+                        <div class="metric-value green" id="mem-value">0%</div>
+                        <div class="metric-sub" id="mem-sub">Loading...</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar green" id="mem-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card purple">
+                        <div class="metric-header">
+                            <span class="metric-label">Disk</span>
+                            <span class="metric-icon">&#x1F4BE;</span>
+                        </div>
+                        <div class="metric-value purple" id="disk-value">0%</div>
+                        <div class="metric-sub" id="disk-sub">Loading...</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar purple" id="disk-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card red">
+                        <div class="metric-header">
+                            <span class="metric-label">Uptime</span>
+                            <span class="metric-icon">&#x23F1;&#xFE0F;</span>
+                        </div>
+                        <div class="metric-value cyan" id="uptime-value">--:--:--</div>
+                        <div class="metric-sub">System uptime</div>
+                    </div>
+                </div>
+
+                <div class="split-view">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F50D; Quick Scan Summary</span>
+                            <button class="btn btn-primary" id="btn-scan" onclick="App.startScan()">&#x1F50D; Scan System</button>
+                        </div>
+                        <div class="panel-body">
+                            <div class="scan-results-grid">
+                                <div class="scan-item">
+                                    <div class="scan-item-icon">&#x1F4C4;</div>
+                                    <div class="scan-item-label">Temp Files</div>
+                                    <div class="scan-item-value" id="scan-temp-count">0</div>
+                                </div>
+                                <div class="scan-item">
+                                    <div class="scan-item-icon">&#x1F310;</div>
+                                    <div class="scan-item-label">Chrome Cache</div>
+                                    <div class="scan-item-value" id="scan-chrome">0 B</div>
+                                </div>
+                                <div class="scan-item">
+                                    <div class="scan-item-icon">&#x1F5D1;&#xFE0F;</div>
+                                    <div class="scan-item-label">Junk Files</div>
+                                    <div class="scan-item-value" id="scan-junk">0</div>
+                                </div>
+                                <div class="scan-item">
+                                    <div class="scan-item-icon">&#x1F4DD;</div>
+                                    <div class="scan-item-label">Registry</div>
+                                    <div class="scan-item-value" id="scan-registry">0</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 16px; text-align: center;">
+                                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);">
+                                    Total Cleanable: <span style="color: var(--accent-yellow); font-weight: 600;" id="scan-total">0 B</span>
+                                    &nbsp;|&nbsp; Last Scan: <span id="last-scan-time">Never</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <div class="terminal-dots">
+                                <div class="terminal-dot red"></div>
+                                <div class="terminal-dot yellow"></div>
+                                <div class="terminal-dot green"></div>
+                            </div>
+                            <div class="terminal-title">ACTIVITY LOG &mdash; system_optimizer.log</div>
+                        </div>
+                        <div class="terminal-body" id="terminal-logs">
+                            <div class="log-line">
+                                <span class="log-time">--:--:--</span>
+                                <span class="log-level INFO">INFO</span>
+                                <span class="log-message">Initializing...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLEANER PAGE -->
+            <div class="page" id="page-cleaner">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F9F9; System Cleaner Wizard</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="wizard-steps">
+                            <div class="wizard-step completed">
+                                <div class="wizard-step-number">1</div>
+                                <div class="wizard-step-label">Analyze</div>
+                            </div>
+                            <div class="wizard-step active">
+                                <div class="wizard-step-number">2</div>
+                                <div class="wizard-step-label">Select</div>
+                            </div>
+                            <div class="wizard-step">
+                                <div class="wizard-step-number">3</div>
+                                <div class="wizard-step-label">Clean</div>
+                            </div>
+                            <div class="wizard-step">
+                                <div class="wizard-step-number">4</div>
+                                <div class="wizard-step-label">Report</div>
+                            </div>
+                        </div>
+
+                        <div class="scan-results-grid" style="margin-bottom: 20px;">
+                            <div class="scan-item">
+                                <div class="scan-item-icon">&#x1F4C4;</div>
+                                <div class="scan-item-label">Temp Files</div>
+                                <div class="scan-item-value" id="c-scan-temp-count">--</div>
+                                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;" id="c-scan-temp-size">--</div>
+                            </div>
+                            <div class="scan-item">
+                                <div class="scan-item-icon">&#x1F310;</div>
+                                <div class="scan-item-label">Chrome Cache</div>
+                                <div class="scan-item-value" id="c-scan-chrome">--</div>
+                            </div>
+                            <div class="scan-item">
+                                <div class="scan-item-icon">&#x1F5D1;&#xFE0F;</div>
+                                <div class="scan-item-label">Junk Files</div>
+                                <div class="scan-item-value" id="c-scan-junk">--</div>
+                            </div>
+                            <div class="scan-item">
+                                <div class="scan-item-icon">&#x1F527;</div>
+                                <div class="scan-item-label">Registry Issues</div>
+                                <div class="scan-item-value" id="c-scan-registry">--</div>
+                            </div>
+                        </div>
+
+                        <div class="btn-group" style="justify-content: center;">
+                            <button class="btn btn-primary" onclick="App.startScan()">&#x1F50D; Scan System</button>
+                            <button class="btn btn-success" id="btn-clean" onclick="App.startClean()">&#x1F9F9; Clean Now</button>
+                        </div>
+
+                        <div class="clean-progress" style="margin-top: 20px;">
+                            <div class="clean-progress-bar">
+                                <div class="clean-progress-fill" id="clean-progress-bar" style="width: 0%"></div>
+                            </div>
+                            <div class="clean-status-text" id="clean-status-text">Ready to clean</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <div class="terminal-dot red"></div>
+                            <div class="terminal-dot yellow"></div>
+                            <div class="terminal-dot green"></div>
+                        </div>
+                        <div class="terminal-title">CLEANER LOG &mdash; live output</div>
+                    </div>
+                    <div class="terminal-body" id="terminal-logs-cleaner">
+                    </div>
+                </div>
+            </div>
+
+            <!-- REGISTRY PAGE -->
+            <div class="page" id="page-registry">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F527; Registry Optimizer</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card blue">
+                                <div class="metric-header">
+                                    <span class="metric-label">Orphaned Keys</span>
+                                </div>
+                                <div class="metric-value blue" id="reg-orphaned">0</div>
+                                <div class="metric-sub">Unused registry entries</div>
+                            </div>
+                            <div class="metric-card green">
+                                <div class="metric-header">
+                                    <span class="metric-label">Invalid Paths</span>
+                                </div>
+                                <div class="metric-value green" id="reg-invalid">0</div>
+                                <div class="metric-sub">Broken file references</div>
+                            </div>
+                            <div class="metric-card purple">
+                                <div class="metric-header">
+                                    <span class="metric-label">Startup Items</span>
+                                </div>
+                                <div class="metric-value purple" id="reg-startup">0</div>
+                                <div class="metric-sub">Auto-start programs</div>
+                            </div>
+                            <div class="metric-card red">
+                                <div class="metric-header">
+                                    <span class="metric-label">Issues Found</span>
+                                </div>
+                                <div class="metric-value yellow" id="reg-issues">0</div>
+                                <div class="metric-sub">Fixable problems</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; text-align: center;">
+                            <button class="btn btn-primary" onclick="App.startScan()">&#x1F50D; Scan Registry</button>
+                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 12px; font-family: 'JetBrains Mono', monospace;">
+                                Registry operations require Windows. This panel shows detected issues from the last scan.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROCESSES PAGE -->
+            <div class="page" id="page-processes">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x2699;&#xFE0F; Active Processes</span>
+                        <button class="btn" onclick="App.refreshProcesses()">&#x1F504; Refresh</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="process-list">
+                            <div class="process-item process-header">
+                                <span class="pid">PID</span>
+                                <span class="name">Process</span>
+                                <span class="cpu">CPU %</span>
+                                <span class="mem">MEM %</span>
+                            </div>
+                            <div id="process-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WELLNESS PAGE -->
+            <div class="page" id="page-wellness">
+                <div class="split-view">
+                    <div class="wellness-card">
+                        <div class="wellness-label">Wellness Score</div>
+                        <div class="gauge-container">
+                            <div class="circular-gauge">
+                                <svg width="160" height="160" viewBox="0 0 160 160">
+                                    <circle class="gauge-bg" cx="80" cy="80" r="65"></circle>
+                                    <circle class="gauge-fill" id="wellness-gauge" cx="80" cy="80" r="65"
+                                        stroke="var(--accent-green)"
+                                        stroke-dasharray="408.4"
+                                        stroke-dashoffset="61.3"></circle>
+                                </svg>
+                                <div class="gauge-text">
+                                    <div class="gauge-value" id="wellness-score" style="color: var(--accent-green);">85</div>
+                                    <div class="gauge-label">/ 100</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="wellness-stats">
+                            <div class="wellness-stat">
+                                <div class="wellness-stat-value" id="active-minutes">0</div>
+                                <div class="wellness-stat-label">Active Min</div>
+                            </div>
+                            <div class="wellness-stat">
+                                <div class="wellness-stat-value" id="idle-minutes">0</div>
+                                <div class="wellness-stat-label">Idle Min</div>
+                            </div>
+                            <div class="wellness-stat">
+                                <div class="wellness-stat-value" id="break-count">0</div>
+                                <div class="wellness-stat-label">Breaks</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F49A; Activity Insights</span>
+                        </div>
+                        <div class="panel-body">
+                            <div style="margin-bottom: 20px;">
+                                <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">Daily Activity Pattern</h4>
+                                <div class="bar-chart" id="activity-chart">
+                                    <div class="bar-item" style="height: 20%" data-label="6am"></div>
+                                    <div class="bar-item" style="height: 40%" data-label="8am"></div>
+                                    <div class="bar-item" style="height: 80%" data-label="10am"></div>
+                                    <div class="bar-item" style="height: 95%" data-label="12pm"></div>
+                                    <div class="bar-item" style="height: 60%" data-label="2pm"></div>
+                                    <div class="bar-item" style="height: 85%" data-label="4pm"></div>
+                                    <div class="bar-item" style="height: 45%" data-label="6pm"></div>
+                                    <div class="bar-item" style="height: 15%" data-label="8pm"></div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 40px;">
+                                <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">Recommendations</h4>
+                                <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
+                                    <div>&#x2714; Take regular breaks every 60 minutes</div>
+                                    <div>&#x2714; Maintain good posture while working</div>
+                                    <div>&#x2714; Stay hydrated throughout the day</div>
+                                    <div>&#x2714; Follow the 20-20-20 rule for eye health</div>
+                                </div>
+                                <button class="btn btn-success" style="margin-top: 16px;" onclick="App.takeBreak()">&#x2615; Log Break</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SYSTEM INFO PAGE -->
+            <div class="page" id="page-system">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F5A5;&#xFE0F; System Information</span>
+                        <button class="btn" onclick="App.refreshMetrics()">&#x1F504; Refresh</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="system-details" class="info-grid">
+                            <div style="text-align: center; color: var(--text-muted); padding: 20px;">Loading system information...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-view">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F4E1; Network Stats</span>
+                        </div>
+                        <div class="panel-body">
+                            <div id="network-details">
+                                <div class="info-row">
+                                    <span class="info-label">Status</span>
+                                    <span class="info-value" style="color: var(--accent-green);">Connected</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F4BE; Storage Volumes</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="info-row">
+                                <span class="info-label">Primary Drive</span>
+                                <span class="info-value" id="vol-primary">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCHEDULER PAGE -->
+            <div class="page" id="page-scheduler">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x23F0; Scheduled Tasks</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card blue">
+                                <div class="metric-header">
+                                    <span class="metric-label">Daily Cleanup</span>
+                                    <span class="metric-icon">&#x1F9F9;</span>
+                                </div>
+                                <div class="metric-value cyan" style="font-size: 22px;">5:00 PM</div>
+                                <div class="metric-sub">Clean temp files, cache, junk</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar blue" style="width: 100%"></div>
+                                </div>
+                            </div>
+                            <div class="metric-card green">
+                                <div class="metric-header">
+                                    <span class="metric-label">Registry Scan</span>
+                                    <span class="metric-icon">&#x1F527;</span>
+                                </div>
+                                <div class="metric-value green" style="font-size: 22px;">Weekly</div>
+                                <div class="metric-sub">Every Sunday at 3:00 AM</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar green" style="width: 100%"></div>
+                                </div>
+                            </div>
+                            <div class="metric-card purple">
+                                <div class="metric-header">
+                                    <span class="metric-label">Wellness Report</span>
+                                    <span class="metric-icon">&#x1F4CA;</span>
+                                </div>
+                                <div class="metric-value purple" style="font-size: 22px;">6:00 PM</div>
+                                <div class="metric-sub">Daily wellness summary</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar purple" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px;">
+                            <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">Schedule Configuration</h4>
+                            <div style="font-size: 12px; color: var(--text-secondary); line-height: 2; font-family: 'JetBrains Mono', monospace;">
+                                <div class="info-row">
+                                    <span class="info-label">Auto-clean time</span>
+                                    <span class="info-value">17:00 (5:00 PM)</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Clean targets</span>
+                                    <span class="info-value">Chrome cache, temp files, junk</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Registry scan</span>
+                                    <span class="info-value">Sunday 03:00</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Break reminders</span>
+                                    <span class="info-value">Every 60 minutes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS PAGE -->
+            <div class="page" id="page-settings">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x2699;&#xFE0F; Settings</span>
+                        <button class="btn btn-primary" onclick="App.saveSettings()">Save Settings</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="settings-section">
+                            <div class="settings-title">&#x1F9F9; Cleaning Options</div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Auto-clean enabled</div>
+                                    <div class="setting-desc">Automatically clean at scheduled time</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="auto_clean_enabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Clean Chrome cache</div>
+                                    <div class="setting-desc">Remove browser cache files</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_chrome_cache" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Clean temporary files</div>
+                                    <div class="setting-desc">Remove Windows temp files</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_temp_files" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Clean recycle bin</div>
+                                    <div class="setting-desc">Empty the recycle bin during cleanup</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_recycle_bin">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Clean log files</div>
+                                    <div class="setting-desc">Remove old system log files</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_logs" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <div class="settings-title">&#x1F49A; Wellness Monitoring</div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Activity tracking</div>
+                                    <div class="setting-desc">Monitor activity levels for wellness insights</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="activity_tracking" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <div class="settings-title">&#x1F4E6; About</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); line-height: 2; font-family: 'JetBrains Mono', monospace;">
+                                <div class="info-row">
+                                    <span class="info-label">Application</span>
+                                    <span class="info-value">SystemOptimizer Pro</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Version</span>
+                                    <span class="info-value">1.0.0</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Compliance</span>
+                                    <span class="info-value" style="color: var(--accent-green);">Microsoft Store Ready</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">License</span>
+                                    <span class="info-value">MIT License</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

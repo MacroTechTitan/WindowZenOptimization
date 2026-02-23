@@ -1,0 +1,1 @@
+node_modules/\n__pycache__/\n*.pyc\n.env\n*.egg-info/\ndist/\nbuild/\n*.spec\n.venv/

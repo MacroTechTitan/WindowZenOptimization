@@ -40,6 +40,8 @@ const App = {
 
         if (pageName === 'processes') this.refreshProcesses();
         if (pageName === 'system') this.refreshSystemInfo();
+        if (pageName === 'registry') this.refreshRegistry();
+        if (pageName === 'scheduler') this.refreshScheduler();
     },
 
     startClock() {
@@ -317,6 +319,68 @@ const App = {
 
     takeBreak() {
         this.showNotification('Break logged! Stand up and stretch.');
+    },
+
+    async refreshRegistry() {
+        try {
+            const res = await fetch('/api/registry');
+            const data = await res.json();
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+            setVal('reg-orphaned', data.orphaned_keys);
+            setVal('reg-invalid', data.invalid_paths);
+            setVal('reg-startup', data.startup_items);
+            setVal('reg-issues', data.issues_found);
+
+            const list = document.getElementById('registry-entries');
+            if (list && data.entries && data.entries.length > 0) {
+                list.innerHTML = data.entries.map(e => `
+                    <div class="process-item">
+                        <span class="name" style="grid-column: span 2;">${e.path}</span>
+                        <span class="cpu">${e.type}</span>
+                        <span class="mem" style="color: ${e.risk === 'medium' ? 'var(--accent-yellow)' : 'var(--accent-green)'};">${e.risk}</span>
+                    </div>
+                `).join('');
+            }
+        } catch(e) {}
+    },
+
+    async scanRegistry() {
+        const btn = event.target;
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanning...'; }
+        try {
+            await fetch('/api/registry/scan', { method: 'POST' });
+            setTimeout(() => {
+                this.refreshRegistry();
+                this.refreshLogs();
+                if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F50D; Scan Registry'; }
+            }, 3000);
+        } catch(e) {
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F50D; Scan Registry'; }
+        }
+    },
+
+    async refreshScheduler() {
+        try {
+            const res = await fetch('/api/scheduler');
+            const data = await res.json();
+            const container = document.getElementById('scheduler-jobs');
+            if (container && data.jobs) {
+                container.innerHTML = data.jobs.map(job => `
+                    <div class="info-row">
+                        <span class="info-label">${job.id}</span>
+                        <span class="info-value">${job.next_run || 'N/A'}</span>
+                    </div>
+                `).join('');
+            }
+            const status = document.getElementById('scheduler-status');
+            if (status) {
+                status.textContent = data.running ? 'Active' : 'Inactive';
+                status.style.color = data.running ? 'var(--accent-green)' : 'var(--accent-red)';
+            }
+        } catch(e) {}
     }
 };
 

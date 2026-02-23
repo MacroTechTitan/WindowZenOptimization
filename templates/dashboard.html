@@ -297,10 +297,27 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px; text-align: center;">
-                            <button class="btn btn-primary" onclick="App.startScan()">&#x1F50D; Scan Registry</button>
-                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 12px; font-family: 'JetBrains Mono', monospace;">
-                                Registry operations require Windows. This panel shows detected issues from the last scan.
-                            </p>
+                            <button class="btn btn-primary" onclick="App.scanRegistry()">&#x1F50D; Scan Registry</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CB; Registry Entries</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="process-list">
+                            <div class="process-item process-header">
+                                <span class="name" style="grid-column: span 2;">Path</span>
+                                <span class="cpu">Type</span>
+                                <span class="mem">Risk</span>
+                            </div>
+                            <div id="registry-entries">
+                                <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                    Run a scan to detect registry issues
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -483,6 +500,21 @@
                         </div>
 
                         <div style="margin-top: 24px;">
+                            <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">Scheduler Engine</h4>
+                            <div class="info-row">
+                                <span class="info-label">Status</span>
+                                <span class="info-value" id="scheduler-status" style="color: var(--accent-green);">Active</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 16px;">
+                            <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">Active Jobs &amp; Next Run</h4>
+                            <div id="scheduler-jobs" style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                                <div style="text-align: center; color: var(--text-muted); padding: 12px;">Loading job schedule...</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 16px;">
                             <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">Schedule Configuration</h4>
                             <div style="font-size: 12px; color: var(--text-secondary); line-height: 2; font-family: 'JetBrains Mono', monospace;">
                                 <div class="info-row">

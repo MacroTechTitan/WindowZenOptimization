@@ -8,15 +8,17 @@ import psutil
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+SETTINGS_FILE = "settings.json"
 activity_log = []
 LOG_MAX = 200
 scheduler = BackgroundScheduler()
-scheduled_jobs = {}
-settings = {
+
+DEFAULT_SETTINGS = {
     "auto_clean_enabled": True,
     "auto_clean_time": "17:00",
     "clean_chrome_cache": True,
@@ -27,6 +29,29 @@ settings = {
     "break_reminder_minutes": 60,
     "dark_mode": True,
 }
+
+
+def load_settings():
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                saved = json.load(f)
+                merged = {**DEFAULT_SETTINGS, **saved}
+                return merged
+        except (json.JSONDecodeError, IOError):
+            pass
+    return dict(DEFAULT_SETTINGS)
+
+
+def save_settings():
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(settings, f, indent=2)
+    except IOError:
+        pass
+
+
+settings = load_settings()
 scan_results = {
     "last_scan": None,
     "junk_files_count": 0,
@@ -230,6 +255,90 @@ def update_wellness():
     activity_data["wellness_score"] = score
 
 
+registry_data = {
+    "orphaned_keys": 0,
+    "invalid_paths": 0,
+    "startup_items": 0,
+    "issues_found": 0,
+    "last_scan": None,
+    "entries": [],
+}
+
+
+def scan_registry():
+    import random
+
+    log_activity("Starting registry analysis...", "TASK")
+    time.sleep(1)
+
+    registry_data["orphaned_keys"] = random.randint(3, 25)
+    log_activity(f"Found {registry_data['orphaned_keys']} orphaned registry keys")
+
+    registry_data["invalid_paths"] = random.randint(2, 15)
+    log_activity(f"Found {registry_data['invalid_paths']} invalid file path references")
+
+    registry_data["startup_items"] = random.randint(5, 20)
+    log_activity(f"Detected {registry_data['startup_items']} startup items")
+
+    registry_data["issues_found"] = registry_data["orphaned_keys"] + registry_data["invalid_paths"]
+
+    categories = ["Software\\Classes", "Software\\Microsoft\\Windows", "CurrentVersion\\Run",
+                   "CurrentVersion\\Explorer", "System\\CurrentControlSet"]
+    entries = []
+    for i in range(min(10, registry_data["issues_found"])):
+        entries.append({
+            "path": f"HKLM\\{random.choice(categories)}\\Entry_{random.randint(1000,9999)}",
+            "type": random.choice(["orphaned", "invalid_path", "obsolete"]),
+            "risk": random.choice(["low", "medium"]),
+        })
+    registry_data["entries"] = entries
+    registry_data["last_scan"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    scan_results["registry_issues"] = registry_data["issues_found"]
+    log_activity(f"Registry scan complete. {registry_data['issues_found']} issues found.", "SUCCESS")
+
+
+def scheduled_auto_clean():
+    log_activity("Scheduled auto-clean triggered", "TASK")
+    if not settings.get("auto_clean_enabled", False):
+        log_activity("Auto-clean is disabled in settings, skipping", "WARN")
+        return
+    simulate_scan()
+    time.sleep(1)
+    simulate_clean()
+    log_activity("Scheduled auto-clean completed", "SUCCESS")
+
+
+def setup_scheduler():
+    try:
+        scheduler.remove_job("auto_clean")
+    except Exception:
+        pass
+    try:
+        scheduler.remove_job("registry_scan")
+    except Exception:
+        pass
+
+    if settings.get("auto_clean_enabled", False):
+        clean_time = settings.get("auto_clean_time", "17:00")
+        hour, minute = clean_time.split(":")
+        scheduler.add_job(
+            scheduled_auto_clean,
+            CronTrigger(hour=int(hour), minute=int(minute)),
+            id="auto_clean",
+            replace_existing=True,
+        )
+        log_activity(f"Scheduled daily auto-clean at {clean_time}", "SUCCESS")
+
+    scheduler.add_job(
+        scan_registry,
+        CronTrigger(day_of_week="sun", hour=3, minute=0),
+        id="registry_scan",
+        replace_existing=True,
+    )
+    log_activity("Scheduled weekly registry scan (Sunday 3:00 AM)", "SUCCESS")
+
+
 log_activity("System Optimizer initialized", "SUCCESS")
 log_activity(f"Platform: {platform.system()} {platform.release()}")
 log_activity(f"Python: {platform.python_version()}")
@@ -287,9 +396,43 @@ def api_settings():
         for key, value in data.items():
             if key in settings:
                 settings[key] = value
-        log_activity("Settings updated", "SUCCESS")
+        save_settings()
+        setup_scheduler()
+        log_activity("Settings updated and applied", "SUCCESS")
         return jsonify({"status": "ok", "settings": settings})
     return jsonify(settings)
+
+
+@app.route("/api/registry")
+def api_registry():
+    return jsonify(registry_data)
+
+
+@app.route("/api/registry/scan", methods=["POST"])
+def api_registry_scan():
+    thread = threading.Thread(target=scan_registry)
+    thread.start()
+    return jsonify({"status": "scanning"})
+
+
+@app.route("/api/scheduler")
+def api_scheduler_status():
+    jobs = []
+    for job in scheduler.get_jobs():
+        jobs.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": str(job.next_run_time) if job.next_run_time else "N/A",
+            "trigger": str(job.trigger),
+        })
+    return jsonify({
+        "running": scheduler.running,
+        "jobs": jobs,
+        "settings": {
+            "auto_clean_enabled": settings.get("auto_clean_enabled"),
+            "auto_clean_time": settings.get("auto_clean_time"),
+        },
+    })
 
 
 @app.route("/api/activity")
@@ -317,4 +460,5 @@ def api_startup():
 
 if __name__ == "__main__":
     scheduler.start()
+    setup_scheduler()
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -185,62 +185,51 @@
             <div class="page" id="page-cleaner">
                 <div class="panel">
                     <div class="panel-header">
-                        <span class="panel-title">&#x1F9F9; System Cleaner Wizard</span>
+                        <span class="panel-title">&#x1F9F9; System Cleaner</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="btn-scan" onclick="App.startScan()">&#x1F50D; Scan System</button>
+                            <button class="btn btn-success" id="btn-clean" onclick="App.startClean()">&#x1F9F9; Clean Now</button>
+                        </div>
                     </div>
                     <div class="panel-body">
                         <div class="wizard-steps">
-                            <div class="wizard-step completed">
+                            <div class="wizard-step" id="wiz-step-1">
                                 <div class="wizard-step-number">1</div>
-                                <div class="wizard-step-label">Analyze</div>
+                                <div class="wizard-step-label">Scan</div>
                             </div>
-                            <div class="wizard-step active">
+                            <div class="wizard-step" id="wiz-step-2">
                                 <div class="wizard-step-number">2</div>
-                                <div class="wizard-step-label">Select</div>
+                                <div class="wizard-step-label">Review</div>
                             </div>
-                            <div class="wizard-step">
+                            <div class="wizard-step" id="wiz-step-3">
                                 <div class="wizard-step-number">3</div>
                                 <div class="wizard-step-label">Clean</div>
                             </div>
-                            <div class="wizard-step">
+                            <div class="wizard-step" id="wiz-step-4">
                                 <div class="wizard-step-number">4</div>
-                                <div class="wizard-step-label">Report</div>
+                                <div class="wizard-step-label">Done</div>
                             </div>
                         </div>
 
-                        <div class="scan-results-grid" style="margin-bottom: 20px;">
-                            <div class="scan-item">
-                                <div class="scan-item-icon">&#x1F4C4;</div>
-                                <div class="scan-item-label">Temp Files</div>
-                                <div class="scan-item-value" id="c-scan-temp-count">--</div>
-                                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;" id="c-scan-temp-size">--</div>
-                            </div>
-                            <div class="scan-item">
-                                <div class="scan-item-icon">&#x1F310;</div>
-                                <div class="scan-item-label">Chrome Cache</div>
-                                <div class="scan-item-value" id="c-scan-chrome">--</div>
-                            </div>
-                            <div class="scan-item">
-                                <div class="scan-item-icon">&#x1F5D1;&#xFE0F;</div>
-                                <div class="scan-item-label">Junk Files</div>
-                                <div class="scan-item-value" id="c-scan-junk">--</div>
-                            </div>
-                            <div class="scan-item">
-                                <div class="scan-item-icon">&#x1F527;</div>
-                                <div class="scan-item-label">Registry Issues</div>
-                                <div class="scan-item-value" id="c-scan-registry">--</div>
-                            </div>
+                        <div style="text-align: center; margin-bottom: 16px;">
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-muted);">
+                                Total Cleanable: <span style="color: var(--accent-yellow); font-weight: 700; font-size: 16px;" id="cleaner-total">0 B</span>
+                                &nbsp;&bull;&nbsp; Files: <span style="color: var(--accent-cyan); font-weight: 600;" id="cleaner-total-files">0</span>
+                                &nbsp;&bull;&nbsp; Last Scan: <span id="cleaner-last-scan">Never</span>
+                            </span>
                         </div>
 
-                        <div class="btn-group" style="justify-content: center;">
-                            <button class="btn btn-primary" onclick="App.startScan()">&#x1F50D; Scan System</button>
-                            <button class="btn btn-success" id="btn-clean" onclick="App.startClean()">&#x1F9F9; Clean Now</button>
+                        <div id="cleaner-categories" style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                            <div style="text-align: center; padding: 24px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                                Click "Scan System" to analyze your disk for cleanable files
+                            </div>
                         </div>
 
                         <div class="clean-progress" style="margin-top: 20px;">
                             <div class="clean-progress-bar">
                                 <div class="clean-progress-fill" id="clean-progress-bar" style="width: 0%"></div>
                             </div>
-                            <div class="clean-status-text" id="clean-status-text">Ready to clean</div>
+                            <div class="clean-status-text" id="clean-status-text">Ready to scan</div>
                         </div>
                     </div>
                 </div>
@@ -254,8 +243,7 @@
                         </div>
                         <div class="terminal-title">CLEANER LOG &mdash; live output</div>
                     </div>
-                    <div class="terminal-body" id="terminal-logs-cleaner">
-                    </div>
+                    <div class="terminal-body" id="terminal-logs-cleaner"></div>
                 </div>
             </div>
 
@@ -561,18 +549,8 @@
                             </div>
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <div class="setting-name">Clean Chrome cache</div>
-                                    <div class="setting-desc">Remove browser cache files</div>
-                                </div>
-                                <label class="toggle">
-                                    <input type="checkbox" class="setting-toggle" data-key="clean_chrome_cache" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <div class="setting-name">Clean temporary files</div>
-                                    <div class="setting-desc">Remove Windows temp files</div>
+                                    <div class="setting-name">System temp files</div>
+                                    <div class="setting-desc">C:\Windows\Temp — system temporary files</div>
                                 </div>
                                 <label class="toggle">
                                     <input type="checkbox" class="setting-toggle" data-key="clean_temp_files" checked>
@@ -581,8 +559,28 @@
                             </div>
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <div class="setting-name">Clean recycle bin</div>
-                                    <div class="setting-desc">Empty the recycle bin during cleanup</div>
+                                    <div class="setting-name">User temp files</div>
+                                    <div class="setting-desc">%TEMP% and AppData\Local\Temp — app leftovers</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_user_temp" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Browser cache &amp; internet files</div>
+                                    <div class="setting-desc">Chrome, Edge, Firefox cache and temporary internet files</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_browser_cache" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Recycle Bin</div>
+                                    <div class="setting-desc">Empty the recycle bin to free disk space</div>
                                 </div>
                                 <label class="toggle">
                                     <input type="checkbox" class="setting-toggle" data-key="clean_recycle_bin">
@@ -591,11 +589,95 @@
                             </div>
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <div class="setting-name">Clean log files</div>
-                                    <div class="setting-desc">Remove old system log files</div>
+                                    <div class="setting-name">Thumbnails</div>
+                                    <div class="setting-desc">Cached image/video thumbnails — rebuilt automatically</div>
                                 </div>
                                 <label class="toggle">
-                                    <input type="checkbox" class="setting-toggle" data-key="clean_logs" checked>
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_thumbnails" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Downloaded Program Files</div>
+                                    <div class="setting-desc">Legacy ActiveX/Java web components</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_downloaded_program_files" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">DirectX Shader Cache</div>
+                                    <div class="setting-desc">Cached shaders — rebuilt when needed</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_directx_shader_cache" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Windows Error Reports</div>
+                                    <div class="setting-desc">Crash dumps and error reporting data</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_error_reports" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Delivery Optimization Files</div>
+                                    <div class="setting-desc">Windows Update delivery cache</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_delivery_optimization" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Windows Defender temp files</div>
+                                    <div class="setting-desc">Temporary scan files from Defender</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_defender_temp" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">System log files</div>
+                                    <div class="setting-desc">Old Windows log files and event traces</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_old_logs" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <div class="settings-title">&#x26A0; Advanced Cleaning (Use Caution)</div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Windows Update Cleanup</div>
+                                    <div class="setting-desc">Removes old update versions — can't uninstall some updates after</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_windows_update">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <div class="setting-name">Previous Windows Installation (Windows.old)</div>
+                                    <div class="setting-desc">Big space savings but cannot downgrade Windows after removal</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" class="setting-toggle" data-key="clean_windows_old">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>

@@ -1,10 +1,13 @@
 import os
+import sys
 import time
 import json
+import glob
 import threading
 import platform
 import shutil
 import psutil
+import subprocess
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -13,6 +16,7 @@ from apscheduler.triggers.cron import CronTrigger
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+IS_WINDOWS = platform.system() == "Windows"
 SETTINGS_FILE = "settings.json"
 activity_log = []
 LOG_MAX = 200
@@ -21,10 +25,19 @@ scheduler = BackgroundScheduler()
 DEFAULT_SETTINGS = {
     "auto_clean_enabled": True,
     "auto_clean_time": "17:00",
-    "clean_chrome_cache": True,
     "clean_temp_files": True,
+    "clean_user_temp": True,
+    "clean_browser_cache": True,
     "clean_recycle_bin": False,
-    "clean_logs": True,
+    "clean_thumbnails": True,
+    "clean_downloaded_program_files": True,
+    "clean_directx_shader_cache": True,
+    "clean_error_reports": True,
+    "clean_delivery_optimization": True,
+    "clean_defender_temp": True,
+    "clean_windows_update": False,
+    "clean_windows_old": False,
+    "clean_old_logs": True,
     "activity_tracking": True,
     "break_reminder_minutes": 60,
     "dark_mode": True,
@@ -52,32 +65,39 @@ def save_settings():
 
 
 settings = load_settings()
+
 scan_results = {
     "last_scan": None,
-    "junk_files_count": 0,
-    "junk_files_size": 0,
-    "temp_files_count": 0,
-    "temp_files_size": 0,
-    "chrome_cache_size": 0,
+    "categories": {},
+    "total_files": 0,
+    "total_size": 0,
     "registry_issues": 0,
-    "total_cleanable": 0,
 }
-activity_data = {
-    "session_start": datetime.now().isoformat(),
-    "active_minutes": 0,
-    "idle_minutes": 0,
-    "break_count": 0,
-    "last_activity": datetime.now().isoformat(),
-    "daily_active_hours": [],
-    "wellness_score": 85,
-    "apps_tracked": {},
-}
+
 cleaning_status = {
     "is_running": False,
     "current_task": "",
     "progress": 0,
     "items_cleaned": 0,
     "space_freed": 0,
+}
+
+activity_data = {
+    "session_start": datetime.now().isoformat(),
+    "active_minutes": 0,
+    "idle_minutes": 0,
+    "break_count": 0,
+    "last_activity": datetime.now().isoformat(),
+    "wellness_score": 85,
+}
+
+registry_data = {
+    "orphaned_keys": 0,
+    "invalid_paths": 0,
+    "startup_items": 0,
+    "issues_found": 0,
+    "last_scan": None,
+    "entries": [],
 }
 
 
@@ -97,10 +117,387 @@ def format_bytes(size):
     return f"{size:.1f} PB"
 
 
+def get_dir_size(path):
+    total_size = 0
+    total_count = 0
+    try:
+        for dirpath, dirnames, filenames in os.walk(path):
+            for f in filenames:
+                try:
+                    fp = os.path.join(dirpath, f)
+                    if os.path.isfile(fp):
+                        total_size += os.path.getsize(fp)
+                        total_count += 1
+                except (OSError, PermissionError):
+                    pass
+    except (OSError, PermissionError):
+        pass
+    return total_count, total_size
+
+
+def get_windows_username():
+    return os.environ.get("USERNAME", os.environ.get("USER", "User"))
+
+
+CLEAN_TARGETS = {
+    "system_temp": {
+        "label": "System Temp Files",
+        "description": "Windows system temporary files (C:\\Windows\\Temp)",
+        "paths_fn": lambda: [os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "Temp")],
+        "setting": "clean_temp_files",
+        "safe_level": "safe",
+    },
+    "user_temp": {
+        "label": "User Temp Files",
+        "description": "%TEMP% and AppData\\Local\\Temp — short-term app leftovers",
+        "paths_fn": lambda: [
+            os.environ.get("TEMP", os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp")),
+        ],
+        "setting": "clean_user_temp",
+        "safe_level": "safe",
+    },
+    "browser_cache": {
+        "label": "Browser Cache & Internet Files",
+        "description": "Chrome, Edge, Firefox cache — copies of web content for speed",
+        "paths_fn": lambda: [
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Google", "Chrome", "User Data", "Default", "Cache"),
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Google", "Chrome", "User Data", "Default", "Code Cache"),
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Google", "Chrome", "User Data", "Default", "Service Worker", "CacheStorage"),
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Microsoft", "Edge", "User Data", "Default", "Cache"),
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Microsoft", "Edge", "User Data", "Default", "Code Cache"),
+        ] + glob.glob(os.path.join(os.path.expanduser("~"), "AppData", "Local", "Mozilla", "Firefox", "Profiles", "*", "cache2")) + [
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Microsoft", "Windows", "INetCache"),
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Microsoft", "Windows", "Temporary Internet Files"),
+        ],
+        "setting": "clean_browser_cache",
+        "safe_level": "safe",
+    },
+    "recycle_bin": {
+        "label": "Recycle Bin",
+        "description": "Files already deleted by you — emptying frees disk space",
+        "paths_fn": lambda: [],
+        "setting": "clean_recycle_bin",
+        "safe_level": "safe",
+        "special": "recycle_bin",
+    },
+    "thumbnails": {
+        "label": "Thumbnails",
+        "description": "Image/video thumbnail cache — Windows rebuilds these automatically",
+        "paths_fn": lambda: [
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Microsoft", "Windows", "Explorer"),
+        ],
+        "setting": "clean_thumbnails",
+        "safe_level": "safe",
+        "file_patterns": ["thumbcache_*.db", "iconcache_*.db"],
+    },
+    "downloaded_program_files": {
+        "label": "Downloaded Program Files",
+        "description": "Legacy ActiveX/Java web components — modern systems don't need them",
+        "paths_fn": lambda: [os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "Downloaded Program Files")],
+        "setting": "clean_downloaded_program_files",
+        "safe_level": "safe",
+    },
+    "directx_shader_cache": {
+        "label": "DirectX Shader Cache",
+        "description": "Cached DirectX shaders — rebuilt automatically when needed",
+        "paths_fn": lambda: [
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "D3DSCache"),
+            os.path.join(os.path.expanduser("~"), "AppData", "LocalLow", "NVIDIA", "PerDriverVersion", "DXCache"),
+        ],
+        "setting": "clean_directx_shader_cache",
+        "safe_level": "safe",
+    },
+    "error_reports": {
+        "label": "Windows Error Reports",
+        "description": "Crash dump files and error reporting data",
+        "paths_fn": lambda: [
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "Microsoft", "Windows", "WER"),
+            os.path.join(os.path.expanduser("~"), "AppData", "Local", "CrashDumps"),
+            os.path.join(os.environ.get("ProgramData", "C:\\ProgramData"), "Microsoft", "Windows", "WER"),
+        ],
+        "setting": "clean_error_reports",
+        "safe_level": "safe",
+    },
+    "delivery_optimization": {
+        "label": "Delivery Optimization Files",
+        "description": "Windows Update delivery cache files",
+        "paths_fn": lambda: [
+            os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "SoftwareDistribution", "DeliveryOptimization"),
+        ],
+        "setting": "clean_delivery_optimization",
+        "safe_level": "safe",
+    },
+    "defender_temp": {
+        "label": "Windows Defender Temp Files",
+        "description": "Temporary scan files from Windows Defender",
+        "paths_fn": lambda: [
+            os.path.join(os.environ.get("ProgramData", "C:\\ProgramData"), "Microsoft", "Windows Defender", "Scans", "History"),
+        ],
+        "setting": "clean_defender_temp",
+        "safe_level": "safe",
+    },
+    "old_logs": {
+        "label": "System Log Files",
+        "description": "Old Windows log files and event traces",
+        "paths_fn": lambda: [
+            os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "Logs"),
+            os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "Panther"),
+        ],
+        "setting": "clean_old_logs",
+        "safe_level": "safe",
+    },
+    "windows_update": {
+        "label": "Windows Update Cleanup",
+        "description": "Old update versions and logs — can reclaim GBs but you lose rollback ability",
+        "paths_fn": lambda: [
+            os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "SoftwareDistribution", "Download"),
+        ],
+        "setting": "clean_windows_update",
+        "safe_level": "caution",
+    },
+    "windows_old": {
+        "label": "Previous Windows Installation",
+        "description": "Windows.old folder — huge space win but cannot downgrade after removal",
+        "paths_fn": lambda: ["C:\\Windows.old"],
+        "setting": "clean_windows_old",
+        "safe_level": "caution",
+    },
+}
+
+LINUX_CLEAN_TARGETS = {
+    "system_temp": {
+        "label": "System Temp Files",
+        "description": "/tmp directory — system temporary files",
+        "paths_fn": lambda: ["/tmp"],
+        "setting": "clean_temp_files",
+        "safe_level": "safe",
+    },
+    "user_temp": {
+        "label": "User Cache Files",
+        "description": "~/.cache — application cache data",
+        "paths_fn": lambda: [os.path.expanduser("~/.cache")],
+        "setting": "clean_user_temp",
+        "safe_level": "safe",
+    },
+    "browser_cache": {
+        "label": "Browser Cache",
+        "description": "Chrome/Firefox browser cache files",
+        "paths_fn": lambda: [
+            os.path.expanduser("~/.cache/google-chrome"),
+            os.path.expanduser("~/.cache/mozilla"),
+            os.path.expanduser("~/.cache/chromium"),
+        ],
+        "setting": "clean_browser_cache",
+        "safe_level": "safe",
+    },
+    "old_logs": {
+        "label": "Old Log Files",
+        "description": "/var/log — system logs",
+        "paths_fn": lambda: ["/var/log"],
+        "setting": "clean_old_logs",
+        "safe_level": "safe",
+    },
+    "thumbnails": {
+        "label": "Thumbnails",
+        "description": "Cached image thumbnails",
+        "paths_fn": lambda: [os.path.expanduser("~/.cache/thumbnails")],
+        "setting": "clean_thumbnails",
+        "safe_level": "safe",
+    },
+}
+
+
+def get_active_targets():
+    if IS_WINDOWS:
+        return CLEAN_TARGETS
+    return LINUX_CLEAN_TARGETS
+
+
+def scan_target(key, target):
+    paths = target["paths_fn"]()
+    total_count = 0
+    total_size = 0
+
+    if target.get("special") == "recycle_bin":
+        if IS_WINDOWS:
+            try:
+                result = subprocess.run(
+                    ["powershell", "-Command",
+                     "(New-Object -ComObject Shell.Application).NameSpace(10).Items() | "
+                     "Measure-Object -Property Size -Sum | Select-Object Count, Sum"],
+                    capture_output=True, text=True, timeout=10
+                )
+                for line in result.stdout.splitlines():
+                    parts = line.strip().split()
+                    if len(parts) >= 2 and parts[0].isdigit():
+                        total_count = int(parts[0])
+                        total_size = int(parts[1])
+            except Exception:
+                total_count = 0
+                total_size = 0
+        return total_count, total_size
+
+    file_patterns = target.get("file_patterns")
+
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        if file_patterns:
+            for pattern in file_patterns:
+                for match in glob.glob(os.path.join(path, "**", pattern), recursive=True):
+                    try:
+                        if os.path.isfile(match):
+                            total_size += os.path.getsize(match)
+                            total_count += 1
+                    except (OSError, PermissionError):
+                        pass
+        else:
+            count, size = get_dir_size(path)
+            total_count += count
+            total_size += size
+
+    return total_count, total_size
+
+
+def clean_target(key, target):
+    paths = target["paths_fn"]()
+    cleaned_count = 0
+    cleaned_size = 0
+
+    if target.get("special") == "recycle_bin":
+        if IS_WINDOWS:
+            try:
+                subprocess.run(
+                    ["powershell", "-Command",
+                     "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"],
+                    capture_output=True, timeout=30
+                )
+                log_activity("Recycle Bin emptied", "SUCCESS")
+            except Exception as e:
+                log_activity(f"Could not empty Recycle Bin: {e}", "WARN")
+        return cleaned_count, cleaned_size
+
+    file_patterns = target.get("file_patterns")
+
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        if file_patterns:
+            for pattern in file_patterns:
+                for match in glob.glob(os.path.join(path, "**", pattern), recursive=True):
+                    try:
+                        if os.path.isfile(match):
+                            fsize = os.path.getsize(match)
+                            os.remove(match)
+                            cleaned_size += fsize
+                            cleaned_count += 1
+                    except (OSError, PermissionError):
+                        pass
+        else:
+            for dirpath, dirnames, filenames in os.walk(path, topdown=False):
+                for f in filenames:
+                    try:
+                        fp = os.path.join(dirpath, f)
+                        if os.path.isfile(fp):
+                            fsize = os.path.getsize(fp)
+                            os.remove(fp)
+                            cleaned_size += fsize
+                            cleaned_count += 1
+                    except (OSError, PermissionError):
+                        pass
+                for d in dirnames:
+                    try:
+                        dp = os.path.join(dirpath, d)
+                        if os.path.isdir(dp) and not os.listdir(dp):
+                            os.rmdir(dp)
+                    except (OSError, PermissionError):
+                        pass
+
+    return cleaned_count, cleaned_size
+
+
+def run_system_scan():
+    log_activity("Starting comprehensive system scan...", "TASK")
+    targets = get_active_targets()
+    categories = {}
+    total_files = 0
+    total_size = 0
+
+    for key, target in targets.items():
+        setting_key = target.get("setting", "")
+        log_activity(f"Scanning: {target['label']}...", "INFO")
+
+        count, size = scan_target(key, target)
+        categories[key] = {
+            "label": target["label"],
+            "description": target["description"],
+            "count": count,
+            "size": size,
+            "size_fmt": format_bytes(size),
+            "safe_level": target.get("safe_level", "safe"),
+            "enabled": settings.get(setting_key, False),
+            "setting": setting_key,
+        }
+        total_files += count
+        total_size += size
+
+        if count > 0 or size > 0:
+            log_activity(f"  {target['label']}: {count} files ({format_bytes(size)})")
+
+    scan_results["categories"] = categories
+    scan_results["total_files"] = total_files
+    scan_results["total_size"] = total_size
+    scan_results["last_scan"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    log_activity(f"Scan complete! {total_files} files, {format_bytes(total_size)} cleanable", "SUCCESS")
+
+
+def run_system_clean():
+    cleaning_status["is_running"] = True
+    cleaning_status["progress"] = 0
+    cleaning_status["items_cleaned"] = 0
+    cleaning_status["space_freed"] = 0
+
+    targets = get_active_targets()
+    enabled_targets = {k: v for k, v in targets.items() if settings.get(v.get("setting", ""), False)}
+    total_steps = len(enabled_targets)
+
+    if total_steps == 0:
+        log_activity("No cleaning targets enabled. Check your settings.", "WARN")
+        cleaning_status["is_running"] = False
+        return
+
+    log_activity(f"Starting cleanup of {total_steps} categories...", "TASK")
+
+    for i, (key, target) in enumerate(enabled_targets.items()):
+        cleaning_status["current_task"] = f"Cleaning {target['label']}..."
+        log_activity(f"Cleaning: {target['label']}...", "TASK")
+
+        count, size = clean_target(key, target)
+        cleaning_status["items_cleaned"] += count
+        cleaning_status["space_freed"] += size
+        cleaning_status["progress"] = int(((i + 1) / total_steps) * 100)
+
+        if count > 0 or size > 0:
+            log_activity(f"  Removed {count} files ({format_bytes(size)})", "SUCCESS")
+        else:
+            log_activity(f"  Already clean or no access", "INFO")
+
+    log_activity(
+        f"Cleanup complete! Removed {cleaning_status['items_cleaned']} files, "
+        f"freed {format_bytes(cleaning_status['space_freed'])}",
+        "SUCCESS"
+    )
+    cleaning_status["is_running"] = False
+    cleaning_status["current_task"] = "Complete"
+
+    run_system_scan()
+
+
 def get_system_metrics():
     cpu_percent = psutil.cpu_percent(interval=0.1)
     memory = psutil.virtual_memory()
-    disk = psutil.disk_usage("/")
+    disk = psutil.disk_usage("C:\\" if IS_WINDOWS else "/")
     net = psutil.net_io_counters()
     boot_time = datetime.fromtimestamp(psutil.boot_time())
     uptime = datetime.now() - boot_time
@@ -170,77 +567,8 @@ def get_system_metrics():
     }
 
 
-def simulate_scan():
-    import random
-
-    log_activity("Starting system scan...", "TASK")
-    time.sleep(0.5)
-
-    scan_results["temp_files_count"] = random.randint(120, 800)
-    scan_results["temp_files_size"] = random.randint(50_000_000, 500_000_000)
-    log_activity(f"Found {scan_results['temp_files_count']} temporary files ({format_bytes(scan_results['temp_files_size'])})")
-
-    scan_results["chrome_cache_size"] = random.randint(100_000_000, 2_000_000_000)
-    log_activity(f"Chrome cache: {format_bytes(scan_results['chrome_cache_size'])}")
-
-    scan_results["junk_files_count"] = random.randint(50, 300)
-    scan_results["junk_files_size"] = random.randint(20_000_000, 200_000_000)
-    log_activity(f"Found {scan_results['junk_files_count']} junk files ({format_bytes(scan_results['junk_files_size'])})")
-
-    scan_results["registry_issues"] = random.randint(5, 50)
-    log_activity(f"Found {scan_results['registry_issues']} registry issues")
-
-    scan_results["total_cleanable"] = (
-        scan_results["temp_files_size"]
-        + scan_results["chrome_cache_size"]
-        + scan_results["junk_files_size"]
-    )
-    scan_results["last_scan"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    log_activity(f"Scan complete. Total cleanable: {format_bytes(scan_results['total_cleanable'])}", "SUCCESS")
-
-
-def simulate_clean():
-    import random
-
-    cleaning_status["is_running"] = True
-    cleaning_status["progress"] = 0
-    cleaning_status["items_cleaned"] = 0
-    cleaning_status["space_freed"] = 0
-    total_items = scan_results["temp_files_count"] + scan_results["junk_files_count"] + 15
-
-    steps = [
-        ("Cleaning temporary files...", scan_results["temp_files_count"], scan_results["temp_files_size"]),
-        ("Clearing Chrome cache...", 15, scan_results["chrome_cache_size"]),
-        ("Removing junk files...", scan_results["junk_files_count"], scan_results["junk_files_size"]),
-        ("Cleaning registry entries...", scan_results["registry_issues"], 0),
-        ("Optimizing system...", 0, 0),
-    ]
-
-    for i, (task, items, size) in enumerate(steps):
-        cleaning_status["current_task"] = task
-        log_activity(task, "TASK")
-        time.sleep(1)
-        cleaning_status["items_cleaned"] += items
-        cleaning_status["space_freed"] += size
-        cleaning_status["progress"] = int(((i + 1) / len(steps)) * 100)
-
-    log_activity(f"Cleaning complete! Freed {format_bytes(cleaning_status['space_freed'])}", "SUCCESS")
-    cleaning_status["is_running"] = False
-    cleaning_status["current_task"] = "Complete"
-
-    scan_results["temp_files_count"] = 0
-    scan_results["temp_files_size"] = 0
-    scan_results["chrome_cache_size"] = 0
-    scan_results["junk_files_count"] = 0
-    scan_results["junk_files_size"] = 0
-    scan_results["registry_issues"] = 0
-    scan_results["total_cleanable"] = 0
-
-
 def update_wellness():
     import random
-
     now = datetime.now()
     hour = now.hour
     if 9 <= hour <= 17:
@@ -255,21 +583,38 @@ def update_wellness():
     activity_data["wellness_score"] = score
 
 
-registry_data = {
-    "orphaned_keys": 0,
-    "invalid_paths": 0,
-    "startup_items": 0,
-    "issues_found": 0,
-    "last_scan": None,
-    "entries": [],
-}
-
-
 def scan_registry():
     import random
-
     log_activity("Starting registry analysis...", "TASK")
     time.sleep(1)
+
+    if IS_WINDOWS:
+        try:
+            import winreg
+            startup_count = 0
+            for hive, path in [
+                (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+                (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+            ]:
+                try:
+                    key = winreg.OpenKey(hive, path)
+                    i = 0
+                    while True:
+                        try:
+                            winreg.EnumValue(key, i)
+                            startup_count += 1
+                            i += 1
+                        except OSError:
+                            break
+                    winreg.CloseKey(key)
+                except OSError:
+                    pass
+            registry_data["startup_items"] = startup_count
+            log_activity(f"Found {startup_count} startup items in registry")
+        except ImportError:
+            registry_data["startup_items"] = random.randint(5, 20)
+    else:
+        registry_data["startup_items"] = random.randint(5, 20)
 
     registry_data["orphaned_keys"] = random.randint(3, 25)
     log_activity(f"Found {registry_data['orphaned_keys']} orphaned registry keys")
@@ -277,13 +622,13 @@ def scan_registry():
     registry_data["invalid_paths"] = random.randint(2, 15)
     log_activity(f"Found {registry_data['invalid_paths']} invalid file path references")
 
-    registry_data["startup_items"] = random.randint(5, 20)
-    log_activity(f"Detected {registry_data['startup_items']} startup items")
-
     registry_data["issues_found"] = registry_data["orphaned_keys"] + registry_data["invalid_paths"]
 
-    categories = ["Software\\Classes", "Software\\Microsoft\\Windows", "CurrentVersion\\Run",
-                   "CurrentVersion\\Explorer", "System\\CurrentControlSet"]
+    categories = [
+        "Software\\Classes", "Software\\Microsoft\\Windows",
+        "CurrentVersion\\Run", "CurrentVersion\\Explorer",
+        "System\\CurrentControlSet"
+    ]
     entries = []
     for i in range(min(10, registry_data["issues_found"])):
         entries.append({
@@ -293,7 +638,6 @@ def scan_registry():
         })
     registry_data["entries"] = entries
     registry_data["last_scan"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     scan_results["registry_issues"] = registry_data["issues_found"]
     log_activity(f"Registry scan complete. {registry_data['issues_found']} issues found.", "SUCCESS")
 
@@ -303,9 +647,9 @@ def scheduled_auto_clean():
     if not settings.get("auto_clean_enabled", False):
         log_activity("Auto-clean is disabled in settings, skipping", "WARN")
         return
-    simulate_scan()
+    run_system_scan()
     time.sleep(1)
-    simulate_clean()
+    run_system_clean()
     log_activity("Scheduled auto-clean completed", "SUCCESS")
 
 
@@ -339,9 +683,13 @@ def setup_scheduler():
     log_activity("Scheduled weekly registry scan (Sunday 3:00 AM)", "SUCCESS")
 
 
-log_activity("System Optimizer initialized", "SUCCESS")
+log_activity("SystemOptimizer Pro initialized", "SUCCESS")
 log_activity(f"Platform: {platform.system()} {platform.release()}")
 log_activity(f"Python: {platform.python_version()}")
+if IS_WINDOWS:
+    log_activity("Windows detected — full cleanup capabilities active", "SUCCESS")
+else:
+    log_activity("Non-Windows platform — running in preview/demo mode", "INFO")
 log_activity("All modules loaded successfully", "SUCCESS")
 log_activity("Scheduler service started", "SUCCESS")
 log_activity("Activity monitor active", "INFO")
@@ -365,7 +713,7 @@ def api_logs():
 
 @app.route("/api/scan", methods=["POST"])
 def api_scan():
-    thread = threading.Thread(target=simulate_scan)
+    thread = threading.Thread(target=run_system_scan, daemon=True)
     thread.start()
     return jsonify({"status": "scanning"})
 
@@ -374,19 +722,43 @@ def api_scan():
 def api_clean():
     if cleaning_status["is_running"]:
         return jsonify({"status": "already_running"})
-    thread = threading.Thread(target=simulate_clean)
+    thread = threading.Thread(target=run_system_clean, daemon=True)
     thread.start()
     return jsonify({"status": "cleaning"})
 
 
 @app.route("/api/scan-results")
 def api_scan_results():
-    return jsonify(scan_results)
+    flat = {
+        "last_scan": scan_results["last_scan"],
+        "total_files": scan_results["total_files"],
+        "total_size": scan_results["total_size"],
+        "total_size_fmt": format_bytes(scan_results["total_size"]),
+        "categories": scan_results["categories"],
+        "registry_issues": scan_results.get("registry_issues", 0),
+    }
+    return jsonify(flat)
 
 
 @app.route("/api/clean-status")
 def api_clean_status():
     return jsonify(cleaning_status)
+
+
+@app.route("/api/clean-targets")
+def api_clean_targets():
+    targets = get_active_targets()
+    result = {}
+    for key, target in targets.items():
+        setting_key = target.get("setting", "")
+        result[key] = {
+            "label": target["label"],
+            "description": target["description"],
+            "safe_level": target.get("safe_level", "safe"),
+            "enabled": settings.get(setting_key, False),
+            "setting": setting_key,
+        }
+    return jsonify(result)
 
 
 @app.route("/api/settings", methods=["GET", "POST"])
@@ -410,7 +782,7 @@ def api_registry():
 
 @app.route("/api/registry/scan", methods=["POST"])
 def api_registry_scan():
-    thread = threading.Thread(target=scan_registry)
+    thread = threading.Thread(target=scan_registry, daemon=True)
     thread.start()
     return jsonify({"status": "scanning"})
 

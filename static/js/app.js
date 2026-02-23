@@ -10,6 +10,7 @@ const App = {
         this.refreshLogs();
         this.refreshScanResults();
         this.refreshActivity();
+        this.loadSettings();
         this.refreshInterval = setInterval(() => this.refreshMetrics(), 3000);
         this.logInterval = setInterval(() => this.refreshLogs(), 2000);
         setInterval(() => this.refreshScanResults(), 5000);
@@ -42,6 +43,8 @@ const App = {
         if (pageName === 'system') this.refreshSystemInfo();
         if (pageName === 'registry') this.refreshRegistry();
         if (pageName === 'scheduler') this.refreshScheduler();
+        if (pageName === 'cleaner') this.refreshScanResults();
+        if (pageName === 'settings') this.loadSettings();
     },
 
     startClock() {
@@ -112,16 +115,27 @@ const App = {
             const res = await fetch('/api/logs');
             const logs = await res.json();
             const container = document.getElementById('terminal-logs');
-            if (!container) return;
-            
-            container.innerHTML = logs.map(log => `
-                <div class="log-line">
-                    <span class="log-time">${log.time}</span>
-                    <span class="log-level ${log.level}">${log.level}</span>
-                    <span class="log-message">${log.message}</span>
-                </div>
-            `).join('');
-            container.scrollTop = container.scrollHeight;
+            if (container) {
+                container.innerHTML = logs.map(log => `
+                    <div class="log-line">
+                        <span class="log-time">${log.time}</span>
+                        <span class="log-level ${log.level}">${log.level}</span>
+                        <span class="log-message">${log.message}</span>
+                    </div>
+                `).join('');
+                container.scrollTop = container.scrollHeight;
+            }
+            const cleanerLog = document.getElementById('terminal-logs-cleaner');
+            if (cleanerLog) {
+                cleanerLog.innerHTML = logs.map(log => `
+                    <div class="log-line">
+                        <span class="log-time">${log.time}</span>
+                        <span class="log-level ${log.level}">${log.level}</span>
+                        <span class="log-message">${log.message}</span>
+                    </div>
+                `).join('');
+                cleanerLog.scrollTop = cleanerLog.scrollHeight;
+            }
         } catch (e) {
             console.error('Log fetch error:', e);
         }
@@ -131,22 +145,98 @@ const App = {
         try {
             const res = await fetch('/api/scan-results');
             const data = await res.json();
-            this.renderScanResults(data);
+            this.renderScanSummary(data);
+            this.renderCleanerCategories(data);
         } catch (e) {}
     },
 
-    renderScanResults(data) {
+    renderScanSummary(data) {
         const setVal = (id, val) => {
             const el = document.getElementById(id);
             if (el) el.textContent = val;
         };
-        setVal('scan-temp-count', data.temp_files_count);
-        setVal('scan-temp-size', this.formatBytes(data.temp_files_size));
-        setVal('scan-chrome', this.formatBytes(data.chrome_cache_size));
-        setVal('scan-junk', data.junk_files_count);
-        setVal('scan-registry', data.registry_issues);
-        setVal('scan-total', this.formatBytes(data.total_cleanable));
+        setVal('scan-total', data.total_size_fmt || '0 B');
+        setVal('scan-total-files', data.total_files || 0);
         setVal('last-scan-time', data.last_scan || 'Never');
+        setVal('scan-registry', data.registry_issues || 0);
+
+        const cats = data.categories || {};
+        let tempCount = 0, tempSize = 0, browserSize = 0, junkCount = 0;
+        if (cats.system_temp) { tempCount += cats.system_temp.count; tempSize += cats.system_temp.size; }
+        if (cats.user_temp) { tempCount += cats.user_temp.count; tempSize += cats.user_temp.size; }
+        if (cats.browser_cache) { browserSize = cats.browser_cache.size; }
+        for (const [k, v] of Object.entries(cats)) {
+            if (!['system_temp','user_temp','browser_cache'].includes(k)) {
+                junkCount += v.count;
+            }
+        }
+        setVal('scan-temp-count', tempCount);
+        setVal('scan-chrome', this.formatBytes(browserSize));
+        setVal('scan-junk', junkCount);
+    },
+
+    renderCleanerCategories(data) {
+        const container = document.getElementById('cleaner-categories');
+        if (!container) return;
+
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
+        setVal('cleaner-total', data.total_size_fmt || '0 B');
+        setVal('cleaner-total-files', data.total_files || 0);
+        setVal('cleaner-last-scan', data.last_scan || 'Never');
+
+        const cats = data.categories || {};
+        if (Object.keys(cats).length === 0) return;
+
+        const icons = {
+            system_temp: '&#x1F4C4;', user_temp: '&#x1F4C2;', browser_cache: '&#x1F310;',
+            recycle_bin: '&#x1F5D1;', thumbnails: '&#x1F5BC;', downloaded_program_files: '&#x1F4E5;',
+            directx_shader_cache: '&#x1F3AE;', error_reports: '&#x26A0;', delivery_optimization: '&#x1F4E6;',
+            defender_temp: '&#x1F6E1;', old_logs: '&#x1F4DD;', windows_update: '&#x1F504;',
+            windows_old: '&#x1F4BE;',
+        };
+
+        container.innerHTML = Object.entries(cats).map(([key, cat]) => {
+            const icon = icons[key] || '&#x1F4C1;';
+            const safeClass = cat.safe_level === 'caution' ? 'caution' : 'safe';
+            const sizeColor = cat.size > 100_000_000 ? 'var(--accent-yellow)' :
+                              cat.size > 1_000_000 ? 'var(--accent-cyan)' : 'var(--text-secondary)';
+            return `
+                <div class="clean-category-item ${safeClass}">
+                    <div class="clean-cat-icon">${icon}</div>
+                    <div class="clean-cat-info">
+                        <div class="clean-cat-label">${cat.label}</div>
+                        <div class="clean-cat-desc">${cat.description}</div>
+                    </div>
+                    <div class="clean-cat-stats">
+                        <div class="clean-cat-size" style="color: ${sizeColor}">${cat.size_fmt}</div>
+                        <div class="clean-cat-count">${cat.count} files</div>
+                    </div>
+                    <div class="clean-cat-badge ${safeClass}">
+                        ${cat.safe_level === 'caution' ? 'CAUTION' : 'SAFE'}
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" class="setting-toggle" data-key="${cat.setting}"
+                            ${cat.enabled ? 'checked' : ''} onchange="App.toggleCleanTarget('${cat.setting}', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            `;
+        }).join('');
+    },
+
+    async toggleCleanTarget(key, enabled) {
+        try {
+            const payload = {};
+            payload[key] = enabled;
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch(e) {}
     },
 
     async refreshCleanStatus() {
@@ -248,11 +338,16 @@ const App = {
         if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanning...'; }
         try {
             await fetch('/api/scan', { method: 'POST' });
+            const poll = setInterval(() => {
+                this.refreshScanResults();
+                this.refreshLogs();
+            }, 1500);
             setTimeout(() => {
+                clearInterval(poll);
                 this.refreshScanResults();
                 this.refreshLogs();
                 if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F50D; Scan System'; }
-            }, 4000);
+            }, 8000);
         } catch(e) {
             if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F50D; Scan System'; }
         }
@@ -272,15 +367,28 @@ const App = {
                 this.refreshScanResults();
                 this.refreshCleanStatus();
                 if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F9F9; Clean Now'; }
-            }, 8000);
+            }, 15000);
         } catch(e) {
             if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F9F9; Clean Now'; }
         }
     },
 
+    async loadSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            document.querySelectorAll('.setting-toggle').forEach(toggle => {
+                const key = toggle.dataset.key;
+                if (key && data[key] !== undefined) {
+                    toggle.checked = data[key];
+                }
+            });
+        } catch(e) {}
+    },
+
     async saveSettings() {
         const formData = {};
-        document.querySelectorAll('.setting-toggle').forEach(toggle => {
+        document.querySelectorAll('#page-settings .setting-toggle').forEach(toggle => {
             formData[toggle.dataset.key] = toggle.checked;
         });
         try {
@@ -311,7 +419,7 @@ const App = {
     },
 
     formatBytes(bytes) {
-        if (bytes === 0) return '0 B';
+        if (!bytes || bytes === 0) return '0 B';
         const units = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
         return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];

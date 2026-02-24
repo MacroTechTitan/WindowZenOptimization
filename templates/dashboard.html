@@ -38,6 +38,10 @@
                 <span class="icon">&#x1F9F9;</span>
                 <span>System Cleaner</span>
             </div>
+            <div class="nav-item" data-page="file-organizer">
+                <span class="icon">&#x1F4C1;</span>
+                <span>File Organizer</span>
+            </div>
             <div class="nav-item" data-page="registry">
                 <span class="icon">&#x1F527;</span>
                 <span>Registry</span>
@@ -53,6 +57,10 @@
             <div class="nav-item" data-page="wellness">
                 <span class="icon">&#x1F49A;</span>
                 <span>Wellness</span>
+            </div>
+            <div class="nav-item" data-page="cybersecurity">
+                <span class="icon">&#x1F6E1;</span>
+                <span>Cybersecurity</span>
             </div>
             <div class="nav-item" data-page="system">
                 <span class="icon">&#x1F5A5;&#xFE0F;</span>
@@ -300,12 +308,17 @@
                                 <span class="name" style="grid-column: span 2;">Path</span>
                                 <span class="cpu">Type</span>
                                 <span class="mem">Risk</span>
+                                <span class="cpu">Action</span>
+                                <span class="mem">Status</span>
                             </div>
                             <div id="registry-entries">
                                 <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
                                     Run a scan to detect registry issues
                                 </div>
                             </div>
+                        </div>
+                        <div style="margin-top: 20px; text-align: center;">
+                            <button class="btn btn-success" onclick="App.fixRegistry()">&#x1F527; Fix All Issues</button>
                         </div>
                     </div>
                 </div>
@@ -327,6 +340,29 @@
                                 <span class="mem">MEM %</span>
                             </div>
                             <div id="process-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F680; Startup Items</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="process-list">
+                            <div class="process-item process-header">
+                                <span class="name">Name</span>
+                                <span class="name">Path</span>
+                                <span class="cpu">Enabled</span>
+                            </div>
+                            <div id="startup-items-list">
+                                <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                    Loading startup items...
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; text-align: center;">
+                            <button class="btn btn-primary" onclick="if(confirm('Are you sure you want to restart the computer? Save all your work before proceeding.')) App.rebootSystem()">&#x1F504; Restart Computer</button>
                         </div>
                     </div>
                 </div>
@@ -386,15 +422,126 @@
                                     <div class="bar-item" style="height: 15%" data-label="8pm"></div>
                                 </div>
                             </div>
+
+                            <div style="margin-top: 20px;">
+                                <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">&#x23F1; Break Timer</h4>
+                                <div style="text-align: center; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 16px;">
+                                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 28px; color: var(--accent-cyan); font-weight: 700;" id="break-timer">40:00</div>
+                                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 4px;">Time until next break</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <button class="btn btn-primary" onclick="App.dismissBreakReminder()" id="btn-dismiss-break">&#x1F515; Dismiss Break Reminder</button>
+                                </div>
+                            </div>
+
                             <div style="margin-top: 40px;">
                                 <h4 style="font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-bottom: 12px; color: var(--accent-cyan);">Recommendations</h4>
                                 <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
-                                    <div>&#x2714; Take regular breaks every 60 minutes</div>
-                                    <div>&#x2714; Maintain good posture while working</div>
-                                    <div>&#x2714; Stay hydrated throughout the day</div>
+                                    <div>&#x2714; Lower screen brightness in evening hours (after 6 PM)</div>
+                                    <div>&#x2714; Use Night Light / Blue Light filter in the evening</div>
+                                    <div>&#x2714; Take a break every 40 minutes</div>
                                     <div>&#x2714; Follow the 20-20-20 rule for eye health</div>
+                                    <div>&#x2714; Stay hydrated throughout the day</div>
                                 </div>
                                 <button class="btn btn-success" style="margin-top: 16px;" onclick="App.takeBreak()">&#x2615; Log Break</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="break-alert" style="display: none; position: fixed; top: 20px; right: 20px; background: linear-gradient(135deg, #1a1a2e, #16213e); border: 1px solid var(--accent-cyan); border-radius: 12px; padding: 20px; z-index: 9999; box-shadow: 0 8px 32px rgba(0,0,0,0.4); max-width: 320px;">
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-cyan); font-weight: 700; margin-bottom: 8px;">&#x1F514; Break Time!</div>
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">You've been working for 40 minutes. Take a short break to rest your eyes and stretch.</div>
+                    <div style="margin-top: 12px; text-align: right;">
+                        <button class="btn btn-primary" onclick="App.dismissBreakReminder()">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CYBERSECURITY PAGE -->
+            <div class="page" id="page-cybersecurity">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F6E1; Cybersecurity Scanner</span>
+                        <button class="btn btn-primary" onclick="App.runSecurityScan()">&#x1F50D; Run Security Scan</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="security-scan-results">
+                            <div style="text-align: center; padding: 24px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                                Click "Run Security Scan" to analyze your system security
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;" id="security-ip-panel" hidden>
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F310; Your IP Address</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 32px; color: var(--accent-cyan); font-weight: 700;" id="security-ip-address">---.---.---.---</div>
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 8px;">Your public IP address as seen by external services</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-view" style="margin-top: 20px;" id="security-details-panels" hidden>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F6AA; Open Ports</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="process-list">
+                                <div class="process-item process-header">
+                                    <span class="pid">Port</span>
+                                    <span class="name">Service</span>
+                                    <span class="cpu">Status</span>
+                                </div>
+                                <div id="security-open-ports">
+                                    <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                        No data available
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F4E1; Active Connections</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="process-list">
+                                <div class="process-item process-header">
+                                    <span class="name">Remote IP</span>
+                                    <span class="pid">Port</span>
+                                    <span class="cpu">Status</span>
+                                    <span class="mem">Process</span>
+                                </div>
+                                <div id="security-active-connections">
+                                    <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                        No data available
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;" id="security-vulnerabilities-panel" hidden>
+                    <div class="panel-header">
+                        <span class="panel-title">&#x26A0;&#xFE0F; Vulnerabilities</span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="security-vulnerabilities">
+                            <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                No vulnerabilities detected
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 8px; border-left: 3px solid var(--accent-cyan);">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                                &#x1F6E1; <strong style="color: var(--accent-cyan);">VPN Recommendation:</strong> For enhanced privacy, consider using a dedicated VPN service to encrypt your traffic and mask your IP address.
                             </div>
                         </div>
                     </div>
@@ -406,7 +553,10 @@
                 <div class="panel">
                     <div class="panel-header">
                         <span class="panel-title">&#x1F5A5;&#xFE0F; System Information</span>
-                        <button class="btn" onclick="App.refreshMetrics()">&#x1F504; Refresh</button>
+                        <div class="btn-group">
+                            <button class="btn" onclick="App.refreshMetrics()">&#x1F504; Refresh</button>
+                            <button class="btn btn-primary" onclick="App.runDeepAnalysis()">&#x1F50E; Deep Analysis</button>
+                        </div>
                     </div>
                     <div class="panel-body">
                         <div id="system-details" class="info-grid">
@@ -439,6 +589,211 @@
                                 <span class="info-label">Primary Drive</span>
                                 <span class="info-value" id="vol-primary">--</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-view" style="margin-top: 20px;">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F9E0; RAM Details</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="info-row">
+                                <span class="info-label">Installed RAM</span>
+                                <span class="info-value" id="ram-installed">--</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Max Capacity</span>
+                                <span class="info-value" id="ram-max-capacity">--</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Slots Used / Total</span>
+                                <span class="info-value" id="ram-slots">--</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">RAM Type</span>
+                                <span class="info-value" id="ram-type">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F4DF; Motherboard</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="info-row">
+                                <span class="info-label">Manufacturer</span>
+                                <span class="info-value" id="mb-manufacturer">--</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Product</span>
+                                <span class="info-value" id="mb-product">--</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Serial Number</span>
+                                <span class="info-value" id="mb-serial">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;" id="deep-analysis-results" hidden>
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F50E; Deep Analysis Results</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="metrics-grid">
+                            <div class="metric-card blue">
+                                <div class="metric-header">
+                                    <span class="metric-label">Total Files</span>
+                                </div>
+                                <div class="metric-value blue" id="deep-total-files">0</div>
+                            </div>
+                            <div class="metric-card green">
+                                <div class="metric-header">
+                                    <span class="metric-label">Videos</span>
+                                </div>
+                                <div class="metric-value green" id="deep-videos">0</div>
+                            </div>
+                            <div class="metric-card purple">
+                                <div class="metric-header">
+                                    <span class="metric-label">Images</span>
+                                </div>
+                                <div class="metric-value purple" id="deep-images">0</div>
+                            </div>
+                            <div class="metric-card red">
+                                <div class="metric-header">
+                                    <span class="metric-label">Documents</span>
+                                </div>
+                                <div class="metric-value yellow" id="deep-documents">0</div>
+                            </div>
+                        </div>
+                        <div class="metrics-grid" style="margin-top: 12px;">
+                            <div class="metric-card blue">
+                                <div class="metric-header">
+                                    <span class="metric-label">Audio</span>
+                                </div>
+                                <div class="metric-value cyan" id="deep-audio">0</div>
+                            </div>
+                            <div class="metric-card green">
+                                <div class="metric-header">
+                                    <span class="metric-label">Installed Software</span>
+                                </div>
+                                <div class="metric-value green" id="deep-software">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CB; Windows Event Log</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="font-size: 12px; color: var(--text-secondary); line-height: 2; font-family: 'JetBrains Mono', monospace;">
+                            <div class="info-row">
+                                <span class="info-label">Application Log</span>
+                                <span class="info-value"><a href="#" onclick="App.openEventLog('Application')" style="color: var(--accent-cyan); text-decoration: none;">View &rarr;</a></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">System Log</span>
+                                <span class="info-value"><a href="#" onclick="App.openEventLog('System')" style="color: var(--accent-cyan); text-decoration: none;">View &rarr;</a></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Security Log</span>
+                                <span class="info-value"><a href="#" onclick="App.openEventLog('Security')" style="color: var(--accent-cyan); text-decoration: none;">View &rarr;</a></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Setup Log</span>
+                                <span class="info-value"><a href="#" onclick="App.openEventLog('Setup')" style="color: var(--accent-cyan); text-decoration: none;">View &rarr;</a></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILE ORGANIZER PAGE -->
+            <div class="page" id="page-file-organizer">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4C1; File Organizer</span>
+                        <button class="btn btn-primary" onclick="App.scanFiles()">&#x1F50D; Scan Files</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="file-organizer-results">
+                            <div style="text-align: center; padding: 24px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                                Click "Scan Files" to analyze your files for organization opportunities
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;" id="zero-length-panel" hidden>
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4C4; Zero-Length Files</span>
+                        <button class="btn btn-primary" onclick="App.deleteAllInCategory('zero-length')">&#x1F5D1; Delete All in Category</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); cursor: pointer;">
+                                <input type="checkbox" id="zero-length-select-all" onchange="App.toggleSelectAll('zero-length', this.checked)" style="margin-right: 8px;">
+                                Select All
+                            </label>
+                        </div>
+                        <div id="zero-length-list" class="process-list">
+                            <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                No zero-length files found
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; text-align: center;">
+                            <button class="btn btn-success" onclick="App.deleteSelected('zero-length')">&#x1F5D1; Delete Selected</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;" id="duplicates-panel" hidden>
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CB; Duplicate Files <span style="background: var(--accent-yellow); color: #000; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 8px;">WARNING</span></span>
+                        <button class="btn btn-primary" onclick="App.deleteAllInCategory('duplicates')">&#x1F5D1; Delete All in Category</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom: 12px; padding: 12px; background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 8px;">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-yellow);">
+                                &#x26A0; Be careful - make sure to keep at least one copy!
+                            </div>
+                        </div>
+                        <div id="duplicates-list" class="process-list">
+                            <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                No duplicate files found
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; text-align: center;">
+                            <button class="btn btn-success" onclick="App.deleteSelected('duplicates')">&#x1F5D1; Delete Selected</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;" id="installers-panel" hidden>
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4E6; Software Installers</span>
+                        <button class="btn btn-primary" onclick="App.deleteAllInCategory('installers')">&#x1F5D1; Delete All in Category</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); cursor: pointer;">
+                                <input type="checkbox" id="installers-select-all" onchange="App.toggleSelectAll('installers', this.checked)" style="margin-right: 8px;">
+                                Select All
+                            </label>
+                        </div>
+                        <div id="installers-list" class="process-list">
+                            <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                No .exe/.msi installer files found in Downloads
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; text-align: center;">
+                            <button class="btn btn-success" onclick="App.deleteSelected('installers')">&#x1F5D1; Delete Selected</button>
                         </div>
                     </div>
                 </div>
@@ -726,5 +1081,70 @@
     </div>
 
     <script src="/static/js/app.js"></script>
+    <script>
+        (function() {
+            var breakTimerSeconds = 40 * 60;
+            var breakTimerInterval = null;
+            var breakTimerEl = document.getElementById('break-timer');
+            var breakAlertEl = document.getElementById('break-alert');
+
+            function formatTime(s) {
+                var m = Math.floor(s / 60);
+                var sec = s % 60;
+                return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+            }
+
+            function playBreakTone() {
+                try {
+                    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    var osc = ctx.createOscillator();
+                    var gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 1.5);
+                    setTimeout(function() {
+                        var osc2 = ctx.createOscillator();
+                        var gain2 = ctx.createGain();
+                        osc2.connect(gain2);
+                        gain2.connect(ctx.destination);
+                        osc2.type = 'sine';
+                        osc2.frequency.setValueAtTime(659.25, ctx.currentTime);
+                        gain2.gain.setValueAtTime(0.25, ctx.currentTime);
+                        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.2);
+                        osc2.start(ctx.currentTime);
+                        osc2.stop(ctx.currentTime + 1.2);
+                    }, 400);
+                } catch(e) {}
+            }
+
+            function startBreakTimer() {
+                breakTimerSeconds = 40 * 60;
+                if (breakTimerInterval) clearInterval(breakTimerInterval);
+                breakTimerInterval = setInterval(function() {
+                    breakTimerSeconds--;
+                    if (breakTimerEl) breakTimerEl.textContent = formatTime(breakTimerSeconds);
+                    if (breakTimerSeconds <= 0) {
+                        clearInterval(breakTimerInterval);
+                        if (breakAlertEl) breakAlertEl.style.display = 'block';
+                        playBreakTone();
+                    }
+                }, 1000);
+            }
+
+            if (!App.dismissBreakReminder) {
+                App.dismissBreakReminder = function() {
+                    if (breakAlertEl) breakAlertEl.style.display = 'none';
+                    startBreakTimer();
+                };
+            }
+
+            startBreakTimer();
+        })();
+    </script>
 </body>
 </html>

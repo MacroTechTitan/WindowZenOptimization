@@ -2,7 +2,8 @@ const App = {
     currentPage: 'dashboard',
     refreshInterval: null,
     logInterval: null,
-    
+    breakTimerInterval: null,
+
     init() {
         this.bindNavigation();
         this.startClock();
@@ -17,6 +18,22 @@ const App = {
         setInterval(() => this.refreshCleanStatus(), 2000);
         setInterval(() => this.refreshActivity(), 10000);
         this.showPage('dashboard');
+
+        setInterval(() => this.checkBreak(), 60000);
+
+        this.breakTimerInterval = setInterval(() => {
+            const timerEl = document.getElementById('break-timer');
+            if (timerEl && timerEl.dataset.seconds) {
+                let secs = parseInt(timerEl.dataset.seconds);
+                if (secs > 0) {
+                    secs--;
+                    timerEl.dataset.seconds = secs;
+                    const mins = Math.floor(secs / 60);
+                    const rem = secs % 60;
+                    timerEl.textContent = `${mins}:${rem.toString().padStart(2, '0')}`;
+                }
+            }
+        }, 1000);
     },
 
     bindNavigation() {
@@ -32,19 +49,24 @@ const App = {
         this.currentPage = pageName;
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        
+
         const page = document.getElementById(`page-${pageName}`);
         if (page) page.classList.add('active');
-        
+
         const nav = document.querySelector(`.nav-item[data-page="${pageName}"]`);
         if (nav) nav.classList.add('active');
 
-        if (pageName === 'processes') this.refreshProcesses();
+        if (pageName === 'processes') {
+            this.refreshProcesses();
+            this.refreshStartupItems();
+        }
         if (pageName === 'system') this.refreshSystemInfo();
         if (pageName === 'registry') this.refreshRegistry();
         if (pageName === 'scheduler') this.refreshScheduler();
         if (pageName === 'cleaner') this.refreshScanResults();
         if (pageName === 'settings') this.loadSettings();
+        if (pageName === 'file-organizer') this.refreshFileOrganizer();
+        if (pageName === 'cybersecurity') this.refreshSecurity();
     },
 
     startClock() {
@@ -317,7 +339,7 @@ const App = {
     renderSystemInfo(data) {
         const container = document.getElementById('system-details');
         if (!container) return;
-        container.innerHTML = `
+        let html = `
             <div class="info-row"><span class="info-label">Platform</span><span class="info-value">${data.system.platform}</span></div>
             <div class="info-row"><span class="info-label">Release</span><span class="info-value">${data.system.release}</span></div>
             <div class="info-row"><span class="info-label">Machine</span><span class="info-value">${data.system.machine}</span></div>
@@ -331,6 +353,33 @@ const App = {
             <div class="info-row"><span class="info-label">Network Sent</span><span class="info-value">${data.network.bytes_sent}</span></div>
             <div class="info-row"><span class="info-label">Network Received</span><span class="info-value">${data.network.bytes_recv}</span></div>
         `;
+
+        if (data.ram_details) {
+            const ram = data.ram_details;
+            html += `
+                <div class="info-row" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">RAM Details</span><span class="info-value"></span>
+                </div>
+                <div class="info-row"><span class="info-label">Installed</span><span class="info-value">${ram.installed_gb || 'N/A'} GB</span></div>
+                <div class="info-row"><span class="info-label">Max Capacity</span><span class="info-value">${ram.max_capacity_gb || 'N/A'} GB</span></div>
+                <div class="info-row"><span class="info-label">Slots Used</span><span class="info-value">${ram.slots_used || 'N/A'} / ${ram.slots_total || 'N/A'}</span></div>
+                <div class="info-row"><span class="info-label">RAM Type</span><span class="info-value">${ram.ram_type || 'N/A'}</span></div>
+            `;
+        }
+
+        if (data.motherboard) {
+            const mb = data.motherboard;
+            html += `
+                <div class="info-row" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">Motherboard</span><span class="info-value"></span>
+                </div>
+                <div class="info-row"><span class="info-label">Manufacturer</span><span class="info-value">${mb.manufacturer || 'N/A'}</span></div>
+                <div class="info-row"><span class="info-label">Product</span><span class="info-value">${mb.product || 'N/A'}</span></div>
+                <div class="info-row"><span class="info-label">Serial Number</span><span class="info-value">${mb.serial_number || 'N/A'}</span></div>
+            `;
+        }
+
+        container.innerHTML = html;
     },
 
     async startScan() {
@@ -446,9 +495,11 @@ const App = {
             if (list && data.entries && data.entries.length > 0) {
                 list.innerHTML = data.entries.map(e => `
                     <div class="process-item">
-                        <span class="name" style="grid-column: span 2;">${e.path}</span>
+                        <span class="name" style="grid-column: span 1;">${e.path}</span>
                         <span class="cpu">${e.type}</span>
                         <span class="mem" style="color: ${e.risk === 'medium' ? 'var(--accent-yellow)' : 'var(--accent-green)'};">${e.risk}</span>
+                        <span class="cpu">${e.action || 'clean'}</span>
+                        <span class="mem" style="color: ${e.status === 'fixed' ? 'var(--accent-green)' : 'var(--accent-yellow)'};">${e.status || 'pending'}</span>
                     </div>
                 `).join('');
             }
@@ -468,6 +519,388 @@ const App = {
         } catch(e) {
             if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F50D; Scan Registry'; }
         }
+    },
+
+    async fixRegistry() {
+        try {
+            await fetch('/api/registry/fix', { method: 'POST' });
+            await this.refreshRegistry();
+            this.showNotification('Registry issues fixed!');
+        } catch(e) {
+            this.showNotification('Failed to fix registry issues', 'error');
+        }
+    },
+
+    async checkBreak() {
+        try {
+            const res = await fetch('/api/wellness/break-check');
+            const data = await res.json();
+            if (data.should_break) {
+                const alertEl = document.getElementById('break-alert');
+                if (alertEl) alertEl.style.display = 'flex';
+
+                const timerEl = document.getElementById('break-timer');
+                if (timerEl && data.seconds_remaining) {
+                    timerEl.dataset.seconds = data.seconds_remaining;
+                    const mins = Math.floor(data.seconds_remaining / 60);
+                    const rem = data.seconds_remaining % 60;
+                    timerEl.textContent = `${mins}:${rem.toString().padStart(2, '0')}`;
+                }
+
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 1);
+                } catch(audioErr) {}
+            }
+        } catch(e) {}
+    },
+
+    async dismissBreak() {
+        try {
+            await fetch('/api/wellness/dismiss-break', { method: 'POST' });
+            const alertEl = document.getElementById('break-alert');
+            if (alertEl) alertEl.style.display = 'none';
+            const timerEl = document.getElementById('break-timer');
+            if (timerEl) {
+                timerEl.textContent = '0:00';
+                timerEl.dataset.seconds = 0;
+            }
+        } catch(e) {}
+    },
+
+    async refreshStartupItems() {
+        try {
+            const res = await fetch('/api/startup-items');
+            const data = await res.json();
+            const container = document.getElementById('startup-items-list');
+            if (!container) return;
+            if (data.items && data.items.length > 0) {
+                container.innerHTML = data.items.map(item => `
+                    <div class="process-item">
+                        <span class="name">${item.name}</span>
+                        <span class="cpu" style="font-size: 11px;">${item.path || 'N/A'}</span>
+                        <label class="toggle">
+                            <input type="checkbox" ${item.enabled ? 'checked' : ''}
+                                onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="info-row"><span class="info-label">No startup items found</span></div>';
+            }
+        } catch(e) {}
+    },
+
+    async toggleStartupItem(name, hive, enabled) {
+        try {
+            await fetch('/api/startup-items/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, hive, enabled })
+            });
+            this.showNotification(`Startup item "${name}" ${enabled ? 'enabled' : 'disabled'}`);
+        } catch(e) {
+            this.showNotification('Failed to toggle startup item', 'error');
+        }
+    },
+
+    async rebootSystem() {
+        if (!confirm('Are you sure you want to reboot the system? All unsaved work will be lost.')) return;
+        try {
+            await fetch('/api/system/reboot', { method: 'POST' });
+            this.showNotification('System reboot initiated...');
+        } catch(e) {
+            this.showNotification('Failed to initiate reboot', 'error');
+        }
+    },
+
+    async runDeepAnalysis() {
+        const btn = document.getElementById('btn-deep-analysis');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analyzing...'; }
+        try {
+            await fetch('/api/system/deep-analysis', { method: 'POST' });
+            const poll = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/system/deep-analysis');
+                    const data = await res.json();
+                    if (data.status === 'complete') {
+                        clearInterval(poll);
+                        this.renderDeepAnalysis(data);
+                        if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F50E; Run Deep Analysis'; }
+                    }
+                } catch(e) {}
+            }, 2000);
+        } catch(e) {
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F50E; Run Deep Analysis'; }
+        }
+    },
+
+    renderDeepAnalysis(data) {
+        const container = document.getElementById('deep-analysis-results');
+        if (!container) return;
+        const results = data.results || data;
+        let html = `
+            <div class="info-row"><span class="info-label">Total Files</span><span class="info-value">${results.total_files || 0}</span></div>
+            <div class="info-row"><span class="info-label">Videos</span><span class="info-value">${results.videos || 0}</span></div>
+            <div class="info-row"><span class="info-label">Images</span><span class="info-value">${results.images || 0}</span></div>
+            <div class="info-row"><span class="info-label">Documents</span><span class="info-value">${results.documents || 0}</span></div>
+            <div class="info-row"><span class="info-label">Audio</span><span class="info-value">${results.audio || 0}</span></div>
+            <div class="info-row"><span class="info-label">Installed Software</span><span class="info-value">${results.installed_software ? results.installed_software.length || results.installed_software : 0}</span></div>
+        `;
+
+        if (results.event_log_paths && results.event_log_paths.length > 0) {
+            html += `
+                <div class="info-row" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">Event Log Paths</span><span class="info-value"></span>
+                </div>
+            `;
+            results.event_log_paths.forEach(path => {
+                html += `<div class="info-row"><span class="info-label">&#x1F4C4;</span><span class="info-value" style="font-size: 11px;">${path}</span></div>`;
+            });
+        }
+
+        container.innerHTML = html;
+    },
+
+    async scanFiles() {
+        const btn = document.getElementById('btn-scan-files');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanning...'; }
+        try {
+            await fetch('/api/file-organizer/scan', { method: 'POST' });
+            const poll = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/file-organizer/results');
+                    const data = await res.json();
+                    if (data.status === 'complete') {
+                        clearInterval(poll);
+                        this.renderFileOrganizerResults(data);
+                        if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F4C2; Scan Files'; }
+                    }
+                } catch(e) {}
+            }, 2000);
+        } catch(e) {
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F4C2; Scan Files'; }
+        }
+    },
+
+    async refreshFileOrganizer() {
+        try {
+            const res = await fetch('/api/file-organizer/results');
+            const data = await res.json();
+            if (data.status === 'complete') {
+                this.renderFileOrganizerResults(data);
+            }
+        } catch(e) {}
+    },
+
+    renderFileOrganizerResults(data) {
+        const container = document.getElementById('file-organizer-results');
+        if (!container) return;
+
+        const results = data.results || data;
+        let html = '';
+
+        const categories = [
+            { key: 'zero_length_files', label: 'Zero-Length Files', icon: '&#x1F4C4;' },
+            { key: 'duplicates', label: 'Duplicate Files', icon: '&#x1F4CB;' },
+            { key: 'installers', label: 'Installer Files', icon: '&#x1F4E6;' }
+        ];
+
+        categories.forEach(cat => {
+            const files = results[cat.key] || [];
+            const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
+            html += `
+                <div class="file-category" style="margin-bottom: 16px;">
+                    <div class="info-row" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+                        <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">
+                            ${cat.icon} ${cat.label} (${files.length} files, ${this.formatBytes(totalSize)})
+                        </span>
+                        <span class="info-value">
+                            <button class="btn btn-sm" onclick="App.toggleSelectAll('${cat.key}')" style="margin-right: 8px; padding: 4px 8px; font-size: 11px;">Select All</button>
+                            <button class="btn btn-sm" onclick="App.deleteSelected('${cat.key}')" style="margin-right: 8px; padding: 4px 8px; font-size: 11px;">Delete Selected</button>
+                            <button class="btn btn-sm btn-danger" onclick="App.deleteAllInCategory('${cat.key}')" style="padding: 4px 8px; font-size: 11px;">Delete All</button>
+                        </span>
+                    </div>
+                    <div id="file-list-${cat.key}">
+            `;
+            files.forEach((f, idx) => {
+                html += `
+                    <div class="process-item" style="font-size: 11px;">
+                        <input type="checkbox" class="file-check-${cat.key}" data-path="${f.path || f.name || ''}" style="margin-right: 8px;">
+                        <span class="name" style="flex: 1;">${f.path || f.name || 'Unknown'}</span>
+                        <span class="mem">${this.formatBytes(f.size || 0)}</span>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+        });
+
+        container.innerHTML = html;
+    },
+
+    toggleSelectAll(category) {
+        const checkboxes = document.querySelectorAll(`.file-check-${category}`);
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+    },
+
+    async deleteSelected(category) {
+        const checkboxes = document.querySelectorAll(`.file-check-${category}:checked`);
+        const paths = Array.from(checkboxes).map(cb => cb.dataset.path).filter(p => p);
+        if (paths.length === 0) {
+            this.showNotification('No files selected', 'error');
+            return;
+        }
+        try {
+            await fetch('/api/file-organizer/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: paths, category })
+            });
+            this.showNotification(`${paths.length} files deleted`);
+            this.refreshFileOrganizer();
+        } catch(e) {
+            this.showNotification('Failed to delete files', 'error');
+        }
+    },
+
+    async deleteAllInCategory(category) {
+        const checkboxes = document.querySelectorAll(`.file-check-${category}`);
+        checkboxes.forEach(cb => cb.checked = true);
+        await this.deleteSelected(category);
+    },
+
+    async runSecurityScan() {
+        const btn = document.getElementById('btn-security-scan');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanning...'; }
+        try {
+            await fetch('/api/security/scan', { method: 'POST' });
+            const poll = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/security/scan');
+                    const data = await res.json();
+                    if (data.results || data.open_ports) {
+                        clearInterval(poll);
+                        this.renderSecurityResults(data.results || data);
+                        if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F6E1; Run Security Scan'; }
+                    }
+                } catch(e) {}
+            }, 2000);
+        } catch(e) {
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F6E1; Run Security Scan'; }
+        }
+    },
+
+    async refreshSecurity() {
+        try {
+            const res = await fetch('/api/security/scan');
+            const data = await res.json();
+            if (data.results || data.open_ports) {
+                this.renderSecurityResults(data.results || data);
+            }
+        } catch(e) {}
+    },
+
+    renderSecurityResults(data) {
+        const container = document.getElementById('security-results');
+        if (!container) return;
+
+        let html = '';
+
+        if (data.public_ip) {
+            html += `
+                <div class="info-row" style="margin-bottom: 16px; padding: 12px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--accent-cyan);">
+                    <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">&#x1F310; Public IP</span>
+                    <span class="info-value" style="font-size: 16px; font-weight: bold;">${data.public_ip}</span>
+                </div>
+            `;
+        }
+
+        if (data.open_ports && data.open_ports.length > 0) {
+            html += `
+                <div style="margin-bottom: 16px;">
+                    <div class="info-row" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+                        <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">&#x1F6AA; Open Ports</span>
+                    </div>
+                    <div class="process-item" style="font-weight: bold; font-size: 11px;">
+                        <span class="pid">Port</span>
+                        <span class="name">Service</span>
+                        <span class="cpu">Protocol</span>
+                        <span class="mem">Status</span>
+                    </div>
+            `;
+            data.open_ports.forEach(port => {
+                const statusColor = port.status === 'open' ? 'var(--accent-red)' : 'var(--accent-green)';
+                html += `
+                    <div class="process-item">
+                        <span class="pid">${port.port || port.number || ''}</span>
+                        <span class="name">${port.service || 'Unknown'}</span>
+                        <span class="cpu">${port.protocol || 'TCP'}</span>
+                        <span class="mem" style="color: ${statusColor}; font-weight: bold;">${port.status || 'open'}</span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+
+        if (data.active_connections && data.active_connections.length > 0) {
+            html += `
+                <div style="margin-bottom: 16px;">
+                    <div class="info-row" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+                        <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">&#x1F517; Active Connections</span>
+                    </div>
+                    <div class="process-item" style="font-weight: bold; font-size: 11px;">
+                        <span class="pid">Local</span>
+                        <span class="name">Remote</span>
+                        <span class="cpu">Status</span>
+                        <span class="mem">PID</span>
+                    </div>
+            `;
+            data.active_connections.forEach(conn => {
+                html += `
+                    <div class="process-item">
+                        <span class="pid" style="font-size: 10px;">${conn.local_address || ''}</span>
+                        <span class="name" style="font-size: 10px;">${conn.remote_address || ''}</span>
+                        <span class="cpu">${conn.status || ''}</span>
+                        <span class="mem">${conn.pid || ''}</span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+
+        if (data.vulnerabilities && data.vulnerabilities.length > 0) {
+            html += `
+                <div style="margin-bottom: 16px;">
+                    <div class="info-row" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+                        <span class="info-label" style="font-weight: bold; color: var(--accent-red);">&#x26A0; Vulnerabilities</span>
+                    </div>
+            `;
+            data.vulnerabilities.forEach(vuln => {
+                const severity = vuln.severity || 'info';
+                const severityColor = severity === 'high' ? 'var(--accent-red)' :
+                                      severity === 'medium' ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                html += `
+                    <div class="process-item">
+                        <span class="name" style="flex: 1;">${vuln.description || vuln.name || ''}</span>
+                        <span class="mem" style="color: ${severityColor}; font-weight: bold;">${severity.toUpperCase()}</span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+
+        container.innerHTML = html;
     },
 
     async refreshScheduler() {

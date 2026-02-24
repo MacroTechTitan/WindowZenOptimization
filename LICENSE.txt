@@ -1,0 +1,24 @@
+SystemOptimizer Pro - End User License Agreement
+
+Copyright (c) 2025 SystemOptimizer. All rights reserved.
+
+By installing and using SystemOptimizer Pro, you agree to the following terms:
+
+1. LICENSE GRANT
+   You are granted a non-exclusive, non-transferable license to install and use
+   SystemOptimizer Pro on your personal computer.
+
+2. USAGE
+   This software is provided for system optimization and maintenance purposes.
+   It may modify system files, temporary files, and registry entries as part of
+   its normal operation.
+
+3. DISCLAIMER
+   THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. THE AUTHORS
+   SHALL NOT BE LIABLE FOR ANY DAMAGES ARISING FROM THE USE OF THIS SOFTWARE.
+   Use caution features (Windows Update Cleanup, Windows.old removal) at your
+   own risk.
+
+4. PRIVACY
+   SystemOptimizer Pro does not collect, transmit, or store any personal data.
+   All operations are performed locally on your computer.

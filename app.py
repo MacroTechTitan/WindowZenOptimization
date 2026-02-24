@@ -613,7 +613,100 @@ def get_ram_details():
                 pass
     if ram_info["max_capacity_gb"] == 0:
         ram_info["max_capacity_gb"] = ram_info["installed_gb"]
+    ram_info["upgrade_recommendations"] = get_ram_upgrade_recommendations(ram_info)
     return ram_info
+
+
+def get_ram_upgrade_recommendations(ram_info):
+    installed = ram_info.get("installed_gb", 0)
+    max_cap = ram_info.get("max_capacity_gb", 0)
+    slots_total = ram_info.get("slots_total", 0)
+    slots_used = ram_info.get("slots_used", 0)
+    ram_type = ram_info.get("ram_type", "Unknown")
+    slots_free = max(0, slots_total - slots_used)
+
+    rec = {
+        "can_upgrade": False,
+        "current_summary": f"{installed} GB {ram_type} installed across {slots_used} slot(s)",
+        "max_supported": f"{max_cap} GB",
+        "slots_free": slots_free,
+        "compatible_type": ram_type if ram_type != "Unknown" else "Check motherboard manual",
+        "suggestions": [],
+        "compatible_modules": [],
+        "notes": [],
+    }
+
+    speed_map = {
+        "DDR3": {"speeds": ["1333 MHz", "1600 MHz", "1866 MHz"], "form_factor": "240-pin DIMM (desktop) / 204-pin SO-DIMM (laptop)", "voltage": "1.5V (standard) / 1.35V (DDR3L)"},
+        "DDR4": {"speeds": ["2133 MHz", "2400 MHz", "2666 MHz", "3000 MHz", "3200 MHz", "3600 MHz"], "form_factor": "288-pin DIMM (desktop) / 260-pin SO-DIMM (laptop)", "voltage": "1.2V"},
+        "DDR5": {"speeds": ["4800 MHz", "5200 MHz", "5600 MHz", "6000 MHz", "6400 MHz", "7200 MHz"], "form_factor": "288-pin DIMM (desktop) / 262-pin SO-DIMM (laptop)", "voltage": "1.1V"},
+        "DDR2": {"speeds": ["667 MHz", "800 MHz"], "form_factor": "240-pin DIMM (desktop)", "voltage": "1.8V"},
+        "DDR": {"speeds": ["400 MHz"], "form_factor": "184-pin DIMM (desktop)", "voltage": "2.5V"},
+    }
+
+    if ram_type in speed_map:
+        spec = speed_map[ram_type]
+        rec["compatible_modules"] = [
+            {"spec": f"{ram_type}", "speeds": spec["speeds"], "form_factor": spec["form_factor"], "voltage": spec["voltage"]},
+        ]
+
+    if max_cap > installed and slots_free > 0:
+        rec["can_upgrade"] = True
+        upgrade_amount = max_cap - installed
+        per_stick = upgrade_amount / slots_free if slots_free > 0 else upgrade_amount
+
+        common_stick_sizes = [4, 8, 16, 32, 64]
+        best_stick = min(common_stick_sizes, key=lambda x: abs(x - per_stick))
+        if best_stick < per_stick:
+            idx = common_stick_sizes.index(best_stick)
+            if idx + 1 < len(common_stick_sizes):
+                best_stick = common_stick_sizes[idx + 1]
+
+        rec["suggestions"].append({
+            "option": f"Add {slots_free}x {best_stick}GB {ram_type} module(s)",
+            "result": f"Total: {installed + (best_stick * slots_free)} GB",
+            "difficulty": "Easy - empty slot(s) available",
+        })
+
+        if slots_used > 0:
+            max_per_slot_sizes = [s for s in common_stick_sizes if s * slots_total <= max_cap]
+            if max_per_slot_sizes:
+                max_stick = max_per_slot_sizes[-1]
+                if max_stick * slots_total > installed:
+                    rec["suggestions"].append({
+                        "option": f"Replace all with {slots_total}x {max_stick}GB {ram_type} module(s)",
+                        "result": f"Total: {max_stick * slots_total} GB (maximum)",
+                        "difficulty": "Moderate - requires removing existing RAM",
+                    })
+
+    elif max_cap > installed and slots_free == 0 and slots_total > 0:
+        rec["can_upgrade"] = True
+        max_per_slot_sizes = [s for s in [4, 8, 16, 32, 64] if s * slots_total <= max_cap]
+        if max_per_slot_sizes:
+            max_stick = max_per_slot_sizes[-1]
+            if max_stick * slots_total > installed:
+                rec["suggestions"].append({
+                    "option": f"Replace with {slots_total}x {max_stick}GB {ram_type} module(s)",
+                    "result": f"Total: {max_stick * slots_total} GB",
+                    "difficulty": "Moderate - must remove existing modules",
+                })
+        rec["notes"].append("All RAM slots are occupied. Upgrading requires replacing existing modules with higher capacity ones.")
+
+    elif max_cap <= installed:
+        rec["notes"].append("Your system is already at maximum RAM capacity.")
+
+    if ram_type == "Unknown":
+        rec["notes"].append("RAM type could not be detected. Check your motherboard manual or use a tool like CPU-Z to identify the correct RAM type before purchasing.")
+    else:
+        rec["notes"].append(f"Always buy {ram_type} modules — other types (e.g., {'DDR4' if ram_type == 'DDR5' else 'DDR5'}) are physically incompatible and will not fit.")
+
+    if slots_used >= 2:
+        rec["notes"].append("For best performance, install RAM in matched pairs (same capacity, speed, and brand) to enable dual-channel mode.")
+
+    if ram_type in ["DDR3", "DDR2", "DDR"]:
+        rec["notes"].append(f"{ram_type} is an older standard. Consider whether upgrading the entire system (motherboard + CPU + RAM) might be more cost-effective.")
+
+    return rec
 
 
 def get_motherboard_info():

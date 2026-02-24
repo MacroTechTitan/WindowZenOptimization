@@ -365,6 +365,62 @@ const App = {
                 <div class="info-row"><span class="info-label">Slots Used</span><span class="info-value">${ram.slots_used || 'N/A'} / ${ram.slots_total || 'N/A'}</span></div>
                 <div class="info-row"><span class="info-label">RAM Type</span><span class="info-value">${ram.ram_type || 'N/A'}</span></div>
             `;
+
+            if (ram.upgrade_recommendations) {
+                const rec = ram.upgrade_recommendations;
+                html += `
+                    <div class="info-row" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                        <span class="info-label" style="font-weight: bold; color: var(--accent-green);">&#x2B06; RAM Upgrade Guide</span>
+                        <span class="info-value" style="color: ${rec.can_upgrade ? 'var(--accent-green)' : 'var(--text-muted)'};">${rec.can_upgrade ? 'Upgrade Available' : 'At Maximum'}</span>
+                    </div>
+                    <div class="info-row"><span class="info-label">Current Setup</span><span class="info-value">${rec.current_summary}</span></div>
+                    <div class="info-row"><span class="info-label">Max Supported</span><span class="info-value">${rec.max_supported}</span></div>
+                    <div class="info-row"><span class="info-label">Free Slots</span><span class="info-value">${rec.slots_free}</span></div>
+                    <div class="info-row"><span class="info-label">Compatible Type</span><span class="info-value" style="color: var(--accent-cyan); font-weight: 600;">${rec.compatible_type}</span></div>
+                `;
+
+                if (rec.compatible_modules && rec.compatible_modules.length > 0) {
+                    const mod = rec.compatible_modules[0];
+                    html += `
+                        <div class="info-row" style="margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+                            <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">Compatible Specs</span><span class="info-value"></span>
+                        </div>
+                        <div class="info-row"><span class="info-label">Supported Speeds</span><span class="info-value" style="font-size: 10px;">${mod.speeds.join(', ')}</span></div>
+                        <div class="info-row"><span class="info-label">Form Factor</span><span class="info-value" style="font-size: 10px;">${mod.form_factor}</span></div>
+                        <div class="info-row"><span class="info-label">Voltage</span><span class="info-value">${mod.voltage}</span></div>
+                    `;
+                }
+
+                if (rec.suggestions && rec.suggestions.length > 0) {
+                    html += `
+                        <div class="info-row" style="margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+                            <span class="info-label" style="font-weight: bold; color: var(--accent-yellow);">&#x1F4A1; Upgrade Options</span><span class="info-value"></span>
+                        </div>
+                    `;
+                    rec.suggestions.forEach((s, i) => {
+                        html += `
+                            <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; margin: 6px 0;">
+                                <div style="color: var(--accent-green); font-weight: 600; font-size: 12px; margin-bottom: 4px;">Option ${i + 1}: ${s.option}</div>
+                                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                                    <span style="color: var(--accent-cyan);">${s.result}</span>
+                                    <span style="color: var(--text-muted);">${s.difficulty}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (rec.notes && rec.notes.length > 0) {
+                    html += `
+                        <div class="info-row" style="margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+                            <span class="info-label" style="font-weight: bold; color: var(--text-muted);">&#x26A0; Important Notes</span><span class="info-value"></span>
+                        </div>
+                    `;
+                    rec.notes.forEach(note => {
+                        html += `<div style="padding: 4px 0; font-size: 11px; color: var(--text-muted); line-height: 1.5;">&#x2022; ${note}</div>`;
+                    });
+                }
+            }
         }
 
         if (data.motherboard) {
@@ -380,6 +436,59 @@ const App = {
         }
 
         container.innerHTML = html;
+
+        const upgradePanel = document.getElementById('ram-upgrade-info');
+        if (upgradePanel && data.ram_details && data.ram_details.upgrade_recommendations) {
+            const rec = data.ram_details.upgrade_recommendations;
+            let uhtml = '';
+
+            uhtml += `<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <span style="font-size: 20px;">${rec.can_upgrade ? '&#x2705;' : '&#x26D4;'}</span>
+                <span style="font-weight: 700; color: ${rec.can_upgrade ? 'var(--accent-green)' : 'var(--text-muted)'}; font-size: 14px;">
+                    ${rec.can_upgrade ? 'Upgrade Available' : 'Maximum RAM Reached'}
+                </span>
+            </div>`;
+
+            uhtml += `<div class="info-row"><span class="info-label">Compatible RAM</span><span class="info-value" style="color: var(--accent-cyan); font-weight: 700;">${rec.compatible_type}</span></div>`;
+            uhtml += `<div class="info-row"><span class="info-label">Free Slots</span><span class="info-value">${rec.slots_free}</span></div>`;
+            uhtml += `<div class="info-row"><span class="info-label">Max Supported</span><span class="info-value">${rec.max_supported}</span></div>`;
+
+            if (rec.compatible_modules && rec.compatible_modules.length > 0) {
+                const mod = rec.compatible_modules[0];
+                uhtml += `<div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                    <div style="font-weight: 600; color: var(--accent-cyan); font-size: 12px; margin-bottom: 8px;">What to Buy:</div>
+                    <div class="info-row"><span class="info-label">Speeds</span><span class="info-value" style="font-size: 10px;">${mod.speeds.join(', ')}</span></div>
+                    <div class="info-row"><span class="info-label">Form Factor</span><span class="info-value" style="font-size: 10px;">${mod.form_factor}</span></div>
+                    <div class="info-row"><span class="info-label">Voltage</span><span class="info-value">${mod.voltage}</span></div>
+                </div>`;
+            }
+
+            if (rec.suggestions && rec.suggestions.length > 0) {
+                uhtml += `<div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                    <div style="font-weight: 600; color: var(--accent-yellow); font-size: 12px; margin-bottom: 8px;">Upgrade Options:</div>
+                </div>`;
+                rec.suggestions.forEach((s, i) => {
+                    uhtml += `<div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; margin: 6px 0;">
+                        <div style="color: var(--accent-green); font-weight: 600; font-size: 12px; margin-bottom: 4px;">Option ${i + 1}: ${s.option}</div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                            <span style="color: var(--accent-cyan);">${s.result}</span>
+                            <span style="color: var(--text-muted);">${s.difficulty}</span>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            if (rec.notes && rec.notes.length > 0) {
+                uhtml += `<div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                    <div style="font-weight: 600; color: var(--text-muted); font-size: 11px; margin-bottom: 6px;">Important Notes:</div>
+                </div>`;
+                rec.notes.forEach(note => {
+                    uhtml += `<div style="padding: 3px 0; font-size: 11px; color: var(--text-muted); line-height: 1.5;">&#x2022; ${note}</div>`;
+                });
+            }
+
+            upgradePanel.innerHTML = uhtml;
+        }
     },
 
     async startScan() {

@@ -1,24 +1,293 @@
-SystemOptimizer Pro - End User License Agreement
+MASTER END USER LICENSE AGREEMENT
 
-Copyright (c) 2025 SystemOptimizer. All rights reserved.
+Macro Tech Titan, Inc.
+A Delaware Corporation
 
-By installing and using SystemOptimizer Pro, you agree to the following terms:
+Effective Date: February 25, 2026
+Last Updated: February 25, 2026
 
-1. LICENSE GRANT
-   You are granted a non-exclusive, non-transferable license to install and use
-   SystemOptimizer Pro on your personal computer.
+This Master End User License Agreement ("Agreement") is a legally binding agreement between you, either an individual or the entity you represent ("Customer," "Licensee," "you," or "your"), and Macro Tech Titan, Inc., a Delaware corporation ("Macro Tech Titan," "Company," "we," "us," or "our"), governing access to and use of the Company's Software and Services.
 
-2. USAGE
-   This software is provided for system optimization and maintenance purposes.
-   It may modify system files, temporary files, and registry entries as part of
-   its normal operation.
+By accessing, installing, downloading, registering for, or using the Software or Services, you agree to be bound by this Agreement. If you do not agree, you may not use the Software or Services.
 
-3. DISCLAIMER
-   THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. THE AUTHORS
-   SHALL NOT BE LIABLE FOR ANY DAMAGES ARISING FROM THE USE OF THIS SOFTWARE.
-   Use caution features (Windows Update Cleanup, Windows.old removal) at your
-   own risk.
+1. DEFINITIONS
 
-4. PRIVACY
-   SystemOptimizer Pro does not collect, transmit, or store any personal data.
-   All operations are performed locally on your computer.
+"Software" means any desktop applications, mobile applications, downloadable components, APIs, SDKs, and related software provided by Company.
+
+"SaaS Services" means hosted, cloud-based, subscription services provided by Company.
+
+"Services" collectively means the Software and SaaS Services.
+
+"Documentation" means user guides, technical manuals, and policies provided by Company.
+
+"Authorized User" means an individual authorized by Customer to use the Services.
+
+"Customer Data" means all data, content, or information submitted to the Services by Customer or its Authorized Users.
+
+"Order Form" means any ordering document, purchase agreement, or subscription form referencing this Agreement.
+
+2. LICENSE GRANT
+2.1 SaaS Services License
+
+Subject to compliance with this Agreement and payment of applicable fees, Company grants Customer a limited, non-exclusive, non-transferable, non-sublicensable right during the Subscription Term to:
+
+Access and use the SaaS Services;
+
+Permit Authorized Users to access the Services solely for Customer's internal business operations.
+
+2.2 Desktop & Mobile Software License
+
+Company grants Customer a limited, non-exclusive, non-transferable, non-sublicensable license to:
+
+Install and use object-code versions of the Software;
+
+Install on devices owned or controlled by Customer;
+
+Use solely for internal business or personal lawful purposes.
+
+2.3 Reservation of Rights
+
+All rights not expressly granted are reserved by Company. No ownership rights are transferred. The Software is licensed, not sold.
+
+3. RESTRICTIONS
+
+Customer shall not, and shall not permit others to:
+
+Reverse engineer, decompile, disassemble, or attempt to derive source code;
+
+Modify, translate, adapt, or create derivative works;
+
+Sell, sublicense, lease, rent, distribute, or otherwise transfer rights;
+
+Use the Services to build or support a competing product;
+
+Remove proprietary notices;
+
+Circumvent security or access controls;
+
+Use the Services for unlawful, infringing, or harmful purposes;
+
+Conduct benchmarking or publish performance data without written consent.
+
+Violation may result in immediate termination.
+
+4. ENTERPRISE ACCOUNT RESPONSIBILITIES
+
+Customer is responsible for:
+
+Managing Authorized Users;
+
+Maintaining confidentiality of login credentials;
+
+All activity occurring under its accounts;
+
+Ensuring compliance with applicable laws.
+
+Company is not liable for unauthorized access caused by Customer's failure to safeguard credentials.
+
+5. FEES, PAYMENT, AND TAXES
+
+Fees are set forth in applicable Order Forms.
+
+All fees are non-refundable unless otherwise stated.
+
+Fees are exclusive of taxes.
+
+Late payments may incur interest and suspension.
+
+Company may adjust subscription pricing upon renewal with notice.
+
+6. CUSTOMER DATA
+6.1 Ownership
+
+Customer retains ownership of Customer Data.
+
+6.2 License to Company
+
+Customer grants Company a worldwide, limited license to host, process, transmit, and display Customer Data solely to provide the Services.
+
+6.3 Responsibility
+
+Customer represents it has all necessary rights and consents to submit Customer Data.
+
+6.4 Data Loss Disclaimer
+
+Customer is responsible for maintaining backup copies of Customer Data. Company is not responsible for data loss except as required by law.
+
+7. DATA SECURITY AND PRIVACY
+
+Company implements commercially reasonable administrative, technical, and physical safeguards.
+
+Processing of personal data shall be governed by Company's Privacy Policy available at:
+
+https://legal.macrotechtitan.com
+
+Customer acknowledges that cloud services may involve transmission over public networks.
+
+8. SERVICE AVAILABILITY
+
+SaaS Services are provided on an "as available" basis.
+
+Company may perform maintenance or updates.
+
+Company does not guarantee uninterrupted availability.
+
+Service Level commitments, if any, must be in a separate SLA.
+
+9. INTELLECTUAL PROPERTY
+
+All intellectual property rights in and to the Services, including improvements, enhancements, and derivative works, belong exclusively to Company.
+
+Feedback provided by Customer may be used by Company without restriction or compensation.
+
+10. THIRD-PARTY SERVICES
+
+Services may integrate with third-party platforms. Company is not responsible for third-party services and disclaims all liability relating to them.
+
+11. OPEN SOURCE COMPONENTS
+
+Software may contain open-source components subject to their respective licenses. Those licenses govern solely with respect to such components.
+
+12. CONFIDENTIALITY
+
+Each party agrees to protect confidential information using reasonable care and not disclose it except as required by law.
+
+Confidential information excludes information that is public, independently developed, or lawfully received.
+
+13. WARRANTIES
+13.1 Limited Warranty
+
+Company warrants that Services will materially conform to Documentation during the Subscription Term.
+
+13.2 DISCLAIMER
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW:
+
+THE SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE."
+
+COMPANY DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING:
+
+MERCHANTABILITY
+
+FITNESS FOR A PARTICULAR PURPOSE
+
+NON-INFRINGEMENT
+
+ACCURACY OR RELIABILITY
+
+Company does not warrant uninterrupted, secure, or error-free operation.
+
+14. INDEMNIFICATION
+14.1 By Customer
+
+Customer shall indemnify and defend Company against claims arising from:
+
+Customer Data;
+
+Violation of law;
+
+Breach of this Agreement.
+
+14.2 By Company (IP Only)
+
+Company will defend Customer against third-party claims alleging the Services infringe U.S. intellectual property rights, provided Customer:
+
+Promptly notifies Company;
+
+Allows Company sole control of defense;
+
+Provides reasonable assistance.
+
+Company may modify or replace Services or terminate access if infringement occurs.
+
+This section states Company's entire liability for IP claims.
+
+15. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW:
+
+COMPANY SHALL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, CONSEQUENTIAL, SPECIAL, EXEMPLARY, OR PUNITIVE DAMAGES;
+
+INCLUDING LOSS OF PROFITS, DATA, REVENUE, BUSINESS INTERRUPTION, OR GOODWILL;
+
+TOTAL AGGREGATE LIABILITY SHALL NOT EXCEED THE GREATER OF:
+
+FEES PAID IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM; OR
+
+$10,000 USD.
+
+These limitations apply regardless of legal theory.
+
+16. TERM AND TERMINATION
+16.1 Term
+
+This Agreement begins upon first use and continues for the Subscription Term.
+
+16.2 Termination
+
+Company may terminate immediately for:
+
+Material breach;
+
+Non-payment;
+
+Violation of restrictions;
+
+Legal requirement.
+
+16.3 Effect of Termination
+
+Upon termination:
+
+All rights cease immediately;
+
+Customer must delete Software;
+
+Outstanding fees remain due;
+
+Company may delete Customer Data after reasonable retention period.
+
+Sections regarding IP, disclaimers, limitations, indemnification, and governing law survive termination.
+
+17. EXPORT COMPLIANCE
+
+Customer shall comply with U.S. export laws and sanctions regulations and may not use the Services in prohibited jurisdictions.
+
+18. GOVERNMENT RIGHTS
+
+If acquired by or on behalf of the U.S. Government, the Services are provided as "Commercial Computer Software" under applicable regulations.
+
+19. GOVERNING LAW
+
+This Agreement is governed by the laws of the State of Delaware, without regard to conflict of laws principles.
+
+All disputes shall be resolved exclusively in state or federal courts located in Delaware.
+
+Customer consents to personal jurisdiction in Delaware.
+
+20. CLASS ACTION WAIVER
+
+To the extent permitted by law, disputes must be brought individually and not as part of any class or representative action.
+
+21. FORCE MAJEURE
+
+Company shall not be liable for delays or failure due to causes beyond reasonable control, including acts of God, cyberattacks, infrastructure failures, or government actions.
+
+22. ASSIGNMENT
+
+Customer may not assign this Agreement without prior written consent. Company may assign without restriction.
+
+23. ENTIRE AGREEMENT
+
+This Agreement, together with any Order Forms and policies referenced herein, constitutes the entire agreement and supersedes prior agreements.
+
+24. CONTACT INFORMATION
+
+Macro Tech Titan, Inc.
+8 The Green
+Dover, DE 19901
+United States
+
+Email: info@macrotechtitan.com
+
+Website: https://legal.macrotechtitan.com

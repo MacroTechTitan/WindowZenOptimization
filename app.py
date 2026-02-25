@@ -1225,8 +1225,14 @@ log_activity("Ready for operations", "SUCCESS")
 
 
 @app.route("/")
-def dashboard():
-    return render_template("dashboard.html")
+def landing():
+    return render_template("landing.html")
+
+
+@app.route("/app")
+@app.route("/app/<page>")
+def dashboard(page=None):
+    return render_template("dashboard.html", initial_page=page or "dashboard")
 
 
 @app.route("/api/metrics")

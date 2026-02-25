@@ -1,10 +1,12 @@
 # SystemOptimizer Pro
 
 ## Overview
-A Windows system utility application with a terminal-style dashboard interface. Built with Python/Flask for the web-based prototype, designed to be packaged as a Windows desktop application using PyInstaller + pywebview + Inno Setup/NSIS.
+A Windows system utility application with a terminal-style dashboard interface. Built with Python/Flask for the web-based prototype, designed to be packaged as a Windows desktop application using PyInstaller + pywebview + NSIS.
 
 ## Current State
-- Web-based dashboard prototype fully functional
+- Landing page at `/` with feature showcase, screenshots, and CTA
+- Dashboard app at `/app` with all system monitoring features
+- Help & Support section with detailed guides for all 10 features + screenshots
 - Real-time system monitoring (CPU, Memory, Disk, Network, Processes)
 - System cleaner module with comprehensive Windows cleanup targets (13+ categories)
 - Registry optimizer with issue detection, recommendations, and fix actions
@@ -13,6 +15,7 @@ A Windows system utility application with a terminal-style dashboard interface. 
 - Wellness monitoring with 40-min break timer, sound alerts, screen brightness tips
 - Process monitor with startup items management (enable/disable, reboot prompt)
 - Deep system analysis (file counts by type, installed software)
+- RAM upgrade compatibility guide based on detected hardware
 - Scheduler configuration for automated daily cleanup at 5PM
 - Settings panel with toggle controls for all cleanup categories
 - Live activity log (terminal-style output window)
@@ -27,7 +30,7 @@ A Windows system utility application with a terminal-style dashboard interface. 
 - **Security**: socket for port scanning, psutil for connection monitoring
 - **Desktop**: pywebview for native Windows window
 - **Packaging**: PyInstaller + NSIS/Inno Setup for Windows installer
-- **Style**: JetBrains Mono font, dark terminal theme with scanline effect
+- **Style**: JetBrains Mono + Inter fonts, dark terminal theme with scanline effect
 
 ## Project Structure
 ```
@@ -39,11 +42,19 @@ installer.iss           - Inno Setup installer configuration (alternative)
 LICENSE.txt             - End user license agreement
 settings.json           - Persisted user settings
 templates/
-  dashboard.html        - Main dashboard HTML template (all pages)
+  landing.html          - Public landing page (root URL)
+  dashboard.html        - Main dashboard HTML template (all app pages + help)
 static/
   css/style.css         - Terminal-style CSS theme
   js/app.js             - Frontend JavaScript (metrics, UI, all features)
+  screenshots/          - Auto-captured screenshots for help & landing page
 ```
+
+## Routes
+- `/` - Landing page (public marketing page)
+- `/app` - Dashboard application
+- `/app/<page>` - Direct page navigation (dashboard, cleaner, help, etc.)
+- `/api/*` - All API endpoints
 
 ## Key Features
 1. **Dashboard** - Real-time CPU/Memory/Disk metrics with progress bars
@@ -53,29 +64,9 @@ static/
 5. **Process Monitor** - Live process list + startup items management
 6. **Wellness Monitor** - 40-min break timer with sound, brightness tips
 7. **Cybersecurity** - Port scan, active connections, IP display, vulnerability check
-8. **System Info** - RAM details, motherboard info, deep analysis
+8. **System Info** - RAM details with upgrade guide, motherboard info, deep analysis
 9. **Scheduler** - Automated cleanup at 5PM daily, weekly registry scan
 10. **Settings** - Toggle controls for every feature with persistence
-
-## Cleanup Targets (Windows)
-### Safe to Delete
-- System temp files, User temp files, Browser cache (Chrome/Edge/Firefox)
-- Recycle Bin, Thumbnails, Downloaded Program Files, DirectX Shader Cache
-- Windows Error Reports, Delivery Optimization Files, Defender temp files, Log files
-
-### Use Caution
-- Windows Update Cleanup, Previous Windows Installation (Windows.old)
-
-## API Endpoints
-- GET/POST /api/settings, /api/metrics, /api/logs
-- POST /api/scan, /api/clean, GET /api/scan-results, /api/clean-status
-- GET/POST /api/registry, /api/registry/scan, /api/registry/fix
-- GET /api/startup-items, POST /api/startup-items/toggle, /api/system/reboot
-- GET /api/activity, /api/wellness/break-check, POST /api/wellness/dismiss-break
-- GET/POST /api/security/scan
-- GET/POST /api/system/deep-analysis
-- GET/POST /api/file-organizer/scan, /api/file-organizer/results, /api/file-organizer/delete
-- GET /api/scheduler
 
 ## User Preferences
 - Python preferred language
@@ -83,3 +74,4 @@ static/
 - Microsoft Store compliance focus
 - No keylogger functionality
 - Windows desktop app (pywebview + PyInstaller + NSIS)
+- Landing page at root for publishing

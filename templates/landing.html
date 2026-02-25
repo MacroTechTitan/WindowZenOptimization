@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SystemOptimizer Pro - Ultimate Windows System Utility</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-dark: #0a0e1a;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2235;
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #1e293b;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                        radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+            animation: heroGlow 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes heroGlow {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-2%, -2%) rotate(3deg); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 100px;
+            padding: 8px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent-green);
+            margin-bottom: 32px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .hero-title {
+            font-size: clamp(40px, 6vw, 72px);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            letter-spacing: -2px;
+        }
+
+        .hero-title .gradient {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(16px, 2vw, 20px);
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-hero {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 36px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-hero-primary {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+            color: #0a0e1a;
+            box-shadow: 0 4px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-hero-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-hero-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-hero-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-cyan);
+        }
+
+        .hero-preview {
+            margin-top: 60px;
+            position: relative;
+        }
+
+        .hero-preview img {
+            width: 100%;
+            max-width: 960px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
+        }
+
+        .hero-preview::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(to top, var(--bg-dark), transparent);
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            padding: 40px 20px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            padding: 100px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: clamp(28px, 4vw, 42px);
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            font-size: 17px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .feature-card:nth-child(1)::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        .feature-card:nth-child(2)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+        .feature-card:nth-child(3)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+        .feature-card:nth-child(4)::before { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-green)); }
+        .feature-card:nth-child(5)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); }
+        .feature-card:nth-child(6)::before { background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow)); }
+        .feature-card:nth-child(7)::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green)); }
+        .feature-card:nth-child(8)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); }
+        .feature-card:nth-child(9)::before { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-red)); }
+        .feature-card:nth-child(10)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-blue)); }
+
+        .feature-icon {
+            font-size: 36px;
+            margin-bottom: 16px;
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .feature-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .feature-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 4px 10px;
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 6px;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .showcase-section {
+            padding: 100px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .showcase-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            align-items: center;
+            margin-bottom: 80px;
+        }
+
+        .showcase-item:nth-child(even) {
+            direction: rtl;
+        }
+
+        .showcase-item:nth-child(even) > * {
+            direction: ltr;
+        }
+
+        .showcase-text h3 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .showcase-text p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 16px;
+        }
+
+        .showcase-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .showcase-list li {
+            padding: 6px 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .showcase-list li::before {
+            content: '\2713';
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .showcase-img {
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 100%;
+        }
+
+        .tech-section {
+            padding: 80px 20px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            max-width: 1000px;
+            margin: 48px auto 0;
+        }
+
+        .tech-item {
+            text-align: center;
+            padding: 24px;
+        }
+
+        .tech-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .tech-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .tech-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .cta-section {
+            padding: 120px 20px;
+            text-align: center;
+        }
+
+        .cta-title {
+            font-size: clamp(28px, 4vw, 48px);
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .cta-desc {
+            color: var(--text-secondary);
+            font-size: 18px;
+            margin-bottom: 40px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav-landing {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-logo-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-btn {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+            color: #0a0e1a;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        footer {
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 1px solid var(--border);
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .scanline-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+        }
+
+        @media (max-width: 768px) {
+            .features-grid { grid-template-columns: 1fr; }
+            .showcase-item { grid-template-columns: 1fr; }
+            .showcase-item:nth-child(even) { direction: ltr; }
+            .stats-bar { gap: 24px; }
+            .nav-links { display: none; }
+            .tech-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline-bg"></div>
+
+    <nav class="nav-landing">
+        <a href="/" class="nav-logo">
+            <div class="nav-logo-icon">&#x26A1;</div>
+            <span class="nav-logo-text">SystemOptimizer Pro</span>
+        </a>
+        <div class="nav-links">
+            <a href="#features" class="nav-link">Features</a>
+            <a href="#showcase" class="nav-link">Showcase</a>
+            <a href="#tech" class="nav-link">Tech Stack</a>
+            <a href="/app" class="nav-btn">Launch App</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">Windows System Utility v1.0</div>
+            <h1 class="hero-title">
+                Your PC, <span class="gradient">Optimized.</span>
+            </h1>
+            <p class="hero-subtitle">
+                A comprehensive Windows system utility with real-time monitoring, intelligent cleanup, cybersecurity scanning, and wellness tracking. All in a sleek terminal-style interface.
+            </p>
+            <div class="hero-actions">
+                <a href="/app" class="btn-hero btn-hero-primary">
+                    &#x26A1; Launch Dashboard
+                </a>
+                <a href="#features" class="btn-hero btn-hero-secondary">
+                    Explore Features &#x2193;
+                </a>
+            </div>
+            <div class="hero-preview">
+                <img src="/static/screenshots/dashboard.png" alt="SystemOptimizer Pro Dashboard" onerror="this.style.display='none'">
+            </div>
+        </div>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value">13+</div>
+            <div class="stat-label">Cleanup Categories</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">11</div>
+            <div class="stat-label">Port Scan Targets</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">10</div>
+            <div class="stat-label">Feature Modules</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">3s</div>
+            <div class="stat-label">Refresh Interval</div>
+        </div>
+    </div>
+
+    <section class="section" id="features">
+        <div class="section-header">
+            <div class="section-tag">Feature Set</div>
+            <h2 class="section-title">Everything You Need</h2>
+            <p class="section-desc">Ten powerful modules working together to keep your Windows system running at peak performance.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4CA;</div>
+                <h3 class="feature-title">Real-Time Dashboard</h3>
+                <p class="feature-desc">Live CPU, memory, and disk usage with animated progress bars. System uptime tracking and quick scan summaries at a glance.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">CPU</span>
+                    <span class="feature-tag">Memory</span>
+                    <span class="feature-tag">Disk</span>
+                    <span class="feature-tag">Live</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F9F9;</div>
+                <h3 class="feature-title">System Cleaner</h3>
+                <p class="feature-desc">Scan and remove temp files, browser caches, thumbnails, error reports, and more across 13+ categories. Reclaim gigabytes of wasted space.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">13+ Categories</span>
+                    <span class="feature-tag">Safe</span>
+                    <span class="feature-tag">Deep Clean</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4C1;</div>
+                <h3 class="feature-title">File Organizer</h3>
+                <p class="feature-desc">Detect zero-length files, duplicate files using MD5 hashing, and leftover software installers. Selectively delete what you don't need.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Duplicates</span>
+                    <span class="feature-tag">Zero-Length</span>
+                    <span class="feature-tag">Installers</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F527;</div>
+                <h3 class="feature-title">Registry Optimizer</h3>
+                <p class="feature-desc">Scan the Windows registry for invalid entries, orphaned keys, and startup bloat. Get recommendations and one-click fixes.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Registry</span>
+                    <span class="feature-tag">Auto-Fix</span>
+                    <span class="feature-tag">Startup</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4BB;</div>
+                <h3 class="feature-title">Process Monitor</h3>
+                <p class="feature-desc">Live process list sorted by CPU and memory usage. Manage Windows startup items with enable/disable toggles and reboot controls.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Processes</span>
+                    <span class="feature-tag">Startup</span>
+                    <span class="feature-tag">Real-Time</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F49A;</div>
+                <h3 class="feature-title">Wellness Monitor</h3>
+                <p class="feature-desc">40-minute break reminders with audio alerts. Track active and idle time, get screen brightness suggestions, and maintain healthy habits.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Break Timer</span>
+                    <span class="feature-tag">Audio Alert</span>
+                    <span class="feature-tag">Privacy</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F6E1;</div>
+                <h3 class="feature-title">Cybersecurity Scanner</h3>
+                <p class="feature-desc">Scan 11 common ports for vulnerabilities, monitor active network connections, display your public IP, and detect security risks.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Port Scan</span>
+                    <span class="feature-tag">Connections</span>
+                    <span class="feature-tag">IP</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4BB;</div>
+                <h3 class="feature-title">System Information</h3>
+                <p class="feature-desc">Detailed hardware specs including RAM details with upgrade compatibility guide, motherboard info, and deep file analysis by type.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">RAM Upgrade</span>
+                    <span class="feature-tag">Hardware</span>
+                    <span class="feature-tag">Analysis</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x23F0;</div>
+                <h3 class="feature-title">Task Scheduler</h3>
+                <p class="feature-desc">Automate daily system cleanup at 5PM and weekly registry scans. Set it and forget it - your system stays clean automatically.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Daily</span>
+                    <span class="feature-tag">Weekly</span>
+                    <span class="feature-tag">Auto</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x2699;</div>
+                <h3 class="feature-title">Settings Control</h3>
+                <p class="feature-desc">Toggle every cleanup category on or off. Configure break reminder intervals, scheduler timing, and feature preferences with persistence.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Toggles</span>
+                    <span class="feature-tag">Persist</span>
+                    <span class="feature-tag">Custom</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="showcase-section" id="showcase">
+        <div class="section-header">
+            <div class="section-tag">In Action</div>
+            <h2 class="section-title">See It Working</h2>
+            <p class="section-desc">A terminal-inspired interface designed for power users who want full control over their system.</p>
+        </div>
+
+        <div class="showcase-item">
+            <div class="showcase-text">
+                <h3>&#x1F4CA; Real-Time System Monitoring</h3>
+                <p>The dashboard provides instant visibility into your system's health with live-updating metrics that refresh every 3 seconds.</p>
+                <ul class="showcase-list">
+                    <li>CPU usage with core count and frequency</li>
+                    <li>Memory consumption with used/total breakdown</li>
+                    <li>Disk usage with free space indicator</li>
+                    <li>System uptime counter</li>
+                    <li>Quick scan summary cards</li>
+                </ul>
+            </div>
+            <img src="/static/screenshots/dashboard.png" alt="Dashboard" class="showcase-img" onerror="this.style.background='var(--bg-card)';this.style.height='300px'">
+        </div>
+
+        <div class="showcase-item">
+            <div class="showcase-text">
+                <h3>&#x1F9F9; Intelligent System Cleanup</h3>
+                <p>Scan and clean 13+ categories of Windows clutter with safety ratings for each category.</p>
+                <ul class="showcase-list">
+                    <li>Browser caches (Chrome, Edge, Firefox)</li>
+                    <li>System and user temp files</li>
+                    <li>Windows error reports and logs</li>
+                    <li>DirectX shader cache</li>
+                    <li>Recycle Bin and thumbnails</li>
+                </ul>
+            </div>
+            <img src="/static/screenshots/cleaner.png" alt="System Cleaner" class="showcase-img" onerror="this.style.background='var(--bg-card)';this.style.height='300px'">
+        </div>
+
+        <div class="showcase-item">
+            <div class="showcase-text">
+                <h3>&#x1F6E1; Cybersecurity Protection</h3>
+                <p>Stay informed about potential security vulnerabilities with comprehensive network scanning.</p>
+                <ul class="showcase-list">
+                    <li>Port scanning on 11 common service ports</li>
+                    <li>Active connection monitoring</li>
+                    <li>Public IP address display</li>
+                    <li>Vulnerability detection and alerts</li>
+                </ul>
+            </div>
+            <img src="/static/screenshots/security.png" alt="Cybersecurity" class="showcase-img" onerror="this.style.background='var(--bg-card)';this.style.height='300px'">
+        </div>
+    </section>
+
+    <section class="tech-section" id="tech">
+        <div class="section-header">
+            <div class="section-tag">Under the Hood</div>
+            <h2 class="section-title">Built With Precision</h2>
+            <p class="section-desc">Modern tools and proven libraries for reliability and performance.</p>
+        </div>
+
+        <div class="tech-grid">
+            <div class="tech-item">
+                <div class="tech-icon">&#x1F40D;</div>
+                <div class="tech-name">Python 3.11</div>
+                <div class="tech-desc">Backend logic & system access</div>
+            </div>
+            <div class="tech-item">
+                <div class="tech-icon">&#x1F310;</div>
+                <div class="tech-name">Flask</div>
+                <div class="tech-desc">Lightweight web framework</div>
+            </div>
+            <div class="tech-item">
+                <div class="tech-icon">&#x1F4BB;</div>
+                <div class="tech-name">psutil</div>
+                <div class="tech-desc">System monitoring engine</div>
+            </div>
+            <div class="tech-item">
+                <div class="tech-icon">&#x1F3A8;</div>
+                <div class="tech-name">Terminal UI</div>
+                <div class="tech-desc">JetBrains Mono + scanline effects</div>
+            </div>
+            <div class="tech-item">
+                <div class="tech-icon">&#x1F5A5;</div>
+                <div class="tech-name">pywebview</div>
+                <div class="tech-desc">Native Windows window</div>
+            </div>
+            <div class="tech-item">
+                <div class="tech-icon">&#x1F4E6;</div>
+                <div class="tech-name">PyInstaller + NSIS</div>
+                <div class="tech-desc">Windows installer packaging</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2 class="cta-title">Ready to Optimize?</h2>
+        <p class="cta-desc">Launch the dashboard and take control of your system performance, security, and wellness.</p>
+        <div class="hero-actions">
+            <a href="/app" class="btn-hero btn-hero-primary">
+                &#x26A1; Open Dashboard
+            </a>
+            <a href="/app#help" class="btn-hero btn-hero-secondary">
+                &#x2753; Help & Support
+            </a>
+        </div>
+    </section>
+
+    <footer>
+        <p>SystemOptimizer Pro v1.0.0 &mdash; Built for Windows power users.</p>
+    </footer>
+</body>
+</html>

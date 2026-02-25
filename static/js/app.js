@@ -3,6 +3,7 @@ const App = {
     refreshInterval: null,
     logInterval: null,
     breakTimerInterval: null,
+    breakDismissedUntil: 0,
 
     init() {
         this.bindNavigation();
@@ -17,7 +18,10 @@ const App = {
         setInterval(() => this.refreshScanResults(), 5000);
         setInterval(() => this.refreshCleanStatus(), 2000);
         setInterval(() => this.refreshActivity(), 10000);
-        this.showPage('dashboard');
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashPage = window.location.hash.replace('#', '');
+        const startPage = window.__initialPage || urlParams.get('page') || hashPage || 'dashboard';
+        this.showPage(startPage);
 
         setInterval(() => this.checkBreak(), 60000);
 
@@ -641,34 +645,13 @@ const App = {
     },
 
     async checkBreak() {
+        if (Date.now() < this.breakDismissedUntil) return;
         try {
             const res = await fetch('/api/wellness/break-check');
             const data = await res.json();
             if (data.should_break) {
                 const alertEl = document.getElementById('break-alert');
-                if (alertEl) alertEl.style.display = 'flex';
-
-                const timerEl = document.getElementById('break-timer');
-                if (timerEl && data.seconds_remaining) {
-                    timerEl.dataset.seconds = data.seconds_remaining;
-                    const mins = Math.floor(data.seconds_remaining / 60);
-                    const rem = data.seconds_remaining % 60;
-                    timerEl.textContent = `${mins}:${rem.toString().padStart(2, '0')}`;
-                }
-
-                try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioCtx.createOscillator();
-                    const gainNode = audioCtx.createGain();
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
-                    oscillator.start(audioCtx.currentTime);
-                    oscillator.stop(audioCtx.currentTime + 1);
-                } catch(audioErr) {}
+                if (alertEl) alertEl.style.display = 'block';
             }
         } catch(e) {}
     },
@@ -676,13 +659,9 @@ const App = {
     async dismissBreak() {
         try {
             await fetch('/api/wellness/dismiss-break', { method: 'POST' });
+            this.breakDismissedUntil = Date.now() + (40 * 60 * 1000);
             const alertEl = document.getElementById('break-alert');
             if (alertEl) alertEl.style.display = 'none';
-            const timerEl = document.getElementById('break-timer');
-            if (timerEl) {
-                timerEl.textContent = '0:00';
-                timerEl.dataset.seconds = 0;
-            }
         } catch(e) {}
     },
 

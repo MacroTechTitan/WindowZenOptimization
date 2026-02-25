@@ -78,6 +78,13 @@
                 <span class="icon">&#x2699;&#xFE0F;</span>
                 <span>Settings</span>
             </div>
+            <div class="sidebar-section">
+                <div class="sidebar-label">Support</div>
+            </div>
+            <div class="nav-item" data-page="help">
+                <span class="icon">&#x2753;</span>
+                <span>Help & Support</span>
+            </div>
         </div>
 
         <div class="main-content">
@@ -1088,9 +1095,281 @@
                 </div>
             </div>
 
+            <div class="page" id="page-help">
+                <div class="page-header">
+                    <h2 class="page-title">&#x2753; Help & Support</h2>
+                    <p class="page-subtitle">Learn how to use every feature of SystemOptimizer Pro</p>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CA; 1. Dashboard</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    The Dashboard is your home screen showing real-time system health at a glance.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-cyan);">CPU Usage</strong> &#8212; Shows current processor load, core count, thread count, and clock speed. Color changes from blue to purple to red as load increases.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Memory</strong> &#8212; Displays RAM usage as a percentage with used/total breakdown. Bar turns red above 80%.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Disk</strong> &#8212; Shows how full your main drive is with free space remaining.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Uptime</strong> &#8212; How long your system has been running since last reboot.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Quick Scan Summary</strong> &#8212; Shows counts of temp files, browser cache, junk, and registry issues from the last scan.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Activity Log</strong> &#8212; Terminal-style log window showing all operations in real-time.</li>
+                                </ul>
+                                <div style="margin-top: 12px; padding: 10px; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px;">
+                                    <span style="font-size: 11px; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace;">TIP: Click "Scan System" to perform a quick scan of all cleanup categories.</span>
+                                </div>
+                            </div>
+                            <img src="/static/screenshots/dashboard.png" alt="Dashboard" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F9F9; 2. System Cleaner</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    The System Cleaner finds and removes unnecessary files that waste disk space.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-green);">How to use:</strong> Click "Scan System" on the Dashboard to detect junk files, then go to System Cleaner to see results by category.</li>
+                                    <li><strong style="color: var(--accent-green);">Categories:</strong> Temp files (system & user), browser cache (Chrome, Edge, Firefox), Recycle Bin, thumbnails, DirectX shader cache, error reports, delivery optimization files, log files, and more.</li>
+                                    <li><strong style="color: var(--accent-yellow);">Caution items:</strong> Windows Update Cleanup and Windows.old are marked with a caution badge &#8212; these free significant space but cannot be undone.</li>
+                                    <li><strong style="color: var(--accent-green);">Cleaning:</strong> Click "Clean System" to delete all detected files. Progress shows in the activity log.</li>
+                                </ul>
+                                <div style="margin-top: 12px; padding: 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px;">
+                                    <span style="font-size: 11px; color: var(--accent-yellow); font-family: 'JetBrains Mono', monospace;">WARNING: Cleaning is permanent. Review categories in Settings before cleaning.</span>
+                                </div>
+                            </div>
+                            <img src="/static/screenshots/cleaner.png" alt="System Cleaner" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4C1; 3. File Organizer</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    The File Organizer helps you find and remove problematic files in your user directories.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-cyan);">Zero-Length Files</strong> &#8212; Finds empty files (0 bytes) that serve no purpose and can be safely removed.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Duplicate Files</strong> &#8212; Uses MD5 hashing to detect files with identical content, even if names differ. Review before deleting &#8212; keep at least one copy.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Leftover Installers</strong> &#8212; Finds .exe and .msi installer files in Downloads and other folders that can be removed after software is installed.</li>
+                                    <li><strong style="color: var(--accent-green);">How to use:</strong> Click "Scan Files" to start detection. Check the boxes next to files you want to remove, then click "Delete Selected".</li>
+                                </ul>
+                            </div>
+                            <img src="/static/screenshots/file-organizer.png" alt="File Organizer" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F527; 4. Registry Optimizer</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    The Registry Optimizer scans the Windows registry for issues that can slow down your system.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-cyan);">Issue Detection:</strong> Finds invalid file associations, orphaned entries, unused startup items, and stale uninstall keys.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Recommendations:</strong> Each issue comes with a specific recommendation explaining what it is and why it should be fixed.</li>
+                                    <li><strong style="color: var(--accent-cyan);">One-Click Fix:</strong> Click the "Fix" button next to any issue to apply the recommended fix automatically.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Fix All:</strong> Use "Fix All Issues" to resolve everything at once.</li>
+                                </ul>
+                                <div style="margin-top: 12px; padding: 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px;">
+                                    <span style="font-size: 11px; color: var(--accent-yellow); font-family: 'JetBrains Mono', monospace;">NOTE: Registry changes require admin privileges on Windows.</span>
+                                </div>
+                            </div>
+                            <img src="/static/screenshots/registry.png" alt="Registry Optimizer" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4BB; 5. Process Monitor</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    Monitor running processes and manage startup programs to speed up boot times.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-cyan);">Process List:</strong> Shows the top processes by CPU and memory usage, updated in real-time every 3 seconds.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Startup Items:</strong> Lists programs that run automatically when Windows starts. Toggle them on/off to control boot speed.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Reboot:</strong> After disabling startup items, use the Reboot button to restart your system and apply changes.</li>
+                                </ul>
+                                <div style="margin-top: 12px; padding: 10px; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px;">
+                                    <span style="font-size: 11px; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace;">TIP: Disable non-essential startup items to dramatically improve boot time.</span>
+                                </div>
+                            </div>
+                            <img src="/static/screenshots/processes.png" alt="Process Monitor" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F49A; 6. Wellness Monitor</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    The Wellness Monitor helps you maintain healthy computing habits with break reminders and activity tracking.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-green);">Break Timer:</strong> A 40-minute countdown timer. When it reaches zero, a sound alert plays and a popup reminds you to take a break.</li>
+                                    <li><strong style="color: var(--accent-green);">Wellness Score:</strong> A gauge showing your overall wellness based on active vs. idle time balance.</li>
+                                    <li><strong style="color: var(--accent-green);">Activity Tracking:</strong> Tracks active minutes, idle minutes, and break count &#8212; all privacy-friendly (no keylogging).</li>
+                                    <li><strong style="color: var(--accent-green);">Screen Brightness:</strong> Provides suggestions for optimal screen brightness based on time of day.</li>
+                                    <li><strong style="color: var(--accent-green);">Dismiss:</strong> Click "Dismiss" on the break popup to reset the timer for another 40 minutes.</li>
+                                </ul>
+                            </div>
+                            <img src="/static/screenshots/wellness.png" alt="Wellness Monitor" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F6E1; 7. Cybersecurity Scanner</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    Scan your system for potential security vulnerabilities and monitor network activity.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-red);">Port Scanner:</strong> Checks 11 common ports (HTTP, HTTPS, FTP, SSH, SMB, RDP, MySQL, etc.) to see if they're open and potentially exposed.</li>
+                                    <li><strong style="color: var(--accent-red);">Active Connections:</strong> Shows all current network connections with local/remote addresses, ports, and connection status.</li>
+                                    <li><strong style="color: var(--accent-red);">Public IP:</strong> Displays your public-facing IP address so you can verify your network identity.</li>
+                                    <li><strong style="color: var(--accent-red);">Vulnerabilities:</strong> Highlights security risks like open ports, missing firewall, or outdated services.</li>
+                                    <li><strong style="color: var(--accent-green);">How to use:</strong> Click "Run Security Scan" and wait for results. Review any flagged vulnerabilities.</li>
+                                </ul>
+                            </div>
+                            <img src="/static/screenshots/security.png" alt="Cybersecurity" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4BB; 8. System Information</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    Detailed system specifications with RAM upgrade recommendations and deep file analysis.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-cyan);">System Details:</strong> Platform, release, machine type, processor, boot time, and CPU core/thread breakdown.</li>
+                                    <li><strong style="color: var(--accent-cyan);">RAM Details:</strong> Installed memory, max capacity, slots used/total, and RAM type (DDR3/DDR4/DDR5).</li>
+                                    <li><strong style="color: var(--accent-cyan);">RAM Upgrade Guide:</strong> Shows compatible RAM types, supported speeds, form factor (DIMM/SO-DIMM), voltage, and specific upgrade options based on your motherboard.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Motherboard:</strong> Manufacturer, product name, and serial number.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Deep Analysis:</strong> Click "Run Deep Analysis" to count files by type (video, images, documents, audio) with total sizes and installed software count.</li>
+                                </ul>
+                            </div>
+                            <img src="/static/screenshots/system-info.png" alt="System Info" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x23F0; 9. Task Scheduler</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    Automate system maintenance with scheduled cleanup and registry scan tasks.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-cyan);">Daily Cleanup:</strong> Runs automatically every day at 5:00 PM (configurable). Cleans all enabled categories from your Settings.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Weekly Registry Scan:</strong> Automatically scans the registry every Sunday at 3:00 AM for issues.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Status:</strong> Shows when each task last ran and when it will run next.</li>
+                                    <li><strong style="color: var(--accent-green);">Configuration:</strong> Adjust the cleanup time in Settings. Toggle auto-clean on/off.</li>
+                                </ul>
+                            </div>
+                            <img src="/static/screenshots/scheduler.png" alt="Scheduler" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x2699; 10. Settings</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                            <div>
+                                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
+                                    Customize every aspect of SystemOptimizer Pro with toggle controls that persist across restarts.
+                                </p>
+                                <ul style="color: var(--text-secondary); font-size: 12px; line-height: 2; padding-left: 20px; margin-top: 8px;">
+                                    <li><strong style="color: var(--accent-cyan);">Cleanup Categories:</strong> Toggle each of the 13+ cleanup categories individually. Disabled categories are skipped during both manual and automated scans.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Feature Toggles:</strong> Enable/disable wellness monitoring, activity tracking, and other features.</li>
+                                    <li><strong style="color: var(--accent-cyan);">Persistence:</strong> All settings are saved to settings.json and automatically loaded on startup.</li>
+                                    <li><strong style="color: var(--accent-green);">How to use:</strong> Simply click the toggle switches. Changes are saved immediately.</li>
+                                </ul>
+                            </div>
+                            <img src="/static/screenshots/settings.png" alt="Settings" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x2139; About & Support</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.8;">
+                            <p><strong style="color: var(--text-primary);">SystemOptimizer Pro v1.0.0</strong></p>
+                            <p style="margin-top: 8px;">A comprehensive Windows system utility designed for power users who want full control over their system's performance, security, and maintenance.</p>
+                            <div style="margin-top: 16px; padding: 16px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
+                                <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); margin-bottom: 8px;">System Requirements</div>
+                                <ul style="padding-left: 20px; font-size: 12px; line-height: 2;">
+                                    <li>Windows 10 or Windows 11</li>
+                                    <li>Python 3.8+ (for source) or standalone installer</li>
+                                    <li>Administrator privileges recommended for full functionality</li>
+                                    <li>Minimum 2 GB RAM, 50 MB disk space</li>
+                                </ul>
+                            </div>
+                            <div style="margin-top: 16px; padding: 16px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">
+                                <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); margin-bottom: 8px;">Keyboard Shortcuts</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                    <span>Navigate sidebar items to switch between features</span>
+                                    <span>All actions are button-based for simplicity</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
+    <script>window.__initialPage = "{{ initial_page|default('dashboard') }}";</script>
     <script src="/static/js/app.js"></script>
     <script>
         (function() {
@@ -1147,12 +1426,12 @@
                 }, 1000);
             }
 
-            if (!App.dismissBreakReminder) {
-                App.dismissBreakReminder = function() {
-                    if (breakAlertEl) breakAlertEl.style.display = 'none';
-                    startBreakTimer();
-                };
-            }
+            App.dismissBreakReminder = function() {
+                if (breakAlertEl) breakAlertEl.style.display = 'none';
+                fetch('/api/wellness/dismiss-break', { method: 'POST' });
+                App.breakDismissedUntil = Date.now() + (40 * 60 * 1000);
+                startBreakTimer();
+            };
 
             startBreakTimer();
         })();

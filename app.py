@@ -1559,6 +1559,266 @@ def api_deep_analysis():
     return jsonify(deep_analysis_data)
 
 
+undo_log = []
+UNDO_LOG_MAX = 100
+
+large_files_results = {
+    "files": [],
+    "total_size": 0,
+    "threshold_mb": 100,
+    "last_scan": None,
+    "status": "idle",
+}
+
+organize_preview_results = {
+    "actions": [],
+    "last_preview": None,
+}
+
+
+def log_undo(action_type, description, details=None):
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "type": action_type,
+        "description": description,
+        "details": details or {},
+        "undone": False,
+    }
+    undo_log.append(entry)
+    if len(undo_log) > UNDO_LOG_MAX:
+        undo_log.pop(0)
+
+
+@app.route("/api/undo-log")
+def api_undo_log():
+    return jsonify(undo_log[-50:])
+
+
+@app.route("/api/large-files/scan", methods=["POST"])
+def api_large_files_scan():
+    data = request.get_json() or {}
+    threshold_mb = data.get("threshold_mb", 100)
+    large_files_results["threshold_mb"] = threshold_mb
+    large_files_results["status"] = "scanning"
+    thread = threading.Thread(target=run_large_files_scan, args=(threshold_mb,), daemon=True)
+    thread.start()
+    return jsonify({"status": "scanning", "threshold_mb": threshold_mb})
+
+
+@app.route("/api/large-files/results")
+def api_large_files_results():
+    return jsonify(large_files_results)
+
+
+@app.route("/api/large-files/delete", methods=["POST"])
+def api_large_files_delete():
+    data = request.get_json()
+    files = data.get("files", [])
+    dry_run = data.get("dry_run", False)
+    deleted = 0
+    for fp in files:
+        if dry_run:
+            log_activity(f"[DRY RUN] Would delete: {fp}", "INFO")
+            deleted += 1
+        else:
+            try:
+                if os.path.isfile(fp):
+                    fsize = os.path.getsize(fp)
+                    os.remove(fp)
+                    deleted += 1
+                    log_undo("delete", f"Deleted large file: {os.path.basename(fp)}", {"path": fp, "size": fsize})
+                    log_activity(f"Deleted large file: {fp}", "SUCCESS")
+            except (OSError, PermissionError) as e:
+                log_activity(f"Failed to delete {fp}: {e}", "ERROR")
+    large_files_results["files"] = [f for f in large_files_results["files"] if f["path"] not in files]
+    return jsonify({"status": "ok", "deleted": deleted, "dry_run": dry_run})
+
+
+@app.route("/api/large-files/archive", methods=["POST"])
+def api_large_files_archive():
+    data = request.get_json()
+    files = data.get("files", [])
+    dry_run = data.get("dry_run", False)
+    archive_dir = os.path.join(os.path.expanduser("~"), "Archive")
+    moved = 0
+    for fp in files:
+        if dry_run:
+            log_activity(f"[DRY RUN] Would archive: {fp} -> {archive_dir}", "INFO")
+            moved += 1
+        else:
+            try:
+                if os.path.isfile(fp):
+                    os.makedirs(archive_dir, exist_ok=True)
+                    dest = os.path.join(archive_dir, os.path.basename(fp))
+                    shutil.move(fp, dest)
+                    moved += 1
+                    log_undo("move", f"Archived: {os.path.basename(fp)}", {"from": fp, "to": dest})
+                    log_activity(f"Archived: {fp} -> {dest}", "SUCCESS")
+            except (OSError, PermissionError) as e:
+                log_activity(f"Failed to archive {fp}: {e}", "ERROR")
+    large_files_results["files"] = [f for f in large_files_results["files"] if f["path"] not in files]
+    return jsonify({"status": "ok", "moved": moved, "archive_dir": archive_dir, "dry_run": dry_run})
+
+
+def run_large_files_scan(threshold_mb=100):
+    log_activity(f"Scanning for large files (>{threshold_mb} MB)...", "TASK")
+    threshold_bytes = threshold_mb * 1024 * 1024
+    found = []
+    home = os.path.expanduser("~")
+    scan_dirs = [
+        os.path.join(home, "Downloads"),
+        os.path.join(home, "Desktop"),
+        os.path.join(home, "Videos"),
+        os.path.join(home, "Documents"),
+    ]
+    for scan_dir in scan_dirs:
+        if not os.path.isdir(scan_dir):
+            continue
+        try:
+            for root, dirs, files in os.walk(scan_dir):
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
+                for f in files:
+                    fp = os.path.join(root, f)
+                    try:
+                        fsize = os.path.getsize(fp)
+                        if fsize >= threshold_bytes:
+                            found.append({
+                                "path": fp,
+                                "name": f,
+                                "size": fsize,
+                                "size_fmt": format_bytes(fsize),
+                                "location": os.path.basename(scan_dir),
+                                "modified": datetime.fromtimestamp(os.path.getmtime(fp)).strftime("%Y-%m-%d %H:%M"),
+                            })
+                    except (OSError, PermissionError):
+                        pass
+        except (OSError, PermissionError):
+            pass
+    found.sort(key=lambda x: x["size"], reverse=True)
+    large_files_results["files"] = found[:200]
+    large_files_results["total_size"] = sum(f["size"] for f in found)
+    large_files_results["last_scan"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    large_files_results["status"] = "complete"
+    log_activity(f"Found {len(found)} files larger than {threshold_mb} MB ({format_bytes(large_files_results['total_size'])} total)", "SUCCESS")
+
+
+@app.route("/api/organize/preview", methods=["POST"])
+def api_organize_preview():
+    data = request.get_json() or {}
+    max_age_days = data.get("max_age_days", 30)
+    action_type = data.get("action", "archive_old")
+    home = os.path.expanduser("~")
+    downloads = os.path.join(home, "Downloads")
+    actions = []
+
+    if action_type == "archive_old":
+        cutoff = datetime.now() - timedelta(days=max_age_days)
+        if os.path.isdir(downloads):
+            try:
+                for f in os.listdir(downloads):
+                    fp = os.path.join(downloads, f)
+                    if os.path.isfile(fp):
+                        try:
+                            mtime = datetime.fromtimestamp(os.path.getmtime(fp))
+                            if mtime < cutoff:
+                                actions.append({
+                                    "file": f,
+                                    "path": fp,
+                                    "action": f"Archive (older than {max_age_days} days)",
+                                    "modified": mtime.strftime("%Y-%m-%d"),
+                                    "size_fmt": format_bytes(os.path.getsize(fp)),
+                                })
+                        except (OSError, PermissionError):
+                            pass
+            except (OSError, PermissionError):
+                pass
+
+    elif action_type == "group_by_type":
+        type_groups = {
+            "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico"],
+            "Documents": [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv"],
+            "Videos": [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv"],
+            "Audio": [".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma"],
+            "Archives": [".zip", ".rar", ".7z", ".tar", ".gz"],
+            "Installers": [".exe", ".msi", ".dmg"],
+        }
+        if os.path.isdir(downloads):
+            try:
+                for f in os.listdir(downloads):
+                    fp = os.path.join(downloads, f)
+                    if os.path.isfile(fp):
+                        ext = os.path.splitext(f)[1].lower()
+                        for group_name, exts in type_groups.items():
+                            if ext in exts:
+                                actions.append({
+                                    "file": f,
+                                    "path": fp,
+                                    "action": f"Move to Downloads/{group_name}/",
+                                    "modified": datetime.fromtimestamp(os.path.getmtime(fp)).strftime("%Y-%m-%d"),
+                                    "size_fmt": format_bytes(os.path.getsize(fp)),
+                                })
+                                break
+            except (OSError, PermissionError):
+                pass
+
+    elif action_type == "move_screenshots":
+        if os.path.isdir(downloads):
+            try:
+                for f in os.listdir(downloads):
+                    fp = os.path.join(downloads, f)
+                    if os.path.isfile(fp) and ("screenshot" in f.lower() or "screen shot" in f.lower() or "capture" in f.lower()):
+                        actions.append({
+                            "file": f,
+                            "path": fp,
+                            "action": "Move to Pictures/Screenshots/",
+                            "modified": datetime.fromtimestamp(os.path.getmtime(fp)).strftime("%Y-%m-%d"),
+                            "size_fmt": format_bytes(os.path.getsize(fp)),
+                        })
+            except (OSError, PermissionError):
+                pass
+
+    organize_preview_results["actions"] = actions
+    organize_preview_results["last_preview"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return jsonify({"actions": actions, "count": len(actions)})
+
+
+@app.route("/api/organize/execute", methods=["POST"])
+def api_organize_execute():
+    data = request.get_json() or {}
+    dry_run = data.get("dry_run", False)
+    actions = data.get("actions", organize_preview_results.get("actions", []))
+    executed = 0
+    for act in actions:
+        fp = act.get("path", "")
+        action_desc = act.get("action", "")
+        if not os.path.isfile(fp):
+            continue
+        if dry_run:
+            log_activity(f"[DRY RUN] {action_desc}: {act.get('file', '')}", "INFO")
+            executed += 1
+            continue
+        try:
+            if "Archive" in action_desc:
+                archive_dir = os.path.join(os.path.dirname(fp), "Archive")
+                os.makedirs(archive_dir, exist_ok=True)
+                dest = os.path.join(archive_dir, os.path.basename(fp))
+                shutil.move(fp, dest)
+                log_undo("move", f"Archived: {os.path.basename(fp)}", {"from": fp, "to": dest})
+            elif "Move to" in action_desc:
+                home = os.path.expanduser("~")
+                rel_dest = action_desc.replace("Move to ", "").rstrip("/")
+                dest_dir = os.path.join(home, rel_dest)
+                os.makedirs(dest_dir, exist_ok=True)
+                dest = os.path.join(dest_dir, os.path.basename(fp))
+                shutil.move(fp, dest)
+                log_undo("move", f"Moved: {os.path.basename(fp)}", {"from": fp, "to": dest})
+            executed += 1
+            log_activity(f"{action_desc}: {act.get('file', '')}", "SUCCESS")
+        except (OSError, PermissionError) as e:
+            log_activity(f"Failed: {act.get('file', '')}: {e}", "ERROR")
+    return jsonify({"status": "ok", "executed": executed, "dry_run": dry_run})
+
+
 if __name__ == "__main__":
     scheduler.start()
     setup_scheduler()

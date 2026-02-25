@@ -64,12 +64,19 @@ const App = {
             this.refreshProcesses();
             this.refreshStartupItems();
         }
+        if (pageName === 'speedup') {
+            this.refreshStartupItems();
+            this.refreshUndoLog();
+        }
         if (pageName === 'system') this.refreshSystemInfo();
         if (pageName === 'registry') this.refreshRegistry();
         if (pageName === 'scheduler') this.refreshScheduler();
         if (pageName === 'cleaner') this.refreshScanResults();
         if (pageName === 'settings') this.loadSettings();
-        if (pageName === 'file-organizer') this.refreshFileOrganizer();
+        if (pageName === 'file-organizer') {
+            this.refreshFileOrganizer();
+            this.refreshUndoLog();
+        }
         if (pageName === 'cybersecurity') this.refreshSecurity();
     },
 
@@ -88,6 +95,7 @@ const App = {
             const res = await fetch('/api/metrics');
             const data = await res.json();
             this.updateMetricCards(data);
+            this.renderTop5Processes(data.top_processes);
             if (this.currentPage === 'processes') this.renderProcesses(data.top_processes);
             if (this.currentPage === 'system') this.renderSystemInfo(data);
         } catch (e) {
@@ -319,13 +327,7 @@ const App = {
         }
     },
 
-    async refreshProcesses() {
-        try {
-            const res = await fetch('/api/metrics');
-            const data = await res.json();
-            this.renderProcesses(data.top_processes);
-        } catch (e) {}
-    },
+
 
     renderProcesses(processes) {
         const container = document.getElementById('process-list');
@@ -669,23 +671,42 @@ const App = {
         try {
             const res = await fetch('/api/startup-items');
             const data = await res.json();
-            const container = document.getElementById('startup-items-list');
-            if (!container) return;
-            if (data.items && data.items.length > 0) {
-                container.innerHTML = data.items.map(item => `
-                    <div class="process-item">
-                        <span class="name">${item.name}</span>
-                        <span class="cpu" style="font-size: 11px;">${item.path || 'N/A'}</span>
-                        <label class="toggle">
-                            <input type="checkbox" ${item.enabled ? 'checked' : ''}
-                                onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked)">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<div class="info-row"><span class="info-label">No startup items found</span></div>';
-            }
+            const items = Array.isArray(data) ? data : (data.items || []);
+            const renderTo = (containerId, enhanced) => {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                if (items.length > 0) {
+                    container.innerHTML = items.map(item => {
+                        const impact = item.hive === 'HKLM' ? 'High' : 'Medium';
+                        const impactColor = impact === 'High' ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                        if (enhanced) {
+                            return `<div class="process-item">
+                                <span class="name">${item.name}</span>
+                                <span class="cpu" style="font-size: 11px; color: var(--text-muted);">${item.hive}</span>
+                                <span class="mem" style="font-size: 11px; color: ${impactColor};">${impact}</span>
+                                <label class="toggle">
+                                    <input type="checkbox" ${item.enabled ? 'checked' : ''}
+                                        onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>`;
+                        }
+                        return `<div class="process-item">
+                            <span class="name">${item.name}</span>
+                            <span class="cpu" style="font-size: 11px;">${item.path || 'N/A'}</span>
+                            <label class="toggle">
+                                <input type="checkbox" ${item.enabled ? 'checked' : ''}
+                                    onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>`;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<div class="info-row"><span class="info-label">No startup items found</span></div>';
+                }
+            };
+            renderTo('startup-items-list', false);
+            renderTo('speedup-startup-list', true);
         } catch(e) {}
     },
 
@@ -1009,6 +1030,283 @@ const App = {
                 status.textContent = data.running ? 'Active' : 'Inactive';
                 status.style.color = data.running ? 'var(--accent-green)' : 'var(--accent-red)';
             }
+        } catch(e) {}
+    },
+
+    renderTop5Processes(processes) {
+        const container = document.getElementById('top5-process-list');
+        if (!container || !processes) return;
+        const top5 = processes.slice(0, 5);
+        if (top5.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 8px; font-size: 11px;">No process data available</div>';
+            return;
+        }
+        container.innerHTML = top5.map((p, i) => {
+            const cpu = p.cpu_percent || p.cpu || 0;
+            const mem = p.memory_percent || p.memory || 0;
+            return `<div class="process-item">
+                <span class="pid" style="color: var(--text-muted);">${i + 1}</span>
+                <span class="name">${p.name || 'Unknown'}</span>
+                <span class="cpu" style="color: ${cpu > 50 ? 'var(--accent-red)' : cpu > 20 ? 'var(--accent-yellow)' : 'var(--accent-green)'};">${cpu.toFixed(1)}%</span>
+                <span class="mem" style="color: ${mem > 50 ? 'var(--accent-red)' : mem > 20 ? 'var(--accent-yellow)' : 'var(--accent-cyan)'};">${mem.toFixed(1)}%</span>
+                <span class="mem" style="color: var(--text-muted);">--</span>
+            </div>`;
+        }).join('');
+    },
+
+    openTaskManager() {
+        this.showNotification('On Windows, press Ctrl+Shift+Esc to open Task Manager, or run "taskmgr.exe"', 'info');
+    },
+
+    recommendRestart() {
+        const msg = 'A system restart is recommended to apply pending updates, free memory, and refresh system services. Would you like to restart now?';
+        if (confirm(msg)) {
+            this.rebootSystem();
+        } else {
+            this.showNotification('Restart reminder noted. You can restart later from Settings.', 'info');
+        }
+    },
+
+    openWindowsSetting(setting) {
+        const deepLinks = {
+            'visual_effects': 'SystemPropertiesPerformance.exe',
+            'power': 'ms-settings:powersleep',
+            'display': 'ms-settings:display',
+            'nightlight': 'ms-settings:nightlight',
+            'notifications': 'ms-settings:notifications',
+        };
+        const link = deepLinks[setting] || setting;
+        this.showNotification(`On Windows, open: ${link}`, 'info');
+    },
+
+    async scanLargeFiles() {
+        const threshold = parseInt(document.getElementById('large-files-threshold')?.value) || 100;
+        const container = document.getElementById('large-files-results');
+        if (container) container.innerHTML = '<div style="text-align: center; padding: 16px; color: var(--accent-cyan); font-family: \'JetBrains Mono\', monospace; font-size: 12px;">Scanning for large files...</div>';
+        try {
+            await fetch('/api/large-files/scan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({threshold_mb: threshold})
+            });
+            setTimeout(() => this.refreshLargeFiles(), 2000);
+        } catch(e) { this.showNotification('Large files scan failed', 'error'); }
+    },
+
+    async refreshLargeFiles() {
+        try {
+            const res = await fetch('/api/large-files/results');
+            const data = await res.json();
+            const container = document.getElementById('large-files-results');
+            if (!container) return;
+            if (data.status === 'scanning') {
+                setTimeout(() => this.refreshLargeFiles(), 1000);
+                return;
+            }
+            if (!data.files || data.files.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 16px; color: var(--accent-green); font-family: \'JetBrains Mono\', monospace; font-size: 12px;">No large files found above threshold</div>';
+                return;
+            }
+            let html = `<div style="margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);">Found ${data.files.length} files (${this.formatBytes(data.total_size)} total)</div>`;
+            html += '<div class="process-list">';
+            html += '<div class="process-item process-header"><span class="name">File</span><span class="cpu">Size</span><span class="mem">Location</span><span class="cpu">Actions</span></div>';
+            data.files.forEach(f => {
+                html += `<div class="process-item">
+                    <span class="name" title="${f.path}">${f.name}</span>
+                    <span class="cpu" style="color: var(--accent-yellow);">${f.size_fmt}</span>
+                    <span class="mem" style="color: var(--text-muted);">${f.location}</span>
+                    <span class="cpu">
+                        <button class="btn" style="font-size:10px; padding:2px 6px;" onclick="App.deleteLargeFile('${f.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">Del</button>
+                        <button class="btn" style="font-size:10px; padding:2px 6px;" onclick="App.archiveLargeFile('${f.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">Archive</button>
+                    </span>
+                </div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch(e) {}
+    },
+
+    async deleteLargeFile(path) {
+        const dryRun = document.getElementById('large-files-dry-run')?.checked || false;
+        if (!dryRun && !confirm(`Delete this file?\n${path}`)) return;
+        try {
+            await fetch('/api/large-files/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({files: [path], dry_run: dryRun})
+            });
+            this.showNotification(dryRun ? '[DRY RUN] File would be deleted' : 'File deleted', 'success');
+            this.refreshLargeFiles();
+        } catch(e) { this.showNotification('Delete failed', 'error'); }
+    },
+
+    async archiveLargeFile(path) {
+        const dryRun = document.getElementById('large-files-dry-run')?.checked || false;
+        if (!dryRun && !confirm(`Archive this file to ~/Archive?\n${path}`)) return;
+        try {
+            await fetch('/api/large-files/archive', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({files: [path], dry_run: dryRun})
+            });
+            this.showNotification(dryRun ? '[DRY RUN] File would be archived' : 'File archived', 'success');
+            this.refreshLargeFiles();
+        } catch(e) { this.showNotification('Archive failed', 'error'); }
+    },
+
+    async previewOrganize(action) {
+        const maxAgeDays = parseInt(document.getElementById('archive-days')?.value) || 30;
+        try {
+            const res = await fetch('/api/organize/preview', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: action, max_age_days: maxAgeDays})
+            });
+            const data = await res.json();
+            const container = document.getElementById('organize-preview-results');
+            const list = document.getElementById('organize-preview-list');
+            if (!container || !list) return;
+            if (data.actions.length === 0) {
+                container.style.display = 'none';
+                this.showNotification('No files match the selected rule', 'info');
+                return;
+            }
+            container.style.display = 'block';
+            this._organizeActions = data.actions;
+            list.innerHTML = data.actions.map(a => `
+                <div class="process-item">
+                    <span class="name" title="${a.path}">${a.file}</span>
+                    <span class="cpu" style="color: var(--accent-cyan);">${a.action}</span>
+                    <span class="mem">${a.size_fmt}</span>
+                    <span class="cpu" style="color: var(--text-muted);">${a.modified}</span>
+                </div>
+            `).join('');
+        } catch(e) { this.showNotification('Preview failed', 'error'); }
+    },
+
+    async executeOrganize() {
+        const dryRun = document.getElementById('organize-dry-run')?.checked || false;
+        const actions = this._organizeActions || [];
+        if (actions.length === 0) { this.showNotification('No actions to execute', 'info'); return; }
+        if (!dryRun && !confirm(`Execute ${actions.length} file operations?`)) return;
+        try {
+            const res = await fetch('/api/organize/execute', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({actions: actions, dry_run: dryRun})
+            });
+            const data = await res.json();
+            this.showNotification(dryRun ? `[DRY RUN] ${data.executed} actions previewed` : `${data.executed} files organized`, 'success');
+            document.getElementById('organize-preview-results').style.display = 'none';
+            this._organizeActions = [];
+            this.refreshUndoLog();
+        } catch(e) { this.showNotification('Execute failed', 'error'); }
+    },
+
+    async refreshUndoLog() {
+        try {
+            const res = await fetch('/api/undo-log');
+            const log = await res.json();
+            const targets = ['speedup-undo-log', 'organizer-undo-log'];
+            targets.forEach(targetId => {
+                const container = document.getElementById(targetId);
+                if (!container) return;
+                if (log.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: \'JetBrains Mono\', monospace;">No actions recorded yet</div>';
+                    return;
+                }
+                container.innerHTML = log.slice().reverse().map(entry => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+                        <span style="color: var(--text-muted); width: 140px;">${entry.timestamp}</span>
+                        <span style="color: ${entry.type === 'delete' ? 'var(--accent-red)' : 'var(--accent-cyan)'}; width: 60px; text-transform: uppercase;">${entry.type}</span>
+                        <span style="color: var(--text-secondary); flex: 1;">${entry.description}</span>
+                    </div>
+                `).join('');
+            });
+        } catch(e) {}
+    },
+
+    focusModeActive: false,
+    pomodoroInterval: null,
+    pomodoroPhase: 'work',
+    pomodoroCycles: 0,
+
+    toggleFocusMode() {
+        this.focusModeActive = !this.focusModeActive;
+        const btn = document.getElementById('btn-focus-start');
+        if (this.focusModeActive) {
+            if (btn) { btn.textContent = '\u23F9 Stop Focus Session'; btn.classList.remove('btn-primary'); btn.classList.add('btn-success'); }
+            document.getElementById('focus-action-nightlight').textContent = '\u2705 Enable Night Light';
+            document.getElementById('focus-action-brightness').textContent = '\u2705 Lower Brightness';
+            document.getElementById('focus-action-notifications').textContent = '\u2705 Reduce Notifications';
+            document.getElementById('focus-action-timer').textContent = '\u2705 Pomodoro Timer Active';
+            this.pomodoroPhase = 'work';
+            this.pomodoroCycles = 0;
+            this.startPomodoro(25 * 60);
+            this.showNotification('Focus Mode activated. Pomodoro timer started.', 'success');
+            this.openWindowsSetting('nightlight');
+        } else {
+            if (btn) { btn.textContent = '\uD83C\uDFAF Start Focus Session'; btn.classList.add('btn-primary'); btn.classList.remove('btn-success'); }
+            document.getElementById('focus-action-nightlight').textContent = '\u2B1C Enable Night Light';
+            document.getElementById('focus-action-brightness').textContent = '\u2B1C Lower Brightness';
+            document.getElementById('focus-action-notifications').textContent = '\u2B1C Reduce Notifications';
+            document.getElementById('focus-action-timer').textContent = '\u2B1C Pomodoro Timer Active';
+            if (this.pomodoroInterval) clearInterval(this.pomodoroInterval);
+            document.getElementById('pomodoro-timer').textContent = '25:00';
+            document.getElementById('pomodoro-phase').textContent = 'Work Phase';
+            document.getElementById('pomodoro-cycles').textContent = 'Cycles: 0 / 4';
+            this.showNotification('Focus Mode deactivated.', 'info');
+        }
+    },
+
+    startPomodoro(seconds) {
+        if (this.pomodoroInterval) clearInterval(this.pomodoroInterval);
+        let remaining = seconds;
+        const timerEl = document.getElementById('pomodoro-timer');
+        const phaseEl = document.getElementById('pomodoro-phase');
+        const cyclesEl = document.getElementById('pomodoro-cycles');
+        this.pomodoroInterval = setInterval(() => {
+            remaining--;
+            if (timerEl) {
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+                timerEl.style.color = this.pomodoroPhase === 'work' ? 'var(--accent-green)' : 'var(--accent-cyan)';
+            }
+            if (remaining <= 0) {
+                clearInterval(this.pomodoroInterval);
+                if (this.pomodoroPhase === 'work') {
+                    this.pomodoroCycles++;
+                    if (cyclesEl) cyclesEl.textContent = `Cycles: ${this.pomodoroCycles} / 4`;
+                    this.pomodoroPhase = 'break';
+                    if (phaseEl) phaseEl.textContent = 'Break Phase';
+                    this.showNotification('Work phase complete! Take a 5 minute break.', 'success');
+                    try { new Audio('data:audio/wav;base64,UklGRl9vT19teleVtYWwAQBYAAAA...').play(); } catch(e) {}
+                    this.startPomodoro(5 * 60);
+                } else {
+                    this.pomodoroPhase = 'work';
+                    if (phaseEl) phaseEl.textContent = 'Work Phase';
+                    this.showNotification('Break over! Starting next work session.', 'info');
+                    if (this.pomodoroCycles < 4) {
+                        this.startPomodoro(25 * 60);
+                    } else {
+                        if (timerEl) timerEl.textContent = 'Done!';
+                        if (phaseEl) phaseEl.textContent = '4 cycles complete';
+                        this.showNotification('All 4 Pomodoro cycles complete! Great work!', 'success');
+                        this.focusModeActive = false;
+                        const btn = document.getElementById('btn-focus-start');
+                        if (btn) { btn.textContent = '\uD83C\uDFAF Start Focus Session'; btn.classList.add('btn-primary'); btn.classList.remove('btn-success'); }
+                    }
+                }
+            }
+        }, 1000);
+    },
+
+    async refreshProcesses() {
+        try {
+            const res = await fetch('/api/metrics');
+            const data = await res.json();
+            this.renderProcesses(data.top_processes);
         } catch(e) {}
     }
 };

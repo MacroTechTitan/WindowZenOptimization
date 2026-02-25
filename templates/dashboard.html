@@ -42,6 +42,10 @@
                 <span class="icon">&#x1F9F9;</span>
                 <span>System Cleaner</span>
             </div>
+            <div class="nav-item" data-page="speedup">
+                <span class="icon">&#x1F680;</span>
+                <span>Speed Up</span>
+            </div>
             <div class="nav-item" data-page="file-organizer">
                 <span class="icon">&#x1F4C1;</span>
                 <span>File Organizer</span>
@@ -139,6 +143,30 @@
                         </div>
                         <div class="metric-value cyan" id="uptime-value">--:--:--</div>
                         <div class="metric-sub">System uptime</div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F525; Top 5 Processes</span>
+                        <div class="btn-group">
+                            <button class="btn" onclick="App.openTaskManager()">&#x1F4CB; Open Task Manager</button>
+                            <button class="btn btn-primary" id="btn-restart-recommend" onclick="App.recommendRestart()">&#x1F504; Restart Recommended</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="process-list">
+                            <div class="process-item process-header">
+                                <span class="pid">#</span>
+                                <span class="name">Process</span>
+                                <span class="cpu">CPU %</span>
+                                <span class="mem">RAM %</span>
+                                <span class="mem">Disk</span>
+                            </div>
+                            <div id="top5-process-list">
+                                <div style="text-align: center; color: var(--text-muted); padding: 8px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">Loading...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -263,6 +291,128 @@
                         <div class="terminal-title">CLEANER LOG &mdash; live output</div>
                     </div>
                     <div class="terminal-body" id="terminal-logs-cleaner"></div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4C2; Large Files Finder</span>
+                        <div class="btn-group">
+                            <label style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="large-files-dry-run"> Dry Run
+                            </label>
+                            <button class="btn btn-primary" onclick="App.scanLargeFiles()">&#x1F50D; Scan</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                            <label style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); white-space: nowrap;">Threshold:</label>
+                            <input type="number" id="large-files-threshold" value="100" min="1" max="10000" style="width: 80px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); padding: 6px 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">MB</span>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-left: auto;">Scans: Downloads, Desktop, Videos, Documents</span>
+                        </div>
+                        <div id="large-files-results">
+                            <div style="text-align: center; padding: 16px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                                Set threshold and click Scan to find large files
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SPEED UP PAGE -->
+            <div class="page" id="page-speedup">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F680; Startup Manager</span>
+                        <button class="btn" onclick="App.refreshStartupItems()">&#x1F504; Refresh</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom: 12px; padding: 10px; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3); border-radius: 8px;">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-cyan);">
+                                &#x1F6C8; Disable unnecessary startup programs to speed up boot time. Changes are logged for undo/restore.
+                            </div>
+                        </div>
+                        <div class="process-list">
+                            <div class="process-item process-header">
+                                <span class="name">Program</span>
+                                <span class="cpu">Source</span>
+                                <span class="mem">Impact</span>
+                                <span class="cpu">Enabled</span>
+                            </div>
+                            <div id="speedup-startup-list">
+                                <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">Loading startup items...</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px; text-align: center;">
+                            <button class="btn btn-primary" onclick="if(confirm('Restart is recommended to apply startup changes. Restart now?')) App.rebootSystem()">&#x1F504; Restart to Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-view" style="margin-top: 20px;">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F3A8; Visual Effects</span>
+                        </div>
+                        <div class="panel-body">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
+                                <p>Reducing visual effects can improve system performance, especially on older hardware.</p>
+                                <div style="margin: 16px 0; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <div style="color: var(--accent-cyan); margin-bottom: 8px; font-weight: 600;">Presets:</div>
+                                    <div>&#x2022; <strong>Best Performance</strong> - Disables all animations</div>
+                                    <div>&#x2022; <strong>Best Appearance</strong> - Full visual effects</div>
+                                    <div>&#x2022; <strong>Custom</strong> - Choose individual effects</div>
+                                </div>
+                                <div style="text-align: center; margin-top: 16px;">
+                                    <button class="btn btn-primary" onclick="App.openWindowsSetting('visual_effects')">&#x2699; Open Visual Effects Settings</button>
+                                </div>
+                                <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
+                                    Opens: SystemPropertiesPerformance.exe
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x26A1; Power Mode</span>
+                        </div>
+                        <div class="panel-body">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
+                                <p>Switching to High Performance power mode can boost CPU and GPU performance.</p>
+                                <div style="margin: 16px 0; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <div style="color: var(--accent-cyan); margin-bottom: 8px; font-weight: 600;">Power Plans:</div>
+                                    <div>&#x2022; <strong>Balanced</strong> - Default, good for most users</div>
+                                    <div>&#x2022; <strong>High Performance</strong> - Max CPU speed</div>
+                                    <div>&#x2022; <strong>Power Saver</strong> - Extends battery life</div>
+                                </div>
+                                <div style="margin: 12px 0; padding: 10px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px;">
+                                    <div style="font-size: 11px; color: var(--accent-yellow);">
+                                        &#x26A0; High Performance may increase heat and reduce battery life on laptops.
+                                    </div>
+                                </div>
+                                <div style="text-align: center; margin-top: 16px;">
+                                    <button class="btn btn-primary" onclick="App.openWindowsSetting('power')">&#x26A1; Open Power Settings</button>
+                                </div>
+                                <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
+                                    Opens: ms-settings:powersleep
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4DC; Undo / Restore Log</span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="speedup-undo-log">
+                            <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                No actions recorded yet
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -455,6 +605,85 @@
                                     <div>&#x2714; Stay hydrated throughout the day</div>
                                 </div>
                                 <button class="btn btn-success" style="margin-top: 16px;" onclick="App.takeBreak()">&#x2615; Log Break</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-view" style="margin-top: 20px;">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F506; Brightness & Display</span>
+                        </div>
+                        <div class="panel-body">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
+                                <div style="margin-bottom: 12px; padding: 10px; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3); border-radius: 8px;">
+                                    <div style="font-size: 11px; color: var(--accent-cyan);">
+                                        &#x1F4A1; If using an external monitor, brightness must be adjusted on the monitor hardware controls.
+                                    </div>
+                                </div>
+                                <div>&#x2022; Lower brightness in the evening to reduce eye strain</div>
+                                <div>&#x2022; Use automatic brightness if available</div>
+                                <div>&#x2022; Match room lighting to screen brightness</div>
+                                <div style="text-align: center; margin-top: 16px;">
+                                    <button class="btn btn-primary" onclick="App.openWindowsSetting('display')">&#x1F506; Open Display Settings</button>
+                                </div>
+                                <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted); text-align: center;">Opens: ms-settings:display</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">&#x1F319; Night Light</span>
+                        </div>
+                        <div class="panel-body">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
+                                <p>Night Light reduces blue light emission to help you sleep better.</p>
+                                <div style="margin: 12px 0; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <div style="color: var(--accent-cyan); margin-bottom: 8px; font-weight: 600;">Schedule Presets:</div>
+                                    <div>&#x2022; <strong>Sunset to Sunrise</strong> - Automatic based on location</div>
+                                    <div>&#x2022; <strong>Custom Schedule</strong> - Set your own hours (e.g. 8PM - 7AM)</div>
+                                    <div>&#x2022; <strong>Always On</strong> - Continuous blue light reduction</div>
+                                </div>
+                                <div style="text-align: center; margin-top: 16px;">
+                                    <button class="btn btn-primary" onclick="App.openWindowsSetting('nightlight')">&#x1F319; Open Night Light Settings</button>
+                                </div>
+                                <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted); text-align: center;">Opens: ms-settings:nightlight</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F3AF; Focus Mode</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="btn-focus-start" onclick="App.toggleFocusMode()">&#x1F3AF; Start Focus Session</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
+                            <p>Focus Mode combines Night Light, reduced notifications, and a Pomodoro timer for distraction-free work.</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                                <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 16px; text-align: center;">
+                                    <div style="color: var(--accent-cyan); font-weight: 600; margin-bottom: 8px;">Pomodoro Timer</div>
+                                    <div style="font-size: 36px; color: var(--accent-green); font-weight: 700;" id="pomodoro-timer">25:00</div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="pomodoro-phase">Work Phase</div>
+                                    <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);" id="pomodoro-cycles">Cycles: 0 / 4</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 16px;">
+                                    <div style="color: var(--accent-cyan); font-weight: 600; margin-bottom: 8px;">Focus Actions</div>
+                                    <div style="font-size: 11px; line-height: 2;">
+                                        <div id="focus-action-nightlight">&#x2B1C; Enable Night Light</div>
+                                        <div id="focus-action-brightness">&#x2B1C; Lower Brightness</div>
+                                        <div id="focus-action-notifications">&#x2B1C; Reduce Notifications</div>
+                                        <div id="focus-action-timer">&#x2B1C; Pomodoro Timer Active</div>
+                                    </div>
+                                    <div style="margin-top: 12px;">
+                                        <button class="btn" onclick="App.openWindowsSetting('notifications')" style="font-size: 11px;">&#x1F514; Notification Settings</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -816,6 +1045,67 @@
                         </div>
                         <div style="margin-top: 12px; text-align: center;">
                             <button class="btn btn-success" onclick="App.deleteSelected('installers')">&#x1F5D1; Delete Selected</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4E5; Downloads Rules</span>
+                        <div class="btn-group">
+                            <label style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="organize-dry-run"> Dry Run
+                            </label>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                            <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
+                                <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); margin-bottom: 8px;">Archive Old Files</div>
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">Older than</span>
+                                    <input type="number" id="archive-days" value="30" min="1" max="365" style="width: 50px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); padding: 4px 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">days</span>
+                                </div>
+                                <button class="btn btn-primary" onclick="App.previewOrganize('archive_old')">&#x1F50D; Preview</button>
+                            </div>
+                            <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
+                                <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); margin-bottom: 8px;">Group by File Type</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6;">Sort files into Images, Documents, Videos, Audio, Archives, Installers</div>
+                                <button class="btn btn-primary" onclick="App.previewOrganize('group_by_type')">&#x1F50D; Preview</button>
+                            </div>
+                            <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
+                                <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); margin-bottom: 8px;">Move Screenshots</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6;">Move screenshot files from Downloads to Pictures/Screenshots</div>
+                                <button class="btn btn-primary" onclick="App.previewOrganize('move_screenshots')">&#x1F50D; Preview</button>
+                            </div>
+                        </div>
+                        <div id="organize-preview-results" style="display: none;">
+                            <div class="process-list">
+                                <div class="process-item process-header">
+                                    <span class="name">File</span>
+                                    <span class="cpu">Action</span>
+                                    <span class="mem">Size</span>
+                                    <span class="cpu">Modified</span>
+                                </div>
+                                <div id="organize-preview-list"></div>
+                            </div>
+                            <div style="margin-top: 12px; text-align: center;">
+                                <button class="btn btn-success" onclick="App.executeOrganize()">&#x2705; Execute Actions</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4DC; Undo / Restore Log</span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="organizer-undo-log">
+                            <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+                                No actions recorded yet
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,55 @@
+Core modules:
+
+Dashboard
+
+Show CPU%, RAM%, disk free%, top 5 processes by CPU/RAM/disk.
+
+Button: “Open Task Manager”.
+
+Button: “Restart recommended” (no forced restart).
+
+Speed Up
+
+Startup Manager: list startup items (Startup folder + HKCU/HKLM Run keys + scheduled tasks in advanced mode). Allow disable/enable with a restore/undo log.
+
+Visual Effects preset: open the Windows “Adjust the appearance and performance of Windows” dialog; store chosen preset.
+
+Power Mode helper: deep-link to Power & battery settings; show warning about battery/heat.
+
+Clean Up
+
+Safe Cleaner: scan temp folders (user temp, Windows temp, browser caches as optional), Recycle Bin (optional). Show “space to be freed” estimate, then clean with confirmation.
+
+Large Files: find files > user-set threshold in Downloads/Desktop/Videos; allow open folder, delete, or move to Archive.
+
+Organize
+
+Downloads rules: archive files older than X days, group by file type, move screenshots, rename with pattern.
+
+Duplicate finder: hash-based duplicate detection inside selected folders.
+
+Wellness
+
+Brightness page: show instructions; if external monitor detected, tell user brightness must be adjusted on the monitor; else provide brightness control if available.
+
+Night Light page: button to open Night Light settings, plus schedule presets (Sunset–Sunrise, Custom).
+
+Focus Mode: enable Night Light, lower brightness (if supported), and reduce notifications by opening Windows Notifications settings; start a Pomodoro timer.
+
+Safety/UX requirements:
+
+Every action must have: preview → confirm → execute → results.
+
+Keep an “Undo / Restore” log for changes (startup toggles, file moves).
+
+Add a “Dry run” toggle for cleanup/organize.
+
+Provide clear warnings for risky actions (registry/service edits) and keep them in an “Advanced” tab.
+
+Deliverables:
+
+Clean project structure (src/, ui/, services/, utils/)
+
+A working MVP with mocked implementations for any OS settings you can’t reliably change programmatically, using deep links to the right Windows Settings pages as fallback.
+
+Include unit tests for file scanning, duplicate hashing, and rule engine.

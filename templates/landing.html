@@ -176,6 +176,33 @@
             border-color: var(--accent-cyan);
         }
 
+        .btn-hero-download {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: #fff;
+            box-shadow: 0 4px 24px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-hero-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.4);
+        }
+
+        .nav-btn-download {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: #fff;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn-download:hover {
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+            transform: translateY(-1px);
+        }
+
         .hero-preview {
             margin-top: 60px;
             position: relative;
@@ -583,6 +610,7 @@
             <a href="#features" class="nav-link">Features</a>
             <a href="#showcase" class="nav-link">Showcase</a>
             <a href="#tech" class="nav-link">Tech Stack</a>
+            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="nav-btn-download" download>&#x2B07; Download Installer</a>
             <a href="/app" class="nav-btn">Launch Demo</a>
         </div>
     </nav>
@@ -597,6 +625,9 @@
                 A comprehensive Windows system utility with real-time monitoring, intelligent cleanup, cybersecurity scanning, and wellness tracking. All in a sleek terminal-style interface.
             </p>
             <div class="hero-actions">
+                <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="btn-hero btn-hero-download" download>
+                    &#x2B07; Download Windows Installer
+                </a>
                 <a href="/app" class="btn-hero btn-hero-primary">
                     &#x26A1; Launch Dashboard (Demo)
                 </a>
@@ -845,8 +876,11 @@
 
     <section class="cta-section">
         <h2 class="cta-title">Ready to Optimize?</h2>
-        <p class="cta-desc">Launch the dashboard and take control of your system performance, security, and wellness.</p>
+        <p class="cta-desc">Download the Windows installer and take control of your system performance, security, and wellness.</p>
         <div class="hero-actions">
+            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="btn-hero btn-hero-download" download>
+                &#x2B07; Download Windows Installer
+            </a>
             <a href="/app" class="btn-hero btn-hero-primary">
                 &#x26A1; Open Dashboard (Demo)
             </a>

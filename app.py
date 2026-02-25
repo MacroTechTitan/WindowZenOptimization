@@ -1211,7 +1211,7 @@ def setup_scheduler():
     log_activity("Scheduled weekly registry scan (Sunday 3:00 AM)", "SUCCESS")
 
 
-log_activity("SystemOptimizer Pro initialized", "SUCCESS")
+log_activity("MTT Windows Infinite Optimizer initialized", "SUCCESS")
 log_activity(f"Platform: {platform.system()} {platform.release()}")
 log_activity(f"Python: {platform.python_version()}")
 if IS_WINDOWS:

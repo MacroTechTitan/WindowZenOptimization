@@ -4,10 +4,10 @@
 ;---------------------------------
 ; General
 ;---------------------------------
-Name "SystemOptimizer Pro"
-OutFile "SystemOptimizerPro_Setup_v1.0.0.exe"
-InstallDir "$PROGRAMFILES64\SystemOptimizer Pro"
-InstallDirRegKey HKLM "Software\SystemOptimizer Pro" "InstallDir"
+Name "MTT Windows Infinite Optimizer"
+OutFile "MTT_InfiniteOptimizer_Setup_v1.0.0.exe"
+InstallDir "$PROGRAMFILES64\MTT Windows Infinite Optimizer"
+InstallDirRegKey HKLM "Software\MTT Windows Infinite Optimizer" "InstallDir"
 RequestExecutionLevel admin
 Unicode True
 
@@ -15,21 +15,21 @@ Unicode True
 ; Version Info
 ;---------------------------------
 VIProductVersion "1.0.0.0"
-VIAddVersionKey "ProductName" "SystemOptimizer Pro"
+VIAddVersionKey "ProductName" "MTT Windows Infinite Optimizer"
 VIAddVersionKey "ProductVersion" "1.0.0"
-VIAddVersionKey "CompanyName" "SystemOptimizer"
-VIAddVersionKey "FileDescription" "SystemOptimizer Pro Installer"
+VIAddVersionKey "CompanyName" "Macro Tech Titan"
+VIAddVersionKey "FileDescription" "MTT Windows Infinite Optimizer Installer"
 VIAddVersionKey "FileVersion" "1.0.0"
-VIAddVersionKey "LegalCopyright" "Copyright SystemOptimizer"
+VIAddVersionKey "LegalCopyright" "Copyright Macro Tech Titan"
 
 ;---------------------------------
 ; Interface Settings
 ;---------------------------------
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Welcome to SystemOptimizer Pro Setup"
-!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of SystemOptimizer Pro v1.0.0.$\r$\n$\r$\nSystemOptimizer Pro helps you clean temporary files, optimize your registry, and monitor system health.$\r$\n$\r$\nClick Next to continue."
-!define MUI_FINISHPAGE_RUN "$INSTDIR\SystemOptimizer Pro.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Launch SystemOptimizer Pro"
+!define MUI_WELCOMEPAGE_TITLE "Welcome to MTT Windows Infinite Optimizer Setup"
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of MTT Windows Infinite Optimizer v1.0.0.$\r$\n$\r$\nMTT Windows Infinite Optimizer helps you clean temporary files, optimize your registry, and monitor system health.$\r$\n$\r$\nClick Next to continue."
+!define MUI_FINISHPAGE_RUN "$INSTDIR\MTT Windows Infinite Optimizer.exe"
+!define MUI_FINISHPAGE_RUN_TEXT "Launch MTT Windows Infinite Optimizer"
 
 ;---------------------------------
 ; Pages
@@ -55,33 +55,33 @@ Section "Install"
     SetOutPath "$INSTDIR"
 
     ; Copy all application files from the PyInstaller dist folder
-    File /r "dist\SystemOptimizer Pro\*.*"
+    File /r "dist\MTT Windows Infinite Optimizer\*.*"
 
     ; Write registry keys for uninstaller
-    WriteRegStr HKLM "Software\SystemOptimizer Pro" "InstallDir" "$INSTDIR"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "DisplayName" "SystemOptimizer Pro"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "DisplayIcon" "$INSTDIR\SystemOptimizer Pro.exe"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "Publisher" "SystemOptimizer"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "DisplayVersion" "1.0.0"
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "NoModify" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "NoRepair" 1
+    WriteRegStr HKLM "Software\MTT Windows Infinite Optimizer" "InstallDir" "$INSTDIR"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "DisplayName" "MTT Windows Infinite Optimizer"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "DisplayIcon" "$INSTDIR\MTT Windows Infinite Optimizer.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "Publisher" "Macro Tech Titan"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "DisplayVersion" "1.0.0"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "NoRepair" 1
 
     ; Calculate installed size
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
     IntFmt $0 "0x%08X" $0
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro" "EstimatedSize" "$0"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "EstimatedSize" "$0"
 
     ; Create uninstaller
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 
     ; Create Start Menu shortcuts
-    CreateDirectory "$SMPROGRAMS\SystemOptimizer Pro"
-    CreateShortcut "$SMPROGRAMS\SystemOptimizer Pro\SystemOptimizer Pro.lnk" "$INSTDIR\SystemOptimizer Pro.exe"
-    CreateShortcut "$SMPROGRAMS\SystemOptimizer Pro\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
+    CreateDirectory "$SMPROGRAMS\MTT Windows Infinite Optimizer"
+    CreateShortcut "$SMPROGRAMS\MTT Windows Infinite Optimizer\MTT Windows Infinite Optimizer.lnk" "$INSTDIR\MTT Windows Infinite Optimizer.exe"
+    CreateShortcut "$SMPROGRAMS\MTT Windows Infinite Optimizer\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 
     ; Create Desktop shortcut
-    CreateShortcut "$DESKTOP\SystemOptimizer Pro.lnk" "$INSTDIR\SystemOptimizer Pro.exe"
+    CreateShortcut "$DESKTOP\MTT Windows Infinite Optimizer.lnk" "$INSTDIR\MTT Windows Infinite Optimizer.exe"
 
 SectionEnd
 
@@ -94,13 +94,13 @@ Section "Uninstall"
     RMDir /r "$INSTDIR"
 
     ; Remove Start Menu shortcuts
-    RMDir /r "$SMPROGRAMS\SystemOptimizer Pro"
+    RMDir /r "$SMPROGRAMS\MTT Windows Infinite Optimizer"
 
     ; Remove Desktop shortcut
-    Delete "$DESKTOP\SystemOptimizer Pro.lnk"
+    Delete "$DESKTOP\MTT Windows Infinite Optimizer.lnk"
 
     ; Remove registry keys
-    DeleteRegKey HKLM "Software\SystemOptimizer Pro"
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SystemOptimizerPro"
+    DeleteRegKey HKLM "Software\MTT Windows Infinite Optimizer"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer"
 
 SectionEnd

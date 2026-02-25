@@ -29,7 +29,7 @@ def main():
     try:
         import webview
         webview.create_window(
-            "SystemOptimizer Pro",
+            "MTT Windows Infinite Optimizer",
             f"http://127.0.0.1:{PORT}",
             width=1280,
             height=800,

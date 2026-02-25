@@ -1,16 +1,16 @@
 [Setup]
-AppName=SystemOptimizer Pro
+AppName=MTT Windows Infinite Optimizer
 AppVersion=1.0.0
-AppPublisher=SystemOptimizer
-AppPublisherURL=https://systemoptimizer.app
-DefaultDirName={autopf}\SystemOptimizer Pro
-DefaultGroupName=SystemOptimizer Pro
+AppPublisher=Macro Tech Titan
+AppPublisherURL=https://windows.macrotechtitan.com
+DefaultDirName={autopf}\MTT Windows Infinite Optimizer
+DefaultGroupName=MTT Windows Infinite Optimizer
 OutputDir=installer_output
-OutputBaseFilename=SystemOptimizerPro_Setup_v1.0.0
+OutputBaseFilename=MTT_InfiniteOptimizer_Setup_v1.0.0
 Compression=lzma2
 SolidCompression=yes
 SetupIconFile=static\icon.ico
-UninstallDisplayIcon={app}\SystemOptimizer Pro.exe
+UninstallDisplayIcon={app}\MTT Windows Infinite Optimizer.exe
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
@@ -24,13 +24,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "startupicon"; Description: "Start with Windows"; GroupDescription: "Startup:"
 
 [Files]
-Source: "dist\SystemOptimizer Pro\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\MTT Windows Infinite Optimizer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\SystemOptimizer Pro"; Filename: "{app}\SystemOptimizer Pro.exe"
-Name: "{group}\Uninstall SystemOptimizer Pro"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\SystemOptimizer Pro"; Filename: "{app}\SystemOptimizer Pro.exe"; Tasks: desktopicon
-Name: "{userstartup}\SystemOptimizer Pro"; Filename: "{app}\SystemOptimizer Pro.exe"; Tasks: startupicon
+Name: "{group}\MTT Windows Infinite Optimizer"; Filename: "{app}\MTT Windows Infinite Optimizer.exe"
+Name: "{group}\Uninstall MTT Windows Infinite Optimizer"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\MTT Windows Infinite Optimizer"; Filename: "{app}\MTT Windows Infinite Optimizer.exe"; Tasks: desktopicon
+Name: "{userstartup}\MTT Windows Infinite Optimizer"; Filename: "{app}\MTT Windows Infinite Optimizer.exe"; Tasks: startupicon
 
 [Run]
-Filename: "{app}\SystemOptimizer Pro.exe"; Description: "Launch SystemOptimizer Pro"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\MTT Windows Infinite Optimizer.exe"; Description: "Launch MTT Windows Infinite Optimizer"; Flags: nowait postinstall skipifsilent

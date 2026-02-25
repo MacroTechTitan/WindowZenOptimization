@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo  SystemOptimizer Pro - Windows Build Script
+echo  MTT Windows Infinite Optimizer - Build Script
 echo ============================================
 echo.
 
@@ -10,7 +10,7 @@ echo.
 
 echo [2/5] Building executable with PyInstaller...
 pyinstaller --noconfirm --onedir --windowed ^
-    --name "SystemOptimizer Pro" ^
+    --name "MTT Windows Infinite Optimizer" ^
     --add-data "templates;templates" ^
     --add-data "static;static" ^
     --add-data "settings.json;." ^
@@ -20,14 +20,14 @@ pyinstaller --noconfirm --onedir --windowed ^
     desktop_launcher.py
 echo.
 
-if not exist "dist\SystemOptimizer Pro\SystemOptimizer Pro.exe" (
+if not exist "dist\MTT Windows Infinite Optimizer\MTT Windows Infinite Optimizer.exe" (
     echo ERROR: PyInstaller build failed. Check the output above for errors.
     pause
     exit /b 1
 )
 
 echo [3/5] PyInstaller build complete!
-echo    Output: dist\SystemOptimizer Pro\
+echo    Output: dist\MTT Windows Infinite Optimizer\
 echo.
 
 echo [4/5] Building NSIS installer...
@@ -40,7 +40,7 @@ if %errorlevel% neq 0 (
     echo    After installing, re-run this script.
     echo.
     echo    You can still run the app directly from:
-    echo    dist\SystemOptimizer Pro\SystemOptimizer Pro.exe
+    echo    dist\MTT Windows Infinite Optimizer\MTT Windows Infinite Optimizer.exe
     echo.
     pause
     exit /b 0
@@ -49,9 +49,9 @@ if %errorlevel% neq 0 (
 makensis installer.nsi
 echo.
 
-if exist "SystemOptimizerPro_Setup_v1.0.0.exe" (
+if exist "MTT_InfiniteOptimizer_Setup_v1.0.0.exe" (
     echo [5/5] Installer created successfully!
-    echo    Installer: SystemOptimizerPro_Setup_v1.0.0.exe
+    echo    Installer: MTT_InfiniteOptimizer_Setup_v1.0.0.exe
 ) else (
     echo [5/5] NSIS build had issues. Check the output above.
 )

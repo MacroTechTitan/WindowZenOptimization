@@ -1,10 +1,12 @@
-# SystemOptimizer Pro
+# MTT Windows Infinite Optimizer
 
 ## Overview
-A Windows system utility application with a terminal-style dashboard interface. Built with Python/Flask for the web-based prototype, designed to be packaged as a Windows desktop application using PyInstaller + pywebview + NSIS.
+A Windows system utility application by Macro Tech Titan with a terminal-style dashboard interface. Built with Python/Flask for the web-based prototype, designed to be packaged as a Windows desktop application using PyInstaller + pywebview + NSIS.
+
+**URL**: https://windows.macrotechtitan.com
 
 ## Current State
-- Landing page at `/` with feature showcase, screenshots, and CTA
+- Landing page at `/` with feature showcase, screenshots, featured image, OG tags, and CTA
 - Dashboard app at `/app` with all system monitoring features
 - Help & Support section with detailed guides for all 10 features + screenshots
 - Real-time system monitoring (CPU, Memory, Disk, Network, Processes)
@@ -21,6 +23,8 @@ A Windows system utility application with a terminal-style dashboard interface. 
 - Live activity log (terminal-style output window)
 - Desktop launcher (pywebview) ready for Windows packaging
 - NSIS + Inno Setup installer scripts included
+- MTT branding with logo throughout app and landing page
+- Featured widescreen image at static/images/featured-image.png
 
 ## Architecture
 - **Backend**: Python 3.11 + Flask
@@ -31,6 +35,7 @@ A Windows system utility application with a terminal-style dashboard interface. 
 - **Desktop**: pywebview for native Windows window
 - **Packaging**: PyInstaller + NSIS/Inno Setup for Windows installer
 - **Style**: JetBrains Mono + Inter fonts, dark terminal theme with scanline effect
+- **Deployment**: gunicorn on autoscale target
 
 ## Project Structure
 ```
@@ -42,11 +47,12 @@ installer.iss           - Inno Setup installer configuration (alternative)
 LICENSE.txt             - End user license agreement
 settings.json           - Persisted user settings
 templates/
-  landing.html          - Public landing page (root URL)
+  landing.html          - Public landing page (root URL) with OG meta tags
   dashboard.html        - Main dashboard HTML template (all app pages + help)
 static/
   css/style.css         - Terminal-style CSS theme
   js/app.js             - Frontend JavaScript (metrics, UI, all features)
+  images/               - MTT logo and featured image
   screenshots/          - Auto-captured screenshots for help & landing page
 ```
 
@@ -67,6 +73,13 @@ static/
 8. **System Info** - RAM details with upgrade guide, motherboard info, deep analysis
 9. **Scheduler** - Automated cleanup at 5PM daily, weekly registry scan
 10. **Settings** - Toggle controls for every feature with persistence
+
+## Branding
+- **Name**: MTT Windows Infinite Optimizer
+- **Company**: Macro Tech Titan
+- **URL**: windows.macrotechtitan.com
+- **Logo**: static/images/mtt-logo.png
+- **Featured Image**: static/images/featured-image.png
 
 ## User Preferences
 - Python preferred language

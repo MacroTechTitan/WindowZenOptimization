@@ -2,7 +2,7 @@
 AppName=MTT Windows Infinite Optimizer
 AppVersion=1.0.0
 AppPublisher=Macro Tech Titan
-AppPublisherURL=https://windows.macrotechtitan.com
+AppPublisherURL=https://macrotechtitan.com
 DefaultDirName={autopf}\MTT Windows Infinite Optimizer
 DefaultGroupName=MTT Windows Infinite Optimizer
 OutputDir=installer_output

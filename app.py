@@ -1229,6 +1229,11 @@ def landing():
     return render_template("landing.html")
 
 
+@app.route("/eula")
+def eula_page():
+    return render_template("eula.html")
+
+
 @app.route("/app")
 @app.route("/app/<page>")
 def dashboard(page=None):

@@ -1067,6 +1067,49 @@ const App = {
         }
     },
 
+    async runNetworkFix(mode) {
+        mode = mode || 'full';
+        const labels = {
+            winsock: 'Winsock Reset',
+            dns: 'Flush DNS',
+            full: 'Full Network Fix'
+        };
+        if (!confirm(`Run ${labels[mode] || 'Network Fix'}? This requires Administrator privileges on Windows.\n\nCommands to run:\n${mode === 'winsock' ? '• netsh winsock reset' : mode === 'dns' ? '• ipconfig /flushdns' : '• netsh winsock reset\n• netsh int ip reset\n• ipconfig /release\n• ipconfig /renew\n• ipconfig /flushdns'}`)) return;
+
+        const btn = document.getElementById('fix-internet-btn');
+        const outputEl = document.getElementById('network-fix-output');
+        const rebootEl = document.getElementById('network-fix-reboot');
+
+        if (btn) { btn.disabled = true; btn.textContent = 'Running...'; }
+        if (rebootEl) rebootEl.style.display = 'none';
+        if (outputEl) {
+            outputEl.style.display = 'block';
+            outputEl.textContent = `MTT Network Fix — ${labels[mode] || mode}\n${'='.repeat(50)}\nRunning commands...\n`;
+        }
+
+        try {
+            const res = await fetch('/api/network-fix', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode })
+            });
+            const data = await res.json();
+            if (outputEl) {
+                outputEl.textContent = `MTT Network Fix — ${labels[mode] || mode}\n${'='.repeat(50)}\n${data.output || 'No output returned.'}`;
+                outputEl.scrollTop = outputEl.scrollHeight;
+            }
+            if (data.needs_reboot && rebootEl) {
+                rebootEl.style.display = 'block';
+            }
+            this.showNotification('Network fix complete!', 'success');
+        } catch(e) {
+            if (outputEl) outputEl.textContent += '\n[ERROR] Failed to communicate with backend.';
+            this.showNotification('Network fix failed', 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '▶ Run Network Fix (Admin)'; }
+        }
+    },
+
     openWindowsSetting(setting) {
         const deepLinks = {
             'visual_effects': 'SystemPropertiesPerformance.exe',

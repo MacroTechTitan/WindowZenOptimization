@@ -1553,6 +1553,76 @@ def api_security_scan():
     return jsonify(security_data)
 
 
+@app.route("/api/network-fix", methods=["POST"])
+def api_network_fix():
+    mode = request.json.get("mode", "full")  # winsock | dns | full
+
+    commands = {
+        "winsock": [
+            ("netsh winsock reset", "Resetting Winsock catalog..."),
+        ],
+        "dns": [
+            ("ipconfig /flushdns", "Flushing DNS resolver cache..."),
+        ],
+        "full": [
+            ("netsh winsock reset",   "Resetting Winsock catalog..."),
+            ("netsh int ip reset",    "Resetting TCP/IP stack..."),
+            ("ipconfig /release",     "Releasing current IP address..."),
+            ("ipconfig /renew",       "Obtaining new IP address..."),
+            ("ipconfig /flushdns",    "Flushing DNS resolver cache..."),
+        ],
+    }
+
+    selected = commands.get(mode, commands["full"])
+    output_lines = []
+
+    if not IS_WINDOWS:
+        # Demo mode — simulate output
+        import time
+        for cmd, label in selected:
+            output_lines.append(f"> {cmd}")
+            output_lines.append(f"  [DEMO] {label}")
+            output_lines.append(f"  [DEMO] Command completed successfully.\n")
+        output_lines.append("=" * 50)
+        output_lines.append("Network fix complete (demo mode).")
+        output_lines.append("On Windows, these commands require Admin privileges.")
+        needs_reboot = mode in ("winsock", "full")
+        return jsonify({"status": "ok", "output": "\n".join(output_lines), "needs_reboot": needs_reboot})
+
+    # Windows — run commands
+    needs_reboot = False
+    for cmd, label in selected:
+        output_lines.append(f"> {cmd}")
+        try:
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, timeout=30
+            )
+            stdout = result.stdout.strip()
+            stderr = result.stderr.strip()
+            if stdout:
+                output_lines.append(stdout)
+            if stderr:
+                output_lines.append(f"[stderr] {stderr}")
+            if result.returncode == 0:
+                output_lines.append(f"  OK — {label}\n")
+                if "winsock" in cmd or "ip reset" in cmd:
+                    needs_reboot = True
+            else:
+                output_lines.append(f"  WARNING — Exit code {result.returncode}. Run as Administrator for full effect.\n")
+        except subprocess.TimeoutExpired:
+            output_lines.append(f"  TIMEOUT — {cmd} took too long.\n")
+        except Exception as e:
+            output_lines.append(f"  ERROR — {e}\n")
+
+    output_lines.append("=" * 50)
+    if needs_reboot:
+        output_lines.append("Network stack reset complete. REBOOT REQUIRED to apply all changes.")
+    else:
+        output_lines.append("Network fix complete.")
+
+    return jsonify({"status": "ok", "output": "\n".join(output_lines), "needs_reboot": needs_reboot})
+
+
 @app.route("/api/system/deep-analysis", methods=["GET", "POST"])
 def api_deep_analysis():
     if request.method == "POST":

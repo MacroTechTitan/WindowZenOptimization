@@ -790,6 +790,41 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- FIX INTERNET PANEL -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F527; Fix Internet / Clear Network Cache</span>
+                        <button class="btn btn-primary" id="fix-internet-btn" onclick="App.runNetworkFix()">&#x25B6; Run Network Fix (Admin)</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom: 14px; padding: 12px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px;">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-yellow); line-height: 1.7;">
+                                &#x26A0; This runs the following commands via Command Prompt (Admin) to reset your network stack:<br>
+                                <span style="color: var(--accent-green); margin-left: 12px;">
+                                    &gt; netsh winsock reset &nbsp;&nbsp;&nbsp; &mdash; Reset Winsock catalog<br>
+                                    &gt; netsh int ip reset &nbsp;&nbsp;&nbsp;&nbsp; &mdash; Reset TCP/IP stack<br>
+                                    &gt; ipconfig /release &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &mdash; Release current IP<br>
+                                    &gt; ipconfig /renew &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &mdash; Obtain new IP address<br>
+                                    &gt; ipconfig /flushdns &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &mdash; Clear DNS resolver cache
+                                </span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
+                            <button class="btn" onclick="App.runNetworkFix('winsock')" style="font-size: 11px;">Winsock Reset Only</button>
+                            <button class="btn" onclick="App.runNetworkFix('dns')" style="font-size: 11px;">Flush DNS Only</button>
+                            <button class="btn" onclick="App.runNetworkFix('full')" style="font-size: 11px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #fff;">&#x1F527; Full Fix + Reboot Prompt</button>
+                        </div>
+                        <div id="network-fix-output" style="display: none; background: #0a0e1a; border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-green); line-height: 1.7; max-height: 320px; overflow-y: auto; white-space: pre-wrap;"></div>
+                        <div id="network-fix-reboot" style="display: none; margin-top: 14px; padding: 14px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px; text-align: center;">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); margin-bottom: 10px;">
+                                &#x2705; Network stack reset complete. A reboot is required to fully apply changes.
+                            </div>
+                            <button class="btn btn-primary" onclick="if(confirm('Reboot now to apply network fixes?')) App.rebootSystem()">&#x1F504; Reboot Now</button>
+                            <button class="btn" style="margin-left: 10px;" onclick="document.getElementById('network-fix-reboot').style.display='none'">Later</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- SYSTEM INFO PAGE -->

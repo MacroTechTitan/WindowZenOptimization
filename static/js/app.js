@@ -550,6 +550,92 @@ const App = {
         } catch(e) {}
     },
 
+    _pendingUpdateUrl: null,
+
+    async checkForUpdates() {
+        const btn = document.getElementById('update-check-btn');
+        const statusEl = document.getElementById('update-status-label');
+        const outputEl = document.getElementById('update-output');
+        const dlBtn = document.getElementById('update-download-btn');
+        const localVerEl = document.getElementById('update-local-version');
+
+        if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
+        if (dlBtn) dlBtn.style.display = 'none';
+        if (outputEl) { outputEl.style.display = 'block'; outputEl.textContent = 'Contacting update server...\n'; }
+        if (statusEl) { statusEl.textContent = 'Checking...'; statusEl.style.color = 'var(--accent-cyan)'; }
+
+        try {
+            const res = await fetch('/api/updates/check');
+            const data = await res.json();
+
+            if (localVerEl) localVerEl.textContent = `${data.local_version} (build ${data.local_build})`;
+
+            let out = `Update Check Results\n${'='.repeat(40)}\n`;
+            out += `Installed : v${data.local_version} (build ${data.local_build})\n`;
+            out += `Available : v${data.remote_version} (build ${data.remote_build})\n`;
+            out += `Released  : ${data.release_date || 'N/A'}\n`;
+            if (data.note) out += `\nNote: ${data.note}\n`;
+
+            if (data.update_available) {
+                out += `\n✅ UPDATE AVAILABLE!\n\nWhat's new:\n`;
+                (data.changelog || []).forEach(c => { out += `  • ${c}\n`; });
+                if (statusEl) { statusEl.textContent = `Update available: v${data.remote_version}`; statusEl.style.color = 'var(--accent-green)'; }
+                if (dlBtn) { dlBtn.style.display = 'inline-flex'; }
+                this._pendingUpdateUrl = data.download_url;
+            } else {
+                out += `\n✅ You are up to date.\n`;
+                if (statusEl) { statusEl.textContent = 'Up to date'; statusEl.style.color = 'var(--accent-green)'; }
+            }
+
+            if (outputEl) outputEl.textContent = out;
+        } catch(e) {
+            if (outputEl) outputEl.textContent = 'Error: Could not reach the update server. Check your internet connection.';
+            if (statusEl) { statusEl.textContent = 'Check failed'; statusEl.style.color = 'var(--accent-red)'; }
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🔍 Check for Updates'; }
+        }
+    },
+
+    async downloadUpdate() {
+        const dlBtn = document.getElementById('update-download-btn');
+        const outputEl = document.getElementById('update-output');
+
+        if (!this._pendingUpdateUrl) {
+            this.showNotification('No update URL available. Check for updates first.', 'error');
+            return;
+        }
+        if (!confirm(`Download and install the update now?\n\nThe app will restart automatically after the update is applied.`)) return;
+
+        if (dlBtn) { dlBtn.disabled = true; dlBtn.textContent = 'Downloading...'; }
+        if (outputEl) { outputEl.style.display = 'block'; outputEl.textContent += '\n\nDownloading update...\n'; }
+
+        try {
+            const res = await fetch('/api/updates/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ download_url: this._pendingUpdateUrl })
+            });
+            const data = await res.json();
+
+            if (data.status === 'ok') {
+                if (outputEl) outputEl.textContent += `✅ ${data.message}\nThe app will close and restart. Please wait...\n`;
+                this.showNotification('Update applied! Restarting...', 'success');
+            } else if (data.status === 'demo') {
+                if (outputEl) outputEl.textContent += `ℹ️ DEMO MODE:\n${data.message}\n`;
+                this.showNotification('Demo mode: update simulated', 'info');
+                if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = '⬇ Download & Install Update'; }
+            } else {
+                if (outputEl) outputEl.textContent += `❌ Error: ${data.message}\n`;
+                this.showNotification('Update failed: ' + data.message, 'error');
+                if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = '⬇ Download & Install Update'; }
+            }
+        } catch(e) {
+            if (outputEl) outputEl.textContent += '\n[ERROR] Failed to apply update.\n';
+            this.showNotification('Update failed', 'error');
+            if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = '⬇ Download & Install Update'; }
+        }
+    },
+
     async saveSettings() {
         const formData = {};
         document.querySelectorAll('#page-settings .setting-toggle').forEach(toggle => {

@@ -1404,6 +1404,29 @@
                         </div>
 
                         <div class="settings-section">
+                            <div class="settings-title">&#x1F504; Software Updates</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.8; font-family: 'JetBrains Mono', monospace;">
+                                <div class="info-row" style="margin-bottom: 6px;">
+                                    <span class="info-label">Installed version</span>
+                                    <span class="info-value" id="update-local-version">1.0.0 (build 100)</span>
+                                </div>
+                                <div class="info-row" style="margin-bottom: 6px;">
+                                    <span class="info-label">Update server</span>
+                                    <span class="info-value" style="color: var(--text-muted);">windowzen.macrotechtitan.com</span>
+                                </div>
+                                <div class="info-row" style="margin-bottom: 14px;">
+                                    <span class="info-label">Status</span>
+                                    <span class="info-value" id="update-status-label" style="color: var(--text-muted);">Not checked</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                                    <button class="btn btn-primary" id="update-check-btn" onclick="App.checkForUpdates()">&#x1F50D; Check for Updates</button>
+                                    <button class="btn" id="update-download-btn" onclick="App.downloadUpdate()" style="display:none; background: linear-gradient(135deg, #10b981, #06b6d4); color: #000; font-weight: 700;">&#x2B07; Download &amp; Install Update</button>
+                                </div>
+                                <div id="update-output" style="display: none; background: #0a0e1a; border: 1px solid var(--border); border-radius: 8px; padding: 14px; white-space: pre-wrap; max-height: 260px; overflow-y: auto; font-size: 11px; line-height: 1.7; color: var(--accent-green);"></div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
                             <div class="settings-title">&#x1F4E6; About</div>
                             <div style="font-size: 12px; color: var(--text-secondary); line-height: 2; font-family: 'JetBrains Mono', monospace;">
                                 <div class="info-row">
@@ -1415,12 +1438,16 @@
                                     <span class="info-value">1.0.0</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="info-label">Compliance</span>
-                                    <span class="info-value" style="color: var(--accent-green);">Microsoft Store Ready</span>
+                                    <span class="info-label">Update channel</span>
+                                    <span class="info-value" style="color: var(--accent-green);">Stable</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="info-label">License</span>
-                                    <span class="info-value">MIT License</span>
+                                    <span class="info-label">Company</span>
+                                    <span class="info-value">Macro Tech Titan, Inc.</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Legal</span>
+                                    <span class="info-value"><a href="/eula" style="color: var(--accent-cyan); text-decoration: none;">View EULA</a></span>
                                 </div>
                             </div>
                         </div>

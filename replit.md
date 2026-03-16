@@ -60,6 +60,11 @@ static/
 - `/` - Landing page (public marketing page)
 - `/app` - Dashboard application
 - `/app/<page>` - Direct page navigation (dashboard, cleaner, help, etc.)
+- `/eula` - Standalone EULA page
+- `/updates/version.json` - Self-hosted update manifest (used as fallback update server)
+- `/api/updates/check` - Check windowzen.macrotechtitan.com for newer version
+- `/api/updates/apply` - Download and self-patch the installed app (Windows only)
+- `/api/network-fix` - Run netsh winsock reset / ipconfig /flushdns etc.
 - `/api/*` - All API endpoints
 
 ## Key Features

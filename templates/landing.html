@@ -610,7 +610,7 @@
             <a href="#features" class="nav-link">Features</a>
             <a href="#showcase" class="nav-link">Showcase</a>
             <a href="#tech" class="nav-link">Tech Stack</a>
-            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="nav-btn-download" download>&#x2B07; Download Installer</a>
+            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="nav-btn-download" onclick="trackDownload(this)" download>&#x2B07; Download Installer</a>
             <a href="/app" class="nav-btn">Launch Demo</a>
         </div>
     </nav>
@@ -625,7 +625,7 @@
                 A comprehensive Windows system utility with real-time monitoring, intelligent cleanup, cybersecurity scanning, and wellness tracking. All in a sleek terminal-style interface.
             </p>
             <div class="hero-actions">
-                <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="btn-hero btn-hero-download" download>
+                <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="btn-hero btn-hero-download" onclick="trackDownload(this)" download>
                     &#x2B07; Download Windows Installer
                 </a>
                 <a href="/app" class="btn-hero btn-hero-primary">
@@ -634,6 +634,14 @@
                 <a href="#features" class="btn-hero btn-hero-secondary">
                     Explore Features &#x2193;
                 </a>
+            </div>
+            <div id="live-counter-bar" style="margin-top: 20px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">
+                    &#x1F30D; <span id="hero-visits">–</span> site visits
+                </span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan);">
+                    &#x2B07; <span id="hero-downloads">–</span> downloads
+                </span>
             </div>
             <div class="hero-preview">
                 <img src="/static/screenshots/dashboard.png" alt="MTT Windows Infinite Optimizer Dashboard" onerror="this.style.display='none'">
@@ -647,16 +655,16 @@
             <div class="stat-label">Cleanup Categories</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">11</div>
-            <div class="stat-label">Port Scan Targets</div>
-        </div>
-        <div class="stat-item">
             <div class="stat-value">10</div>
             <div class="stat-label">Feature Modules</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">3s</div>
-            <div class="stat-label">Refresh Interval</div>
+            <div class="stat-value" id="stat-visits">–</div>
+            <div class="stat-label">Site Visits</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="stat-downloads">–</div>
+            <div class="stat-label">Downloads</div>
         </div>
     </div>
 
@@ -878,7 +886,7 @@
         <h2 class="cta-title">Ready to Optimize?</h2>
         <p class="cta-desc">Download the Windows installer and take control of your system performance, security, and wellness.</p>
         <div class="hero-actions">
-            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="btn-hero btn-hero-download" download>
+            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip" class="btn-hero btn-hero-download" onclick="trackDownload(this)" download>
                 &#x2B07; Download Windows Installer
             </a>
             <a href="/app" class="btn-hero btn-hero-primary">
@@ -888,11 +896,48 @@
                 &#x2753; Help & Support
             </a>
         </div>
+        <p id="cta-counter-text" style="margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);"></p>
     </section>
 
     <footer>
         <p>MTT Windows Infinite Optimizer v1.0.0 &mdash; Built by <a href="https://macrotechtitan.com" style="color: var(--accent-cyan); text-decoration: none;">Macro Tech Titan</a></p>
         <p style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">This software is provided "as is" without warranty of any kind. Use at your own risk. By downloading or using this software, you agree to the <a href="/eula" style="color: var(--accent-cyan); text-decoration: none;">EULA</a> and <a href="https://legal.macrotechtitan.com" style="color: var(--accent-cyan); text-decoration: none;">Legal Policy</a>.</p>
     </footer>
+
+    <script>
+        // ── Site counter ──────────────────────────────────────────────
+        function fmtNum(n) {
+            if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+            return String(n);
+        }
+
+        async function loadCounters() {
+            try {
+                const res  = await fetch('/api/counters');
+                const data = await res.json();
+                const v = data.visits    || 0;
+                const d = data.downloads || 0;
+
+                const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmtNum(val); };
+                setEl('hero-visits',    v);
+                setEl('hero-downloads', d);
+                setEl('stat-visits',    v);
+                setEl('stat-downloads', d);
+
+                const cta = document.getElementById('cta-counter-text');
+                if (cta) cta.textContent = `${fmtNum(v)} visits · ${fmtNum(d)} downloads`;
+            } catch (e) {}
+        }
+
+        async function trackDownload(el) {
+            try {
+                await fetch('/api/counters/download', { method: 'POST' });
+                await loadCounters();
+            } catch (e) {}
+        }
+
+        loadCounters();
+    </script>
 </body>
 </html>

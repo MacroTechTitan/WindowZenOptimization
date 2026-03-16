@@ -172,6 +172,9 @@ async function adminLogin() {
             <span class="icon">&#x1F4CB;</span> Version Manager
         </div>
         <div class="sidebar-label">Site</div>
+        <div class="nav-item" onclick="showSection('analytics')" id="nav-analytics">
+            <span class="icon">&#x1F4CA;</span> Analytics
+        </div>
         <div class="nav-item" onclick="showSection('links')" id="nav-links">
             <span class="icon">&#x1F517;</span> Quick Links
         </div>
@@ -332,6 +335,51 @@ https://windowzen.macrotechtitan.com/updates/latest.zip</div>
         </div>
 
         <!-- ══ QUICK LINKS ══ -->
+        <!-- ── ANALYTICS ──────────────────────────────────────── -->
+        <div class="section" id="section-analytics">
+            <h2>&#x1F4CA; Analytics</h2>
+            <p class="page-sub">Live site visit and download counters stored in <code>analytics.json</code>.</p>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">&#x1F30D; Site Counters</span>
+                    <button class="btn btn-sm" onclick="loadAdminCounters()">&#x1F504; Refresh</button>
+                </div>
+                <div class="panel-body">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; text-align: center;">
+                            <div style="font-size: 40px; font-weight: 700; color: var(--accent-green); font-family: 'JetBrains Mono', monospace;" id="admin-visits">–</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px; font-family: 'JetBrains Mono', monospace;">SITE VISITS</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Increments on every landing page load</div>
+                        </div>
+                        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; text-align: center;">
+                            <div style="font-size: 40px; font-weight: 700; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace;" id="admin-downloads">–</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px; font-family: 'JetBrains Mono', monospace;">DOWNLOADS</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Increments when installer download button is clicked</div>
+                        </div>
+                    </div>
+                    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                        <div style="color: var(--text-muted); margin-bottom: 8px;">Raw data (analytics.json)</div>
+                        <pre id="admin-counters-raw" style="margin: 0; color: var(--accent-green);">Loading...</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top: 16px;">
+                <div class="panel-header"><span class="panel-title">&#x26A0; Reset Counters</span></div>
+                <div class="panel-body">
+                    <p style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+                        Reset counters back to zero. This cannot be undone. Use only when re-launching or testing.
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn" style="border-color: var(--accent-yellow); color: var(--accent-yellow);" onclick="resetCounter('visits')">&#x1F504; Reset Visits</button>
+                        <button class="btn" style="border-color: var(--accent-yellow); color: var(--accent-yellow);" onclick="resetCounter('downloads')">&#x1F504; Reset Downloads</button>
+                        <button class="btn" style="border-color: var(--accent-red); color: var(--accent-red);" onclick="resetCounter('all')">&#x1F9F9; Reset All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="section" id="section-links">
             <h2>&#x1F517; Quick Links</h2>
             <p class="page-sub">Key URLs for managing the MTT Infinite Optimizer ecosystem.</p>
@@ -398,8 +446,9 @@ function showSection(name) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('section-' + name).classList.add('active');
     document.getElementById('nav-' + name).classList.add('active');
-    if (name === 'version') { loadVersion(); }
-    if (name === 'manifest') { loadManifest('local'); }
+    if (name === 'version')   { loadVersion(); }
+    if (name === 'manifest')  { loadManifest('local'); }
+    if (name === 'analytics') { loadAdminCounters(); }
 }
 
 function copyCode(btn) {
@@ -468,6 +517,37 @@ async function loadManifest(which) {
 
 /* Auto-load version on page load */
 loadVersion();
+
+/* ── Analytics ── */
+async function loadAdminCounters() {
+    try {
+        const res  = await fetch('/api/counters');
+        const data = await res.json();
+        const el = (id) => document.getElementById(id);
+        if (el('admin-visits'))   el('admin-visits').textContent   = (data.visits    || 0).toLocaleString();
+        if (el('admin-downloads'))el('admin-downloads').textContent = (data.downloads || 0).toLocaleString();
+        if (el('admin-counters-raw')) el('admin-counters-raw').textContent = JSON.stringify(data, null, 2);
+    } catch(e) {
+        const raw = document.getElementById('admin-counters-raw');
+        if (raw) raw.textContent = '❌ Error: ' + e.message;
+    }
+}
+
+async function resetCounter(key) {
+    const label = key === 'all' ? 'ALL counters' : key + ' counter';
+    if (!confirm(`Reset ${label} to zero? This cannot be undone.`)) return;
+    try {
+        await fetch('/admin/api/reset-counters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
+        });
+        loadAdminCounters();
+    } catch(e) {
+        alert('Reset failed: ' + e.message);
+    }
+}
+
 </script>
 {% endif %}
 </body>

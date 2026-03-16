@@ -22,9 +22,41 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 
 IS_WINDOWS = platform.system() == "Windows"
 SETTINGS_FILE = "settings.json"
+ANALYTICS_FILE = "analytics.json"
+_analytics_lock = threading.Lock()
 activity_log = []
 LOG_MAX = 200
 scheduler = BackgroundScheduler()
+
+
+# ─── Analytics helpers ─────────────────────────────────────────
+def load_analytics():
+    if os.path.exists(ANALYTICS_FILE):
+        try:
+            with open(ANALYTICS_FILE, "r") as f:
+                data = json.load(f)
+                data.setdefault("visits", 0)
+                data.setdefault("downloads", 0)
+                return data
+        except Exception:
+            pass
+    return {"visits": 0, "downloads": 0}
+
+
+def save_analytics(data):
+    try:
+        with open(ANALYTICS_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def increment_analytics(key):
+    with _analytics_lock:
+        data = load_analytics()
+        data[key] = data.get(key, 0) + 1
+        save_analytics(data)
+        return data
 
 DEFAULT_SETTINGS = {
     "auto_clean_enabled": True,
@@ -1227,7 +1259,19 @@ log_activity("Ready for operations", "SUCCESS")
 
 @app.route("/")
 def landing():
+    increment_analytics("visits")
     return render_template("landing.html")
+
+
+@app.route("/api/counters")
+def get_counters():
+    return jsonify(load_analytics())
+
+
+@app.route("/api/counters/download", methods=["POST"])
+def count_download():
+    data = increment_analytics("downloads")
+    return jsonify({"ok": True, "downloads": data["downloads"]})
 
 
 @app.route("/eula")
@@ -2103,6 +2147,21 @@ def admin_check_remote_manifest():
         return jsonify(remote)
     except Exception as e:
         return jsonify({"error": f"Could not reach {remote_url}: {e}"})
+
+
+@app.route("/admin/api/reset-counters", methods=["POST"])
+def admin_reset_counters():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    key = request.json.get("key", "all") if request.json else "all"
+    with _analytics_lock:
+        data = load_analytics()
+        if key == "all":
+            data = {"visits": 0, "downloads": 0}
+        elif key in data:
+            data[key] = 0
+        save_analytics(data)
+    return jsonify({"ok": True, "counters": data})
 
 
 if __name__ == "__main__":

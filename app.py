@@ -12,12 +12,13 @@ import psutil
 import subprocess
 import urllib.request
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "mtt-optimizer-secret-2026-macro-tech-titan")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 
 IS_WINDOWS = platform.system() == "Windows"
 SETTINGS_FILE = "settings.json"
@@ -1596,6 +1597,7 @@ def api_startup_toggle():
     else:
         log_activity(f"Simulated toggle startup item: {name} -> {'enabled' if enabled else 'disabled'}", "INFO")
 
+    log_undo("startup_toggle", f"{'Enabled' if enabled else 'Disabled'} startup item: {name}", {"name": name, "hive": hive, "enabled": enabled})
     return jsonify({"status": "ok", "name": name, "enabled": enabled})
 
 
@@ -2002,6 +2004,105 @@ def api_organize_execute():
         except (OSError, PermissionError) as e:
             log_activity(f"Failed: {act.get('file', '')}: {e}", "ERROR")
     return jsonify({"status": "ok", "executed": executed, "dry_run": dry_run})
+
+
+@app.route("/api/undo", methods=["POST"])
+def api_undo():
+    """Attempt to revert the last undoable action."""
+    # Find last non-undone entry
+    for entry in reversed(undo_log):
+        if not entry.get("undone"):
+            action_type = entry.get("type")
+            details = entry.get("details", {})
+            msg = ""
+            if action_type == "move":
+                src = details.get("to")
+                dest = details.get("from")
+                if src and dest and os.path.isfile(src):
+                    try:
+                        os.makedirs(os.path.dirname(dest), exist_ok=True)
+                        shutil.move(src, dest)
+                        msg = f"Restored: {os.path.basename(dest)}"
+                        log_activity(f"Undo: moved {src} back to {dest}", "SUCCESS")
+                    except (OSError, PermissionError) as e:
+                        return jsonify({"status": "error", "message": str(e)}), 500
+                else:
+                    msg = f"Cannot undo: file not found at {src}"
+            elif action_type == "delete":
+                msg = f"Cannot undo deletion (file permanently removed): {details.get('path', '')}"
+                log_activity(f"Undo requested for deletion — file cannot be restored: {details.get('path')}", "WARN")
+            elif action_type == "startup_toggle":
+                name = details.get("name", "")
+                was_enabled = details.get("enabled", True)
+                msg = f"To undo startup toggle: {'disable' if was_enabled else 'enable'} '{name}' manually"
+                log_activity(f"Undo: startup toggle for '{name}' noted — manual action required", "INFO")
+            else:
+                msg = f"Undone: {entry.get('description', '')}"
+            entry["undone"] = True
+            return jsonify({"status": "ok", "message": msg, "action": entry})
+    return jsonify({"status": "nothing", "message": "No undoable actions in log"})
+
+
+# ─── Admin Panel ──────────────────────────────────────────────
+def _admin_required():
+    return session.get("admin_logged_in") is True
+
+
+@app.route("/admin")
+def admin_index():
+    return render_template("admin.html")
+
+
+@app.route("/admin/login", methods=["POST"])
+def admin_login():
+    data = request.get_json() or {}
+    if data.get("password") == ADMIN_PASSWORD:
+        session["admin_logged_in"] = True
+        return jsonify({"ok": True})
+    return jsonify({"ok": False}), 401
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("admin_logged_in", None)
+    return render_template("admin.html")
+
+
+@app.route("/admin/api/save-version", methods=["POST"])
+def admin_save_version():
+    if not _admin_required():
+        return jsonify({"ok": False, "error": "Not authenticated"}), 401
+    data = request.get_json() or {}
+    try:
+        existing = get_local_version()
+        existing.update({
+            "version": data.get("version", existing.get("version", "1.0.0")),
+            "build": int(data.get("build", existing.get("build", 100))),
+            "release_date": data.get("release_date", existing.get("release_date", "")),
+            "channel": data.get("channel", existing.get("channel", "stable")),
+            "download_url": data.get("download_url", existing.get("download_url", "")),
+            "changelog": data.get("changelog", existing.get("changelog", [])),
+        })
+        with open(LOCAL_VERSION_FILE, "w") as f:
+            json.dump(existing, f, indent=2)
+        log_activity(f"version.json updated to v{existing['version']} build {existing['build']}", "SUCCESS")
+        return jsonify({"ok": True, "version": existing})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/admin/api/check-remote-manifest")
+def admin_check_remote_manifest():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    local = get_local_version()
+    remote_url = local.get("update_server", "https://windowzen.macrotechtitan.com/updates/version.json")
+    try:
+        with urllib.request.urlopen(remote_url, timeout=8) as resp:
+            remote = json.loads(resp.read().decode())
+        return jsonify(remote)
+    except Exception as e:
+        return jsonify({"error": f"Could not reach {remote_url}: {e}"})
 
 
 if __name__ == "__main__":

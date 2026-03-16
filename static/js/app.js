@@ -655,17 +655,22 @@ const App = {
 
     showNotification(message, type = 'success') {
         const notif = document.createElement('div');
+        const bg = type === 'success' ? 'var(--accent-green)'
+                 : type === 'info'    ? 'var(--accent-cyan)'
+                 : type === 'warn'    ? 'var(--accent-yellow)'
+                 :                      'var(--accent-red)';
+        const color = (type === 'warn' || type === 'info') ? '#000' : 'white';
         notif.style.cssText = `
             position: fixed; top: 20px; right: 20px; z-index: 10000;
             padding: 12px 20px; border-radius: 8px;
             font-family: 'JetBrains Mono', monospace; font-size: 12px;
-            background: ${type === 'success' ? 'var(--accent-green)' : 'var(--accent-red)'};
-            color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            animation: fadeIn 0.3s ease;
+            background: ${bg}; color: ${color};
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s ease; max-width: 360px;
         `;
         notif.textContent = message;
         document.body.appendChild(notif);
-        setTimeout(() => notif.remove(), 3000);
+        setTimeout(() => notif.remove(), 3500);
     },
 
     formatBytes(bytes) {
@@ -745,11 +750,18 @@ const App = {
     },
 
     async dismissBreak() {
+        await this.dismissBreakReminder();
+    },
+
+    async dismissBreakReminder() {
         try {
             await fetch('/api/wellness/dismiss-break', { method: 'POST' });
             this.breakDismissedUntil = Date.now() + (40 * 60 * 1000);
             const alertEl = document.getElementById('break-alert');
             if (alertEl) alertEl.style.display = 'none';
+            const timerEl = document.getElementById('break-timer');
+            const breakMins = 40;
+            if (timerEl) { timerEl.dataset.seconds = breakMins * 60; timerEl.textContent = `${breakMins}:00`; }
         } catch(e) {}
     },
 
@@ -804,8 +816,26 @@ const App = {
                 body: JSON.stringify({ name, hive, enabled })
             });
             this.showNotification(`Startup item "${name}" ${enabled ? 'enabled' : 'disabled'}`);
+            this.refreshUndoLog();
         } catch(e) {
             this.showNotification('Failed to toggle startup item', 'error');
+        }
+    },
+
+    async undoLastAction() {
+        try {
+            const res = await fetch('/api/undo', { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                this.showNotification(`Undo: ${data.message}`, 'success');
+            } else if (data.status === 'nothing') {
+                this.showNotification('Nothing to undo', 'info');
+            } else {
+                this.showNotification(`Undo: ${data.message}`, 'warn');
+            }
+            this.refreshUndoLog();
+        } catch(e) {
+            this.showNotification('Undo failed', 'error');
         }
     },
 

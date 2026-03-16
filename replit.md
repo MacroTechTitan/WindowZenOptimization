@@ -61,10 +61,22 @@ static/
 - `/app` - Dashboard application
 - `/app/<page>` - Direct page navigation (dashboard, cleaner, help, etc.)
 - `/eula` - Standalone EULA page
+- `/admin` - Password-protected site admin panel (default password: mttadmin2026, set ADMIN_PASSWORD env var to change)
+- `/admin/login` - Admin login endpoint
+- `/admin/logout` - Admin logout
+- `/admin/api/save-version` - Save version.json (admin only)
+- `/admin/api/check-remote-manifest` - Fetch remote update manifest (admin only)
 - `/updates/version.json` - Self-hosted update manifest (used as fallback update server)
 - `/api/updates/check` - Check windowzen.macrotechtitan.com for newer version
 - `/api/updates/apply` - Download and self-patch the installed app (Windows only)
 - `/api/network-fix` - Run netsh winsock reset / ipconfig /flushdns etc.
+- `/api/undo-log` - GET: list of tracked file/startup operations
+- `/api/undo` - POST: revert last undoable action (moves only; deletes are permanent)
+- `/api/large-files/scan` - POST: scan for large files above threshold MB
+- `/api/large-files/delete` - POST: delete selected large files (dry_run supported)
+- `/api/large-files/archive` - POST: archive selected large files to ~/Archive
+- `/api/organize/preview` - POST: preview Downloads rules (archive_old, group_by_type, move_screenshots)
+- `/api/organize/execute` - POST: execute organize actions (dry_run supported)
 - `/api/*` - All API endpoints
 
 ## Key Features

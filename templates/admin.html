@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTT Admin — Site Management</title>
+    <link rel="icon" type="image/png" href="/static/images/mtt-logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-dark: #0a0e1a;
+            --bg-card: #111827;
+            --bg-hover: #1a2235;
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #1e293b;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; }
+
+        /* ── Top bar ── */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 32px; background: var(--bg-card);
+            border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 14px; }
+        .topbar-left img { height: 34px; }
+        .topbar-title { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; letter-spacing: 1px; color: var(--accent-cyan); }
+        .topbar-badge { background: rgba(239,68,68,0.2); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.4); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .topbar a { color: var(--text-secondary); font-size: 13px; text-decoration: none; }
+        .topbar a:hover { color: var(--accent-cyan); }
+
+        /* ── Layout ── */
+        .layout { display: flex; min-height: calc(100vh - 62px); }
+        .sidebar { width: 220px; background: var(--bg-card); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; }
+        .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; color: var(--text-muted); padding: 6px 20px 4px; text-transform: uppercase; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: all 0.15s; }
+        .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .nav-item.active { background: rgba(6,182,212,0.1); color: var(--accent-cyan); border-left: 3px solid var(--accent-cyan); }
+        .nav-item .icon { font-size: 15px; }
+        .main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+
+        /* ── Panels ── */
+        .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; }
+        .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+        .panel-title { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--accent-cyan); }
+        .panel-body { padding: 18px; }
+
+        /* ── Sections ── */
+        .section { display: none; }
+        .section.active { display: block; }
+        h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .page-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+
+        /* ── Steps ── */
+        .steps { list-style: none; counter-reset: step; }
+        .steps li { counter-increment: step; display: flex; gap: 14px; margin-bottom: 18px; }
+        .steps li::before { content: counter(step); background: var(--accent-cyan); color: #000; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; }
+        .step-content { flex: 1; }
+        .step-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+        .step-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+        .code-block { background: #0a0e1a; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--accent-green); margin: 8px 0; white-space: pre-wrap; line-height: 1.7; position: relative; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); color: var(--accent-cyan); padding: 3px 8px; border-radius: 5px; font-size: 10px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+        .copy-btn:hover { background: rgba(6,182,212,0.3); }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; margin-left: 6px; }
+        .tag-green { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .tag-yellow { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+        .tag-blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+        .tag-red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+
+        /* ── Form elements ── */
+        input[type="text"], input[type="number"], textarea, select {
+            background: #0a0e1a; border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text-primary); padding: 8px 12px; font-family: 'JetBrains Mono', monospace;
+            font-size: 12px; width: 100%; outline: none; transition: border 0.2s;
+        }
+        input:focus, textarea:focus { border-color: var(--accent-cyan); }
+        textarea { resize: vertical; }
+        label { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; display: block; }
+        .field { margin-bottom: 14px; }
+        .row { display: flex; gap: 14px; }
+        .row .field { flex: 1; }
+
+        /* ── Buttons ── */
+        .btn { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; transition: all 0.2s; }
+        .btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); color: #000; border: none; }
+        .btn-primary:hover { box-shadow: 0 4px 16px rgba(16,185,129,0.3); color: #000; }
+        .btn-blue { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); color: #fff; border: none; }
+        .btn-red { background: rgba(239,68,68,0.15); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.3); }
+
+        /* ── Info row ── */
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-size: 12px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .info-value { font-size: 12px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; }
+
+        /* ── Alert ── */
+        .alert { padding: 12px 16px; border-radius: 8px; font-size: 12px; font-family: 'JetBrains Mono', monospace; line-height: 1.7; margin-bottom: 16px; }
+        .alert-info { background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.25); color: var(--accent-cyan); }
+        .alert-warn { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); color: var(--accent-yellow); }
+        .alert-success { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); color: var(--accent-green); }
+
+        /* ── Output terminal ── */
+        .terminal { background: #0a0e1a; border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-green); line-height: 1.7; min-height: 80px; max-height: 320px; overflow-y: auto; white-space: pre-wrap; }
+
+        /* ── Login ── */
+        .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 360px; text-align: center; }
+        .login-box img { height: 52px; margin-bottom: 16px; }
+        .login-box h2 { font-family: 'JetBrains Mono', monospace; font-size: 16px; margin-bottom: 6px; color: var(--accent-cyan); }
+        .login-box p { font-size: 12px; color: var(--text-muted); margin-bottom: 24px; }
+        .login-box input { margin-bottom: 14px; text-align: center; letter-spacing: 2px; }
+        .login-error { color: var(--accent-red); font-size: 12px; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; display: none; }
+    </style>
+</head>
+<body>
+
+{% if not session.get('admin_logged_in') %}
+<!-- ── LOGIN ── -->
+<div class="login-wrap">
+    <div class="login-box">
+        <img src="/static/images/mtt-logo.png" alt="MTT Logo">
+        <h2>SITE ADMIN</h2>
+        <p>Macro Tech Titan — MTT Windows Infinite Optimizer</p>
+        <div class="login-error" id="login-error">&#x274C; Incorrect password</div>
+        <input type="password" id="admin-pass" placeholder="Admin password" onkeydown="if(event.key==='Enter')adminLogin()">
+        <button class="btn btn-primary" style="width:100%; margin-top:4px;" onclick="adminLogin()">&#x1F511; Sign In</button>
+    </div>
+</div>
+<script>
+async function adminLogin() {
+    const pass = document.getElementById('admin-pass').value;
+    const res = await fetch('/admin/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password: pass}) });
+    const data = await res.json();
+    if (data.ok) { location.reload(); }
+    else { document.getElementById('login-error').style.display = 'block'; }
+}
+</script>
+
+{% else %}
+<!-- ── ADMIN DASHBOARD ── -->
+<div class="topbar">
+    <div class="topbar-left">
+        <img src="/static/images/mtt-logo.png" alt="MTT">
+        <span class="topbar-title">MTT SITE ADMIN</span>
+        <span class="topbar-badge">ADMIN</span>
+    </div>
+    <div class="topbar-right">
+        <a href="/">&#x1F3E0; Homepage</a>
+        <a href="/app">&#x1F4BB; Dashboard</a>
+        <a href="/admin/logout" style="color: var(--accent-red);">&#x1F6AA; Sign Out</a>
+    </div>
+</div>
+
+<div class="layout">
+    <div class="sidebar">
+        <div class="sidebar-label">Management</div>
+        <div class="nav-item active" onclick="showSection('updates')" id="nav-updates">
+            <span class="icon">&#x1F504;</span> Release Updates
+        </div>
+        <div class="nav-item" onclick="showSection('version')" id="nav-version">
+            <span class="icon">&#x1F4CB;</span> Version Manager
+        </div>
+        <div class="sidebar-label">Site</div>
+        <div class="nav-item" onclick="showSection('links')" id="nav-links">
+            <span class="icon">&#x1F517;</span> Quick Links
+        </div>
+        <div class="nav-item" onclick="showSection('manifest')" id="nav-manifest">
+            <span class="icon">&#x1F4C4;</span> Update Manifest
+        </div>
+    </div>
+
+    <div class="main">
+
+        <!-- ══ RELEASE UPDATES ══ -->
+        <div class="section active" id="section-updates">
+            <h2>&#x1F504; How to Release an Update</h2>
+            <p class="page-sub">Follow these steps each time you push a new version to users.</p>
+
+            <div class="alert alert-info">
+                &#x1F6C8; The installed Windows app checks <strong>windowzen.macrotechtitan.com/updates/version.json</strong> when users click "Check for Updates". Uploading two files to that server is all it takes to push an update — no installer rebuild needed.
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x1F527; Step-by-Step Release Process</span></div>
+                <div class="panel-body">
+                    <ol class="steps">
+                        <li>
+                            <div class="step-content">
+                                <div class="step-title">Make your code changes in Replit</div>
+                                <div class="step-desc">Edit <code>app.py</code>, <code>templates/</code>, or <code>static/</code> as needed. Test everything using the preview pane before releasing.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="step-content">
+                                <div class="step-title">Bump the version in Version Manager <span class="tag tag-yellow">This page</span></div>
+                                <div class="step-desc">Go to <strong>Version Manager</strong> in the left sidebar. Increment the <strong>build number</strong> (e.g. 100 → 101) and add changelog entries describing the changes. Click <strong>Save &amp; Publish</strong>.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="step-content">
+                                <div class="step-title">Download the project from Replit</div>
+                                <div class="step-desc">Click the <strong>⋯ menu</strong> in the Replit file tree → <strong>Download as .zip</strong>. Save it to your PC.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="step-content">
+                                <div class="step-title">Create the update package (latest.zip)</div>
+                                <div class="step-desc">From the downloaded project, create a new zip containing only these items — this is what users download (not the full installer):</div>
+                                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>latest.zip contents:
+├── app.py
+├── version.json
+├── templates/
+│   ├── dashboard.html
+│   ├── landing.html
+│   └── eula.html
+└── static/
+    ├── css/style.css
+    ├── js/app.js
+    └── images/</div>
+                                <div class="step-desc" style="margin-top:8px;">On Windows, select those files/folders → right-click → <strong>Send to → Compressed (zipped) folder</strong>. Name it <code>latest.zip</code>.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="step-content">
+                                <div class="step-title">Upload to windowzen.macrotechtitan.com/updates/</div>
+                                <div class="step-desc">Upload exactly these two files to your update server at the path <code>/updates/</code>:</div>
+                                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>windowzen.macrotechtitan.com/updates/
+├── version.json    ← updated version manifest
+└── latest.zip      ← the update package</div>
+                                <div class="step-desc" style="margin-top:8px;">If using cPanel/FTP: upload to the <code>public_html/updates/</code> folder. If using Cloudflare Pages or similar: add to the repo and push.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="step-content">
+                                <div class="step-title">Verify the update server <span class="tag tag-green">Test</span></div>
+                                <div class="step-desc">Open a browser and check these URLs return valid responses:</div>
+                                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>https://windowzen.macrotechtitan.com/updates/version.json
+https://windowzen.macrotechtitan.com/updates/latest.zip</div>
+                                <div class="step-desc" style="margin-top:8px;">The <code>version.json</code> should return JSON with the new build number. The <code>latest.zip</code> should download.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="step-content">
+                                <div class="step-title">Users receive the update automatically <span class="tag tag-green">Done</span></div>
+                                <div class="step-desc">When users click <strong>Settings → Check for Updates</strong> in the installed app, it will detect the higher build number, show the changelog, and offer the <strong>Download &amp; Install</strong> button. The app downloads <code>latest.zip</code>, replaces the files, and restarts — all without them needing to run the installer again.</div>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x26A0; Important Notes</span></div>
+                <div class="panel-body" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.9;">
+                    <div>&#x2022; Always increment the <strong style="color: var(--text-primary);">build</strong> number in <code>version.json</code> — the app compares build numbers, not version strings</div>
+                    <div>&#x2022; The <code>latest.zip</code> should <strong style="color: var(--text-primary);">not</strong> include <code>settings.json</code> or <code>WindowsInstaller/</code> — preserve user settings</div>
+                    <div>&#x2022; If you add new Python packages, users will need to reinstall via the full installer — pip packages are bundled by PyInstaller at build time</div>
+                    <div>&#x2022; Breaking changes to <code>app.py</code> (new routes, new imports) work fine — only new <em>pip packages</em> require a full installer rebuild</div>
+                    <div>&#x2022; The update script runs as the current user — no admin elevation is needed for app file replacement</div>
+                    <div>&#x2022; Test updates on a clean install before publishing widely</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ VERSION MANAGER ══ -->
+        <div class="section" id="section-version">
+            <h2>&#x1F4CB; Version Manager</h2>
+            <p class="page-sub">Edit version.json and publish it to the update server.</p>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">&#x1F4CC; Current version.json</span>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn" onclick="loadVersion()">&#x1F504; Reload</button>
+                        <button class="btn btn-primary" onclick="saveVersion()">&#x1F4BE; Save &amp; Publish</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="field">
+                            <label>Version (semver)</label>
+                            <input type="text" id="v-version" placeholder="1.0.0">
+                        </div>
+                        <div class="field">
+                            <label>Build Number <span class="tag tag-yellow">Increment this for each release</span></label>
+                            <input type="number" id="v-build" placeholder="100">
+                        </div>
+                        <div class="field">
+                            <label>Release Date</label>
+                            <input type="text" id="v-date" placeholder="2026-02-25">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="field">
+                            <label>Channel</label>
+                            <select id="v-channel">
+                                <option value="stable">stable</option>
+                                <option value="beta">beta</option>
+                                <option value="dev">dev</option>
+                            </select>
+                        </div>
+                        <div class="field" style="flex:3;">
+                            <label>Download URL (latest.zip on update server)</label>
+                            <input type="text" id="v-download-url" placeholder="https://windowzen.macrotechtitan.com/updates/latest.zip">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Changelog entries <span style="color:var(--text-muted);">(one per line)</span></label>
+                        <textarea id="v-changelog" rows="8" placeholder="New feature added&#10;Bug fix for X&#10;Performance improvement"></textarea>
+                    </div>
+                    <div id="version-save-result" class="terminal" style="display:none; margin-top:12px;"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x1F4C4; Raw version.json Preview</span></div>
+                <div class="panel-body">
+                    <div class="terminal" id="version-raw-preview">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ QUICK LINKS ══ -->
+        <div class="section" id="section-links">
+            <h2>&#x1F517; Quick Links</h2>
+            <p class="page-sub">Key URLs for managing the MTT Infinite Optimizer ecosystem.</p>
+
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x1F310; Site &amp; App URLs</span></div>
+                <div class="panel-body">
+                    {% set links = [
+                        ('Homepage', 'https://windows.macrotechtitan.com', 'Public landing page with download button', 'green'),
+                        ('Demo App', 'https://windows.macrotechtitan.com/app', 'Live web demo of the dashboard', 'green'),
+                        ('EULA', 'https://windows.macrotechtitan.com/eula', 'End User License Agreement page', 'blue'),
+                        ('Update Manifest', 'https://windows.macrotechtitan.com/updates/version.json', 'Self-hosted update manifest (fallback)', 'blue'),
+                        ('Legal Policy', 'https://legal.macrotechtitan.com', 'Legal and privacy policy', 'blue'),
+                        ('Main Site', 'https://macrotechtitan.com', 'Macro Tech Titan company homepage', 'blue'),
+                        ('Update Server', 'https://windowzen.macrotechtitan.com/updates/version.json', 'Primary update manifest (windowzen)', 'yellow'),
+                        ('Update Package', 'https://windowzen.macrotechtitan.com/updates/latest.zip', 'Latest update zip download', 'yellow'),
+                        ('Installer Download', 'https://windows.macrotechtitan.com/static/downloads/MTT_InfiniteOptimizer_Setup_v1.0.0.zip', 'Windows installer (v1.0.0)', 'green'),
+                    ] %}
+                    {% for name, url, desc, color in links %}
+                    <div class="info-row">
+                        <span class="info-label">{{ name }} <span class="tag tag-{{ color }}">{{ color }}</span></span>
+                        <span class="info-value" style="text-align:right;">
+                            <a href="{{ url }}" target="_blank" style="color: var(--accent-cyan); text-decoration:none; font-size:11px;">{{ url }}</a>
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ UPDATE MANIFEST ══ -->
+        <div class="section" id="section-manifest">
+            <h2>&#x1F4C4; Live Update Manifest</h2>
+            <p class="page-sub">What the installed app receives when it checks for updates.</p>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">&#x1F4E1; /updates/version.json (self-hosted)</span>
+                    <button class="btn" onclick="loadManifest('local')">&#x1F504; Refresh</button>
+                </div>
+                <div class="panel-body">
+                    <div class="terminal" id="manifest-local">Loading...</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">&#x1F30D; windowzen.macrotechtitan.com/updates/version.json</span>
+                    <button class="btn" onclick="loadManifest('remote')">&#x1F504; Check Remote</button>
+                </div>
+                <div class="panel-body">
+                    <div class="alert alert-warn">&#x26A0; This fetches from the external update server. It will show an error until you upload <code>version.json</code> there.</div>
+                    <div class="terminal" id="manifest-remote">Click "Check Remote" to fetch the live manifest from windowzen.macrotechtitan.com.</div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    document.getElementById('nav-' + name).classList.add('active');
+    if (name === 'version') { loadVersion(); }
+    if (name === 'manifest') { loadManifest('local'); }
+}
+
+function copyCode(btn) {
+    const block = btn.parentElement;
+    const text = block.textContent.replace('Copy', '').trim();
+    navigator.clipboard.writeText(text).then(() => { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 1500); });
+}
+
+/* ── Version Manager ── */
+async function loadVersion() {
+    const res = await fetch('/updates/version.json');
+    const data = await res.json();
+    document.getElementById('v-version').value = data.version || '';
+    document.getElementById('v-build').value = data.build || '';
+    document.getElementById('v-date').value = data.release_date || '';
+    document.getElementById('v-channel').value = data.channel || 'stable';
+    document.getElementById('v-download-url').value = data.download_url || '';
+    document.getElementById('v-changelog').value = (data.changelog || []).join('\n');
+    document.getElementById('version-raw-preview').textContent = JSON.stringify(data, null, 2);
+}
+
+async function saveVersion() {
+    const changelog = document.getElementById('v-changelog').value
+        .split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const payload = {
+        version: document.getElementById('v-version').value.trim(),
+        build: parseInt(document.getElementById('v-build').value),
+        release_date: document.getElementById('v-date').value.trim(),
+        channel: document.getElementById('v-channel').value,
+        download_url: document.getElementById('v-download-url').value.trim(),
+        changelog
+    };
+    const out = document.getElementById('version-save-result');
+    out.style.display = 'block';
+    out.textContent = 'Saving version.json...\n';
+    try {
+        const res = await fetch('/admin/api/save-version', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        out.textContent = data.ok
+            ? `✅ Saved successfully!\n\nversion.json updated:\n${JSON.stringify(payload, null, 2)}\n\nNext: download the project zip, create latest.zip, and upload both files to:\nwindowzen.macrotechtitan.com/updates/`
+            : `❌ Error: ${data.error}`;
+        document.getElementById('version-raw-preview').textContent = JSON.stringify(payload, null, 2);
+    } catch(e) {
+        out.textContent = '❌ Save failed: ' + e.message;
+    }
+}
+
+/* ── Manifests ── */
+async function loadManifest(which) {
+    const el = document.getElementById('manifest-' + which);
+    el.textContent = 'Fetching...';
+    try {
+        const url = which === 'local'
+            ? '/updates/version.json'
+            : '/admin/api/check-remote-manifest';
+        const res = await fetch(url);
+        const data = await res.json();
+        el.textContent = JSON.stringify(data, null, 2);
+    } catch(e) {
+        el.textContent = '❌ Error: ' + e.message;
+    }
+}
+
+/* Auto-load version on page load */
+loadVersion();
+</script>
+{% endif %}
+</body>
+</html>

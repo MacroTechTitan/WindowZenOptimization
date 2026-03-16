@@ -409,6 +409,7 @@
                 <div class="panel" style="margin-top: 20px;">
                     <div class="panel-header">
                         <span class="panel-title">&#x1F4DC; Undo / Restore Log</span>
+                        <button class="btn" onclick="App.undoLastAction()">&#x21A9; Undo Last Action</button>
                     </div>
                     <div class="panel-body">
                         <div id="speedup-undo-log">
@@ -483,7 +484,7 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px; text-align: center;">
-                            <button class="btn btn-success" onclick="App.fixRegistry()">&#x1F527; Fix All Issues</button>
+                            <button class="btn btn-success" onclick="if(confirm('Fix all detected registry issues? This will modify the Windows Registry — make sure you have reviewed the entries above.')) App.fixRegistry()">&#x1F527; Fix All Issues <span style="background: var(--accent-yellow); color: #000; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; margin-left: 4px;">ADVANCED</span></button>
                         </div>
                     </div>
                 </div>
@@ -1139,8 +1140,12 @@
                 <div class="panel" style="margin-top: 20px;">
                     <div class="panel-header">
                         <span class="panel-title">&#x1F4DC; Undo / Restore Log</span>
+                        <button class="btn" onclick="App.undoLastAction()">&#x21A9; Undo Last Action</button>
                     </div>
                     <div class="panel-body">
+                        <div style="margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);">
+                            Move operations can be undone automatically. Delete operations cannot be undone — the file is permanently removed.
+                        </div>
                         <div id="organizer-undo-log">
                             <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
                                 No actions recorded yet

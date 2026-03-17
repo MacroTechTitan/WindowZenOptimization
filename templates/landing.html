@@ -819,6 +819,58 @@
             font-size: 20px;
         }
 
+        /* ── Email Gate Modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+            z-index: 9999; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 40px 36px; max-width: 460px; width: 100%;
+            position: relative; box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+            animation: modalIn 0.25s ease;
+        }
+        @keyframes modalIn {
+            from { opacity:0; transform:translateY(-18px) scale(0.97); }
+            to   { opacity:1; transform:translateY(0)     scale(1);    }
+        }
+        .modal-card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            border-radius:20px 20px 0 0;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan), var(--accent-purple));
+        }
+        .modal-close {
+            position:absolute; top:14px; right:16px; background:none; border:none;
+            color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1; padding:0;
+        }
+        .modal-close:hover { color:var(--text-primary); }
+        .modal-icon { font-size:44px; margin-bottom:12px; text-align:center; }
+        .modal-title { font-size:22px; font-weight:800; margin-bottom:8px; }
+        .modal-sub { font-size:14px; color:var(--text-secondary); margin-bottom:24px; line-height:1.6; }
+        .modal-input-row { display:flex; gap:10px; }
+        .modal-input {
+            flex:1; background:#0a0e1a; border:1px solid var(--border);
+            border-radius:10px; padding:13px 16px; color:var(--text-primary);
+            font-size:14px; outline:none; transition:border 0.2s; font-family:inherit;
+        }
+        .modal-input:focus { border-color:var(--accent-cyan); }
+        .modal-input::placeholder { color:var(--text-muted); }
+        .modal-submit-btn {
+            background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan));
+            color:#000; border:none; border-radius:10px; padding:13px 20px;
+            font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap; transition:opacity 0.2s;
+        }
+        .modal-submit-btn:hover { opacity:0.85; }
+        .modal-submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
+        .modal-error { color:var(--accent-red); font-size:13px; margin-top:10px; display:none; font-family:'JetBrains Mono',monospace; }
+        .modal-success { display:none; text-align:center; }
+        .modal-success-icon { font-size:52px; margin-bottom:12px; animation:popIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes popIn { from{transform:scale(0);opacity:0;} to{transform:scale(1);opacity:1;} }
+        .modal-success h3 { font-size:20px; font-weight:800; margin-bottom:8px; }
+        .modal-success p { font-size:13px; color:var(--text-secondary); line-height:1.7; }
+
     </style>
 </head>
 <body>
@@ -833,7 +885,7 @@
             <a href="#features" class="nav-link">Features</a>
             <a href="#showcase" class="nav-link">Showcase</a>
             <a href="#tech" class="nav-link">Tech Stack</a>
-            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip" class="nav-btn-download" onclick="trackDownload(this)" download>&#x2B07; Download Installer</a>
+            <a href="#" class="nav-btn-download" onclick="openDownloadModal(event)">&#x2B07; Download Installer</a>
             <a href="/app" class="nav-btn">Launch Demo</a>
         </div>
     </nav>
@@ -848,7 +900,7 @@
                 A comprehensive Windows system utility with real-time monitoring, intelligent cleanup, cybersecurity scanning, and wellness tracking. All in a sleek terminal-style interface.
             </p>
             <div class="hero-actions">
-                <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip" class="btn-hero btn-hero-download" onclick="trackDownload(this)" download>
+                <a href="#" class="btn-hero btn-hero-download" onclick="openDownloadModal(event)">
                     &#x2B07; Download Windows Installer
                 </a>
                 <a href="/app" class="btn-hero btn-hero-primary">
@@ -1189,7 +1241,7 @@
             <h3>MTT Windows Infinite Optimizer Is Built for the AI Era</h3>
             <p>As AI becomes part of everyday workflows, keeping your system optimized is no longer optional. MTT Windows Infinite Optimizer automates the cleanup process — removing AI caches, temp data, startup bloat, and large file accumulation — so your machine stays fast, clean, and ready for anything.</p>
             <div class="hero-actions" style="justify-content: center; flex-wrap: wrap;">
-                <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip" class="btn-hero btn-hero-download" onclick="trackDownload(this)" download>
+                <a href="#" class="btn-hero btn-hero-download" onclick="openDownloadModal(event)">
                     &#x2B07; Download Now — It&rsquo;s Free
                 </a>
                 <a href="/app" class="btn-hero btn-hero-primary">
@@ -1299,7 +1351,7 @@
         <h2 class="cta-title">Ready to Optimize?</h2>
         <p class="cta-desc">Download the Windows installer and take control of your system performance, security, and wellness.</p>
         <div class="hero-actions">
-            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip" class="btn-hero btn-hero-download" onclick="trackDownload(this)" download>
+            <a href="#" class="btn-hero btn-hero-download" onclick="openDownloadModal(event)">
                 &#x2B07; Download Windows Installer
             </a>
             <a href="/app" class="btn-hero btn-hero-primary">
@@ -1343,14 +1395,116 @@
             } catch (e) {}
         }
 
-        async function trackDownload(el) {
-            try {
-                await fetch('/api/counters/download', { method: 'POST' });
-                await loadCounters();
-            } catch (e) {}
+        loadCounters();
+
+        /* ── Download modal ── */
+        function openDownloadModal(event) {
+            if (event) event.preventDefault();
+            const overlay = document.getElementById('download-modal');
+            overlay.classList.add('open');
+            setTimeout(() => {
+                const inp = document.getElementById('modal-email-input');
+                if (inp) inp.focus();
+            }, 80);
         }
 
-        loadCounters();
+        function closeDownloadModal() {
+            document.getElementById('download-modal').classList.remove('open');
+            resetModal();
+        }
+
+        function resetModal() {
+            document.getElementById('modal-form-state').style.display = '';
+            document.getElementById('modal-success-state').style.display = 'none';
+            const errEl = document.getElementById('modal-error');
+            if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+            const inp = document.getElementById('modal-email-input');
+            if (inp) inp.value = '';
+            const btn = document.getElementById('modal-submit-btn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Send My Link'; }
+        }
+
+        async function submitDownloadEmail() {
+            const email = (document.getElementById('modal-email-input').value || '').trim();
+            const errEl = document.getElementById('modal-error');
+            const btn   = document.getElementById('modal-submit-btn');
+            errEl.style.display = 'none';
+            if (!email || !email.includes('@') || !email.split('@')[1]?.includes('.')) {
+                errEl.textContent = '⚠ Please enter a valid email address.';
+                errEl.style.display = 'block';
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            try {
+                const res  = await fetch('/api/register-download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    document.getElementById('modal-form-state').style.display = 'none';
+                    document.getElementById('modal-success-email').textContent = email;
+                    document.getElementById('modal-success-state').style.display = '';
+                } else {
+                    errEl.textContent = '❌ ' + (data.error || 'Something went wrong. Try again.');
+                    errEl.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Send My Link';
+                }
+            } catch (e) {
+                errEl.textContent = '❌ Network error. Please try again.';
+                errEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Send My Link';
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'download-modal') closeDownloadModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeDownloadModal();
+        });
     </script>
+
+    <!-- ── Email Gate Modal ── -->
+    <div class="modal-overlay" id="download-modal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeDownloadModal()" aria-label="Close">&times;</button>
+
+            <div id="modal-form-state">
+                <div class="modal-icon">⬇️</div>
+                <div class="modal-title">Get Your Download Link</div>
+                <p class="modal-sub">Enter your email and we'll send you a free download link for <strong>MTT Windows Infinite Optimizer v1.1.0</strong>. No spam — just your link.</p>
+                <div class="modal-input-row">
+                    <input type="email"
+                           class="modal-input"
+                           id="modal-email-input"
+                           placeholder="your@email.com"
+                           onkeydown="if(event.key==='Enter')submitDownloadEmail()">
+                    <button class="modal-submit-btn" id="modal-submit-btn" onclick="submitDownloadEmail()">Send My Link</button>
+                </div>
+                <div class="modal-error" id="modal-error"></div>
+                <p style="font-size:11px;color:var(--text-muted);margin-top:14px;font-family:'JetBrains Mono',monospace;">
+                    Free forever · Windows 10/11 · No account required
+                </p>
+            </div>
+
+            <div class="modal-success" id="modal-success-state">
+                <div class="modal-success-icon">✅</div>
+                <h3>Check Your Inbox!</h3>
+                <p>We sent a verification link to<br>
+                   <strong style="color:var(--accent-cyan)" id="modal-success-email"></strong><br><br>
+                   Click the link in that email to verify and unlock your download. Check your spam folder if you don't see it within a minute.
+                </p>
+                <button onclick="closeDownloadModal()" style="margin-top:20px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);color:var(--accent-cyan);padding:10px 24px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
+                    Got it ✓
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

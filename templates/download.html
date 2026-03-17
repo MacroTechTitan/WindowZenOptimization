@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download — MTT Windows Infinite Optimizer</title>
+    <link rel="icon" type="image/png" href="/static/images/mtt-logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-dark: #0a0e1a;
+            --bg-card: #111827;
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #1e293b;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 30% 40%, rgba(16,185,129,0.07) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(139,92,246,0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .card {
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 48px 44px;
+            max-width: 540px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 20px 20px 0 0;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan), var(--accent-purple));
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+        .logo img { height: 36px; }
+        .logo-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .check-icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+            animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        h1 {
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+        .email-badge {
+            display: inline-block;
+            background: rgba(6,182,212,0.1);
+            border: 1px solid rgba(6,182,212,0.3);
+            border-radius: 100px;
+            padding: 5px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent-cyan);
+            margin: 14px 0 28px;
+        }
+        .download-btn {
+            display: block;
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: white;
+            text-decoration: none;
+            padding: 18px 32px;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            margin-bottom: 14px;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+        .download-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .version-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 28px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 24px 0;
+            text-align: left;
+        }
+        .info-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+        .info-item .info-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .info-item .info-val {
+            font-size: 13px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .back-link {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+        .back-link:hover { color: var(--accent-cyan); }
+
+        /* Error state */
+        .error-icon { font-size: 52px; margin-bottom: 16px; }
+        .error-msg {
+            color: var(--accent-red);
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .btn-outline {
+            display: inline-block;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            text-decoration: none;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-outline:hover { background: rgba(6,182,212,0.1); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        {% if error %}
+            <div class="logo">
+                <img src="/static/images/mtt-logo.png" alt="MTT">
+                <span class="logo-name">Infinite Optimizer</span>
+            </div>
+            <div class="error-icon">⚠️</div>
+            <h1>Link Invalid</h1>
+            <p class="error-msg">{{ error }}</p>
+            <a href="/" class="btn-outline">← Back to Homepage</a>
+        {% else %}
+            <div class="logo">
+                <img src="/static/images/mtt-logo.png" alt="MTT">
+                <span class="logo-name">Infinite Optimizer</span>
+            </div>
+            <div class="check-icon">✅</div>
+            <h1>You're Verified!</h1>
+            <p class="subtitle">Your email has been confirmed. Your download is ready.</p>
+            {% if email %}
+            <div class="email-badge">{{ email }}</div>
+            {% endif %}
+
+            <a href="/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip"
+               class="download-btn"
+               download>
+                ⬇ Download MTT Infinite Optimizer v1.1.0
+            </a>
+            <div class="version-tag">Windows 10/11 · 64-bit · Free</div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Version</div>
+                    <div class="info-val">v1.1.0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Build</div>
+                    <div class="info-val">110</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Platform</div>
+                    <div class="info-val">Windows 10/11</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Size</div>
+                    <div class="info-val">~25 MB</div>
+                </div>
+            </div>
+
+            <a href="/" class="back-link">← Back to homepage</a>
+        {% endif %}
+    </div>
+</body>
+</html>

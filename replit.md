@@ -57,7 +57,11 @@ static/
 ```
 
 ## Routes
-- `/` - Landing page (public marketing page)
+- `/` - Landing page (public marketing page) — download buttons open email gate modal
+- `/api/register-download` - POST: register email, send Resend verification email
+- `/verify-email/<token>` - GET: verify token → redirect to /download/<token>
+- `/download/<token>` - GET: verified download page (shows installer link)
+- `/admin/api/registrations` - GET: list all email registrations (admin only)
 - `/app` - Dashboard application
 - `/app/<page>` - Direct page navigation (dashboard, cleaner, help, etc.)
 - `/eula` - Standalone EULA page

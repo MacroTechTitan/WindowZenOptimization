@@ -175,6 +175,9 @@ async function adminLogin() {
         <div class="nav-item" onclick="showSection('analytics')" id="nav-analytics">
             <span class="icon">&#x1F4CA;</span> Analytics
         </div>
+        <div class="nav-item" onclick="showSection('registrations')" id="nav-registrations">
+            <span class="icon">&#x1F4E7;</span> Registrations
+        </div>
         <div class="nav-item" onclick="showSection('links')" id="nav-links">
             <span class="icon">&#x1F517;</span> Quick Links
         </div>
@@ -380,6 +383,50 @@ https://windowzen.macrotechtitan.com/updates/latest.zip</div>
             </div>
         </div>
 
+        <!-- ══ REGISTRATIONS ══ -->
+        <div class="section" id="section-registrations">
+            <h2>&#x1F4E7; Email Registrations</h2>
+            <p class="page-sub">Users who requested a download link via the landing page email gate.</p>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">&#x1F4CA; Summary</span>
+                    <button class="btn" onclick="loadRegistrations()">&#x1F504; Refresh</button>
+                </div>
+                <div class="panel-body">
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
+                        <div style="background:#0a0e1a;border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;">
+                            <div style="font-size:34px;font-weight:700;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;" id="reg-total">–</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-family:'JetBrains Mono',monospace;">TOTAL REGISTERED</div>
+                        </div>
+                        <div style="background:#0a0e1a;border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;">
+                            <div style="font-size:34px;font-weight:700;color:var(--accent-green);font-family:'JetBrains Mono',monospace;" id="reg-verified">–</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-family:'JetBrains Mono',monospace;">VERIFIED</div>
+                        </div>
+                        <div style="background:#0a0e1a;border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;">
+                            <div style="font-size:34px;font-weight:700;color:var(--accent-yellow);font-family:'JetBrains Mono',monospace;" id="reg-pending">–</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-family:'JetBrains Mono',monospace;">PENDING</div>
+                        </div>
+                    </div>
+                    <div id="reg-table-wrap" style="overflow-x:auto;">
+                        <div class="terminal" style="min-height:60px;" id="reg-loading">Loading registrations…</div>
+                        <table id="reg-table" style="display:none;width:100%;border-collapse:collapse;font-size:12px;font-family:'JetBrains Mono',monospace;">
+                            <thead>
+                                <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);">
+                                    <th style="text-align:left;padding:8px 10px;">Email</th>
+                                    <th style="text-align:center;padding:8px 10px;">Status</th>
+                                    <th style="text-align:left;padding:8px 10px;">Registered</th>
+                                    <th style="text-align:left;padding:8px 10px;">Verified</th>
+                                    <th style="text-align:left;padding:8px 10px;">IP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reg-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="section" id="section-links">
             <h2>&#x1F517; Quick Links</h2>
             <p class="page-sub">Key URLs for managing the MTT Infinite Optimizer ecosystem.</p>
@@ -446,9 +493,10 @@ function showSection(name) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('section-' + name).classList.add('active');
     document.getElementById('nav-' + name).classList.add('active');
-    if (name === 'version')   { loadVersion(); }
-    if (name === 'manifest')  { loadManifest('local'); }
-    if (name === 'analytics') { loadAdminCounters(); }
+    if (name === 'version')       { loadVersion(); }
+    if (name === 'manifest')      { loadManifest('local'); }
+    if (name === 'analytics')     { loadAdminCounters(); }
+    if (name === 'registrations') { loadRegistrations(); }
 }
 
 function copyCode(btn) {
@@ -530,6 +578,47 @@ async function loadAdminCounters() {
     } catch(e) {
         const raw = document.getElementById('admin-counters-raw');
         if (raw) raw.textContent = '❌ Error: ' + e.message;
+    }
+}
+
+/* ── Registrations ── */
+async function loadRegistrations() {
+    const loading = document.getElementById('reg-loading');
+    const table   = document.getElementById('reg-table');
+    const tbody   = document.getElementById('reg-tbody');
+    loading.style.display = '';
+    table.style.display   = 'none';
+    try {
+        const res  = await fetch('/admin/api/registrations');
+        const data = await res.json();
+        if (!data.ok) { loading.textContent = '❌ Not authenticated'; return; }
+        document.getElementById('reg-total').textContent    = data.total;
+        document.getElementById('reg-verified').textContent = data.verified;
+        document.getElementById('reg-pending').textContent  = data.total - data.verified;
+        tbody.innerHTML = '';
+        if (data.registrations.length === 0) {
+            loading.textContent = 'No registrations yet.';
+            return;
+        }
+        data.registrations.forEach(r => {
+            const fmtDate = s => s ? s.replace('T',' ').slice(0,16) + ' UTC' : '—';
+            const status  = r.verified
+                ? '<span style="background:rgba(16,185,129,0.15);color:#10b981;border-radius:20px;padding:2px 10px;">✓ verified</span>'
+                : '<span style="background:rgba(245,158,11,0.15);color:#f59e0b;border-radius:20px;padding:2px 10px;">⏳ pending</span>';
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--border)';
+            tr.innerHTML = `
+                <td style="padding:9px 10px;color:var(--text-primary);">${r.email}</td>
+                <td style="padding:9px 10px;text-align:center;">${status}</td>
+                <td style="padding:9px 10px;color:var(--text-secondary);">${fmtDate(r.registered_at)}</td>
+                <td style="padding:9px 10px;color:var(--text-secondary);">${fmtDate(r.verified_at)}</td>
+                <td style="padding:9px 10px;color:var(--text-muted);">${r.ip}</td>`;
+            tbody.appendChild(tr);
+        });
+        loading.style.display = 'none';
+        table.style.display   = '';
+    } catch(e) {
+        loading.textContent = '❌ Error: ' + e.message;
     }
 }
 

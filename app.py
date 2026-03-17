@@ -3,6 +3,7 @@ import sys
 import time
 import json
 import glob
+import uuid
 import socket
 import hashlib
 import threading
@@ -11,8 +12,10 @@ import shutil
 import psutil
 import subprocess
 import urllib.request
+import urllib.error
+import resend
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, request, session
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -23,10 +26,112 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 IS_WINDOWS = platform.system() == "Windows"
 SETTINGS_FILE = "settings.json"
 ANALYTICS_FILE = "analytics.json"
+REGISTRATIONS_FILE = "registrations.json"
+SITE_URL = os.environ.get("SITE_URL", "https://windows.macrotechtitan.com")
 _analytics_lock = threading.Lock()
+_reg_lock = threading.Lock()
 activity_log = []
 LOG_MAX = 200
 scheduler = BackgroundScheduler()
+
+
+# ─── Registration helpers ──────────────────────────────────────
+def load_registrations():
+    if os.path.exists(REGISTRATIONS_FILE):
+        try:
+            with open(REGISTRATIONS_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_registrations(data):
+    try:
+        with open(REGISTRATIONS_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
+def get_resend_credentials():
+    hostname = os.environ.get("REPLIT_CONNECTORS_HOSTNAME")
+    repl_identity = os.environ.get("REPL_IDENTITY")
+    web_repl_renewal = os.environ.get("WEB_REPL_RENEWAL")
+    if not hostname:
+        return None
+    if repl_identity:
+        token = "repl " + repl_identity
+    elif web_repl_renewal:
+        token = "depl " + web_repl_renewal
+    else:
+        return None
+    try:
+        req = urllib.request.Request(
+            f"https://{hostname}/api/v2/connection?include_secrets=true&connector_names=resend",
+            headers={"Accept": "application/json", "X-Replit-Token": token},
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+        items = data.get("items", [])
+        if not items:
+            return None
+        settings = items[0].get("settings", {})
+        return {
+            "api_key": settings.get("api_key"),
+            "from_email": settings.get("from_email") or "noreply@macrotechtitan.com",
+        }
+    except Exception as e:
+        log_activity(f"Resend credentials error: {e}", "ERROR")
+        return None
+
+
+def send_verification_email(to_email, token):
+    creds = get_resend_credentials()
+    if not creds or not creds.get("api_key"):
+        log_activity(f"Email not sent (no Resend creds) for {to_email}", "WARN")
+        return False
+    verify_url = f"{SITE_URL}/verify-email/{token}"
+    from_addr = f"MTT Infinite Optimizer <{creds['from_email']}>"
+    html_body = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+body{{font-family:Inter,Arial,sans-serif;background:#0a0e1a;color:#e2e8f0;margin:0;padding:0}}
+.wrap{{max-width:520px;margin:40px auto;background:#111827;border:1px solid #1e293b;border-radius:16px;overflow:hidden}}
+.hdr{{background:linear-gradient(135deg,#06b6d4,#8b5cf6);padding:32px;text-align:center}}
+.hdr h1{{color:#fff;font-size:20px;margin:0;letter-spacing:1px}}
+.hdr p{{color:rgba(255,255,255,.75);font-size:12px;margin:6px 0 0}}
+.body{{padding:36px 32px}}
+.body p{{color:#94a3b8;font-size:15px;line-height:1.7;margin:0 0 20px}}
+.btn{{display:block;background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;text-decoration:none;text-align:center;padding:16px 32px;border-radius:10px;font-size:16px;font-weight:700;margin:24px 0}}
+.box{{background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;font-family:monospace;font-size:12px;color:#64748b;word-break:break-all}}
+.foot{{padding:20px 32px;border-top:1px solid #1e293b;font-size:12px;color:#475569;text-align:center}}
+</style></head><body>
+<div class="wrap">
+  <div class="hdr"><h1>⚡ MTT Infinite Optimizer</h1><p>by Macro Tech Titan</p></div>
+  <div class="body">
+    <p>Thanks for your interest in <strong style="color:#e2e8f0">MTT Windows Infinite Optimizer v1.1.0</strong>!
+    Click the button below to verify your email and unlock your free download link.</p>
+    <a href="{verify_url}" class="btn">✅ Verify Email &amp; Get Download Link</a>
+    <p style="font-size:13px">This link expires in <strong style="color:#e2e8f0">24 hours</strong>.
+    If the button doesn't work, copy and paste this URL:</p>
+    <div class="box">{verify_url}</div>
+  </div>
+  <div class="foot">You received this because you requested a download at windows.macrotechtitan.com.<br>
+  If you didn't request this, you can safely ignore this email.</div>
+</div></body></html>"""
+    try:
+        resend.api_key = creds["api_key"]
+        result = resend.Emails.send({
+            "from": from_addr,
+            "to": [to_email],
+            "subject": "⚡ Your MTT Infinite Optimizer Download Link",
+            "html": html_body,
+        })
+        log_activity(f"Verification email sent → {to_email} (id:{result.get('id', '?')})", "SUCCESS")
+        return True
+    except Exception as e:
+        log_activity(f"Failed to send email to {to_email}: {e}", "ERROR")
+        return False
 
 
 # ─── Analytics helpers ─────────────────────────────────────────
@@ -2085,6 +2190,85 @@ def api_undo():
             entry["undone"] = True
             return jsonify({"status": "ok", "message": msg, "action": entry})
     return jsonify({"status": "nothing", "message": "No undoable actions in log"})
+
+
+# ─── Email Registration Gateway ───────────────────────────────
+@app.route("/api/register-download", methods=["POST"])
+def register_download():
+    data = request.get_json(force=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"error": "Please enter a valid email address."}), 400
+    with _reg_lock:
+        registrations = load_registrations()
+        existing = registrations.get(email)
+        if existing and existing.get("verified"):
+            send_verification_email(email, existing["token"])
+            return jsonify({"ok": True, "resent": True, "message": "Already verified! Resent your download link."})
+        if existing and not existing.get("verified"):
+            token = existing["token"]
+        else:
+            token = str(uuid.uuid4())
+            registrations[email] = {
+                "token": token,
+                "verified": False,
+                "registered_at": datetime.utcnow().isoformat(),
+                "verified_at": None,
+                "ip": request.remote_addr or "unknown",
+            }
+            save_registrations(registrations)
+    ok = send_verification_email(email, token)
+    if not ok:
+        return jsonify({"error": "Failed to send email. Please try again later."}), 500
+    return jsonify({"ok": True, "message": "Verification email sent! Check your inbox."})
+
+
+@app.route("/verify-email/<token>")
+def verify_email(token):
+    registrations = load_registrations()
+    for email, info in registrations.items():
+        if info.get("token") == token:
+            if not info.get("verified"):
+                with _reg_lock:
+                    registrations[email]["verified"] = True
+                    registrations[email]["verified_at"] = datetime.utcnow().isoformat()
+                    save_registrations(registrations)
+                increment_analytics("downloads")
+                log_activity(f"Email verified: {email} — download unlocked", "SUCCESS")
+            return redirect(f"/download/{token}")
+    return render_template("download.html", error="This link is invalid or has expired. Please request a new one.", token=None, email=None)
+
+
+@app.route("/download/<token>")
+def download_page(token):
+    registrations = load_registrations()
+    for email, info in registrations.items():
+        if info.get("token") == token and info.get("verified"):
+            return render_template("download.html", error=None, token=token, email=email)
+    return redirect("/")
+
+
+@app.route("/admin/api/registrations")
+def admin_registrations():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    registrations = load_registrations()
+    items = []
+    for email, info in registrations.items():
+        items.append({
+            "email": email,
+            "verified": info.get("verified", False),
+            "registered_at": info.get("registered_at", ""),
+            "verified_at": info.get("verified_at", ""),
+            "ip": info.get("ip", ""),
+        })
+    items.sort(key=lambda x: x["registered_at"], reverse=True)
+    return jsonify({
+        "ok": True,
+        "total": len(items),
+        "verified": sum(1 for i in items if i["verified"]),
+        "registrations": items,
+    })
 
 
 # ─── Admin Panel ──────────────────────────────────────────────

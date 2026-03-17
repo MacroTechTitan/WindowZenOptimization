@@ -1,0 +1,16 @@
+{
+  "test@example.com": {
+    "token": "bb6e9ecf-63cc-4ed0-b640-5cff58aea485",
+    "verified": false,
+    "registered_at": "2026-03-17T03:14:10.650717",
+    "verified_at": null,
+    "ip": "127.0.0.1"
+  },
+  "delivered@resend.dev": {
+    "token": "f035e198-84a0-40a3-be24-bbad13d4b276",
+    "verified": true,
+    "registered_at": "2026-03-17T03:16:42.543903",
+    "verified_at": "2026-03-17T03:16:56.555315",
+    "ip": "127.0.0.1"
+  }
+}

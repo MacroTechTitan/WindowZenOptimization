@@ -330,6 +330,9 @@
         .feature-card:nth-child(8)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); }
         .feature-card:nth-child(9)::before { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-red)); }
         .feature-card:nth-child(10)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-blue)); }
+        .feature-card:nth-child(11)::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-red)); }
+        .feature-card:nth-child(12)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-yellow)); }
+        .feature-card:nth-child(13)::before { background: linear-gradient(90deg, var(--accent-red), var(--accent-purple)); }
 
         .feature-icon {
             font-size: 36px;
@@ -672,14 +675,14 @@
         <div class="section-header">
             <div class="section-tag">Feature Set</div>
             <h2 class="section-title">Everything You Need</h2>
-            <p class="section-desc">Ten powerful modules working together to keep your Windows system running at peak performance.</p>
+            <p class="section-desc">13 powerful modules working together to keep your Windows system fast, clean, and secure.</p>
         </div>
 
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon">&#x1F4CA;</div>
                 <h3 class="feature-title">Real-Time Dashboard</h3>
-                <p class="feature-desc">Live CPU, memory, and disk usage with animated progress bars. System uptime tracking and quick scan summaries at a glance.</p>
+                <p class="feature-desc">Live CPU, memory, and disk usage with animated progress bars. Top 5 processes by resource use, system uptime, and quick scan summaries at a glance.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">CPU</span>
                     <span class="feature-tag">Memory</span>
@@ -691,10 +694,10 @@
             <div class="feature-card">
                 <div class="feature-icon">&#x1F9F9;</div>
                 <h3 class="feature-title">System Cleaner</h3>
-                <p class="feature-desc">Scan and remove temp files, browser caches, thumbnails, error reports, and more across 13+ categories. Reclaim gigabytes of wasted space.</p>
+                <p class="feature-desc">Scan and remove temp files, browser caches, thumbnails, error reports, and more across 13+ categories. Dry-run preview before committing — reclaim gigabytes safely.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">13+ Categories</span>
-                    <span class="feature-tag">Safe</span>
+                    <span class="feature-tag">Dry Run</span>
                     <span class="feature-tag">Deep Clean</span>
                 </div>
             </div>
@@ -702,18 +705,18 @@
             <div class="feature-card">
                 <div class="feature-icon">&#x1F4C1;</div>
                 <h3 class="feature-title">File Organizer</h3>
-                <p class="feature-desc">Detect zero-length files, duplicate files using MD5 hashing, and leftover software installers. Selectively delete what you don't need.</p>
+                <p class="feature-desc">Detect duplicates via MD5 hashing, zero-length files, and leftover installers. Auto-sort Downloads by type or age, move screenshots, and restore with the undo log.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Duplicates</span>
-                    <span class="feature-tag">Zero-Length</span>
-                    <span class="feature-tag">Installers</span>
+                    <span class="feature-tag">Downloads Rules</span>
+                    <span class="feature-tag">Undo</span>
                 </div>
             </div>
 
             <div class="feature-card">
                 <div class="feature-icon">&#x1F527;</div>
                 <h3 class="feature-title">Registry Optimizer</h3>
-                <p class="feature-desc">Scan the Windows registry for invalid entries, orphaned keys, and startup bloat. Get recommendations and one-click fixes.</p>
+                <p class="feature-desc">Scan the Windows registry for invalid entries, orphaned keys, and startup bloat. Get recommendations and one-click fixes with an advanced confirmation guard.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Registry</span>
                     <span class="feature-tag">Auto-Fix</span>
@@ -724,10 +727,10 @@
             <div class="feature-card">
                 <div class="feature-icon">&#x1F4BB;</div>
                 <h3 class="feature-title">Process Monitor</h3>
-                <p class="feature-desc">Live process list sorted by CPU and memory usage. Manage Windows startup items with enable/disable toggles and reboot controls.</p>
+                <p class="feature-desc">Live process list sorted by CPU and memory. Manage startup items from HKCU, HKLM, and the Startup folder with enable/disable toggles and reboot controls.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Processes</span>
-                    <span class="feature-tag">Startup</span>
+                    <span class="feature-tag">Startup Items</span>
                     <span class="feature-tag">Real-Time</span>
                 </div>
             </div>
@@ -735,18 +738,18 @@
             <div class="feature-card">
                 <div class="feature-icon">&#x1F49A;</div>
                 <h3 class="feature-title">Wellness Monitor</h3>
-                <p class="feature-desc">40-minute break reminders with audio alerts. Track active and idle time, get screen brightness suggestions, and maintain healthy habits.</p>
+                <p class="feature-desc">40-minute break reminders with audio alerts. Night Light scheduling, screen brightness tips, and Focus Mode with a built-in Pomodoro (25 min work / 5 min break) timer.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Break Timer</span>
-                    <span class="feature-tag">Audio Alert</span>
-                    <span class="feature-tag">Privacy</span>
+                    <span class="feature-tag">Pomodoro</span>
+                    <span class="feature-tag">Night Light</span>
                 </div>
             </div>
 
             <div class="feature-card">
                 <div class="feature-icon">&#x1F6E1;</div>
                 <h3 class="feature-title">Cybersecurity Scanner</h3>
-                <p class="feature-desc">Scan 11 common ports for vulnerabilities, monitor active network connections, display your public IP, and detect security risks.</p>
+                <p class="feature-desc">Scan 11 common ports for vulnerabilities, monitor active network connections, display your public IP, and detect open-port security risks.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Port Scan</span>
                     <span class="feature-tag">Connections</span>
@@ -755,9 +758,9 @@
             </div>
 
             <div class="feature-card">
-                <div class="feature-icon">&#x1F4BB;</div>
+                <div class="feature-icon">&#x1F5A5;&#xFE0F;</div>
                 <h3 class="feature-title">System Information</h3>
-                <p class="feature-desc">Detailed hardware specs including RAM details with upgrade compatibility guide, motherboard info, and deep file analysis by type.</p>
+                <p class="feature-desc">Detailed hardware specs, RAM details with upgrade compatibility guide, motherboard info, installed software list, and deep file-type analysis.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">RAM Upgrade</span>
                     <span class="feature-tag">Hardware</span>
@@ -768,7 +771,7 @@
             <div class="feature-card">
                 <div class="feature-icon">&#x23F0;</div>
                 <h3 class="feature-title">Task Scheduler</h3>
-                <p class="feature-desc">Automate daily system cleanup at 5PM and weekly registry scans. Set it and forget it - your system stays clean automatically.</p>
+                <p class="feature-desc">Automate daily system cleanup at 5 PM and weekly registry scans. Set it and forget it — your system stays clean on a schedule, automatically.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Daily</span>
                     <span class="feature-tag">Weekly</span>
@@ -777,13 +780,46 @@
             </div>
 
             <div class="feature-card">
-                <div class="feature-icon">&#x2699;</div>
+                <div class="feature-icon">&#x2699;&#xFE0F;</div>
                 <h3 class="feature-title">Settings Control</h3>
-                <p class="feature-desc">Toggle every cleanup category on or off. Configure break reminder intervals, scheduler timing, and feature preferences with persistence.</p>
+                <p class="feature-desc">Toggle every cleanup category on or off. Configure break reminder intervals, scheduler timing, and all feature preferences with full persistence.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Toggles</span>
                     <span class="feature-tag">Persist</span>
                     <span class="feature-tag">Custom</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F680;</div>
+                <h3 class="feature-title">Speed Up</h3>
+                <p class="feature-desc">Manage startup programs grouped by registry source. Launch Windows performance presets, adjust visual effects, and switch Power Mode — all from one panel.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Startup Manager</span>
+                    <span class="feature-tag">Power Mode</span>
+                    <span class="feature-tag">Visual Effects</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4E6;</div>
+                <h3 class="feature-title">Large Files Finder</h3>
+                <p class="feature-desc">Scan Downloads, Desktop, Videos, and Documents for files above a custom size threshold. Preview, delete, or archive to a dedicated folder — with dry-run support.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Custom Threshold</span>
+                    <span class="feature-tag">Archive</span>
+                    <span class="feature-tag">Dry Run</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F310;</div>
+                <h3 class="feature-title">Fix Internet</h3>
+                <p class="feature-desc">One-click network repair: resets Winsock, flushes DNS cache, releases and renews your IP, and resets the TCP/IP stack — no command-line knowledge needed.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Winsock Reset</span>
+                    <span class="feature-tag">DNS Flush</span>
+                    <span class="feature-tag">TCP/IP Reset</span>
                 </div>
             </div>
         </div>

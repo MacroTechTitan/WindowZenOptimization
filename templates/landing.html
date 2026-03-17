@@ -819,6 +819,80 @@
             font-size: 20px;
         }
 
+        /* ── Promo announcement bar ── */
+        .promo-bar {
+            background: linear-gradient(90deg,
+                rgba(16,185,129,0.12) 0%,
+                rgba(6,182,212,0.10) 50%,
+                rgba(139,92,246,0.10) 100%);
+            border-bottom: 1px solid rgba(6,182,212,0.2);
+            padding: 9px 48px 9px 20px;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            position: relative;
+            line-height: 1.5;
+        }
+        .promo-bar strong { color: var(--text-primary); }
+        .promo-bar a { color: var(--accent-cyan); text-decoration: none; font-weight: 700; }
+        .promo-bar a:hover { text-decoration: underline; }
+        .promo-bar-close {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--text-muted);
+            cursor: pointer; font-size: 16px; padding: 4px; line-height: 1;
+        }
+        .promo-bar-close:hover { color: var(--text-primary); }
+
+        /* ── Mid-page text ad block ── */
+        .text-ad-wrap {
+            max-width: 960px;
+            margin: -20px auto 60px;
+            padding: 0 20px;
+        }
+        .text-ad-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent-cyan);
+            border-radius: 10px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .text-ad-badge {
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 3px 7px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        .text-ad-body {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .text-ad-body strong { color: var(--text-primary); }
+        .text-ad-cta {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid rgba(6,182,212,0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .text-ad-cta:hover { background: rgba(6,182,212,0.08); }
+
         /* ── Email Gate Modal ── */
         .modal-overlay {
             display: none; position: fixed; inset: 0;
@@ -875,6 +949,13 @@
 </head>
 <body>
     <div class="scanline-bg"></div>
+
+    <!-- ── Promo announcement bar ── -->
+    <div class="promo-bar" id="promo-bar">
+        ⚡ <strong>v1.1.0 Now Available</strong> — Large Files Finder, Fix Internet, Focus Mode &amp; more.
+        &nbsp;<a href="#" onclick="openDownloadModal(event)">Get the free download →</a>
+        <button class="promo-bar-close" onclick="dismissPromoBar()" aria-label="Dismiss">&times;</button>
+    </div>
 
     <nav class="nav-landing">
         <a href="/" class="nav-logo">
@@ -1254,6 +1335,20 @@
     </div>
     <!-- ── END ARTICLE ──────────────────────────────────────────── -->
 
+    <!-- ── Mid-page text ad ── -->
+    <div class="text-ad-wrap">
+        <div class="text-ad-card">
+            <span class="text-ad-badge">Sponsored</span>
+            <div class="text-ad-body">
+                <strong>Macro Tech Titan</strong> — Tutorials, tools &amp; resources for Windows power users.
+                PC optimization guides, registry tips, security hardening, and productivity deep-dives.
+            </div>
+            <a href="https://macrotechtitan.com" target="_blank" rel="noopener" class="text-ad-cta">
+                Visit macrotechtitan.com →
+            </a>
+        </div>
+    </div>
+
     <section class="showcase-section" id="showcase">
         <div class="section-header">
             <div class="section-tag">In Action</div>
@@ -1396,6 +1491,17 @@
         }
 
         loadCounters();
+
+        /* ── Promo bar dismiss ── */
+        function dismissPromoBar() {
+            const bar = document.getElementById('promo-bar');
+            if (bar) { bar.style.transition = 'opacity 0.25s'; bar.style.opacity = '0'; setTimeout(() => bar.remove(), 260); }
+            try { sessionStorage.setItem('promo_dismissed', '1'); } catch(e) {}
+        }
+        if (sessionStorage.getItem('promo_dismissed')) {
+            const bar = document.getElementById('promo-bar');
+            if (bar) bar.remove();
+        }
 
         /* ── Download modal ── */
         function openDownloadModal(event) {

@@ -10,17 +10,24 @@ A Windows system utility application by Macro Tech Titan with a terminal-style d
 - Dashboard app at `/app` with all system monitoring features
 - Help & Support section with detailed guides for all 10 features + screenshots
 - Real-time system monitoring (CPU, Memory, Disk, Network, Processes)
+- **Dashboard**: Top 5 Processes panel with Open Task Manager + Restart Recommended buttons
 - System cleaner module with comprehensive Windows cleanup targets (13+ categories)
+- **Large Files Finder**: scan Downloads/Desktop/Videos/Documents above threshold MB, delete/archive with dry run
 - Registry optimizer with issue detection, recommendations, and fix actions
-- File Organizer: zero-length files, duplicate detection, installer cleanup
-- Cybersecurity scanner: port scan, active connections, IP display, vulnerability check
-- Wellness monitoring with 40-min break timer, sound alerts, screen brightness tips
+- **File Organizer**: zero-length files, duplicate detection, installer cleanup
+- **Downloads Rules**: archive old files, group by type, move screenshots — with preview + dry run + undo log
+- **Undo / Restore Log**: tracks all file moves/startup toggles; undo last move action
+- Cybersecurity scanner: port scan, active connections, IP display, vulnerability check + Fix Internet tool
+- **Wellness page**: Break timer, Brightness/Display settings, Night Light settings + schedule presets, Focus Mode with Pomodoro (25min work / 5min break cycle)
+- **Speed Up page**: Startup Manager (grouped by source, enable/disable with undo), Visual Effects deep link, Power Mode deep link
 - Process monitor with startup items management (enable/disable, reboot prompt)
 - Deep system analysis (file counts by type, installed software)
 - RAM upgrade compatibility guide based on detected hardware
 - Scheduler configuration for automated daily cleanup at 5PM
 - Settings panel with toggle controls for all cleanup categories
 - Live activity log (terminal-style output window)
+- Static text ads: landing page (promo bar + mid-page sponsor block) + dashboard (sidebar ad + inline card)
+- Email registration gateway: modal → Resend verification email → verified download page
 - Desktop launcher (pywebview) ready for Windows packaging
 - NSIS + Inno Setup installer scripts included
 - MTT branding with logo throughout app and landing page
@@ -84,16 +91,18 @@ static/
 - `/api/*` - All API endpoints
 
 ## Key Features
-1. **Dashboard** - Real-time CPU/Memory/Disk metrics with progress bars
-2. **System Cleaner** - Scan & clean 13+ categories of Windows clutter
-3. **File Organizer** - Find zero-length files, duplicates, leftover installers
-4. **Registry Optimizer** - Issue detection with fix recommendations
-5. **Process Monitor** - Live process list + startup items management
-6. **Wellness Monitor** - 40-min break timer with sound, brightness tips
-7. **Cybersecurity** - Port scan, active connections, IP display, vulnerability check
-8. **System Info** - RAM details with upgrade guide, motherboard info, deep analysis
-9. **Scheduler** - Automated cleanup at 5PM daily, weekly registry scan
-10. **Settings** - Toggle controls for every feature with persistence
+1. **Dashboard** - Real-time CPU/Memory/Disk metrics, Top 5 Processes, Task Manager + Restart buttons
+2. **System Cleaner** - Scan & clean 13+ categories of Windows clutter + Large Files Finder
+3. **Speed Up** - Startup Manager (source-grouped, undo log), Visual Effects preset, Power Mode
+4. **File Organizer** - Zero-length files, duplicates, installers + Downloads Rules + Undo/Restore Log
+5. **Registry Optimizer** - Issue detection with fix recommendations (ADVANCED tag)
+6. **Process Monitor** - Live process list + startup items management
+7. **Wellness Monitor** - Break timer, Brightness & Night Light settings, Focus Mode + Pomodoro
+8. **Cybersecurity** - Port scan, active connections, IP display, vulnerability check + Fix Internet
+9. **System Info** - RAM details with upgrade guide, motherboard info, deep analysis
+10. **Scheduler** - Automated cleanup at 5PM daily, weekly registry scan
+11. **Settings** - Toggle controls for every feature with persistence
+12. **Undo / Safety** - Global dry run toggles, undo log, confirmation dialogs for destructive ops
 
 ## Branding
 - **Name**: MTT Windows Infinite Optimizer

@@ -5,7 +5,7 @@
 ; General
 ;---------------------------------
 Name "MTT Windows Infinite Optimizer"
-OutFile "MTT_InfiniteOptimizer_Setup_v1.0.0.exe"
+OutFile "MTT_InfiniteOptimizer_Setup_v1.1.0.exe"
 InstallDir "$PROGRAMFILES64\MTT Windows Infinite Optimizer"
 InstallDirRegKey HKLM "Software\MTT Windows Infinite Optimizer" "InstallDir"
 RequestExecutionLevel admin
@@ -14,12 +14,12 @@ Unicode True
 ;---------------------------------
 ; Version Info
 ;---------------------------------
-VIProductVersion "1.0.0.0"
+VIProductVersion "1.1.0.0"
 VIAddVersionKey "ProductName" "MTT Windows Infinite Optimizer"
-VIAddVersionKey "ProductVersion" "1.0.0"
+VIAddVersionKey "ProductVersion" "1.1.0"
 VIAddVersionKey "CompanyName" "Macro Tech Titan"
 VIAddVersionKey "FileDescription" "MTT Windows Infinite Optimizer Installer"
-VIAddVersionKey "FileVersion" "1.0.0"
+VIAddVersionKey "FileVersion" "1.1.0"
 VIAddVersionKey "LegalCopyright" "Copyright Macro Tech Titan"
 
 ;---------------------------------
@@ -27,7 +27,7 @@ VIAddVersionKey "LegalCopyright" "Copyright Macro Tech Titan"
 ;---------------------------------
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Welcome to MTT Windows Infinite Optimizer Setup"
-!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of MTT Windows Infinite Optimizer v1.0.0.$\r$\n$\r$\nMTT Windows Infinite Optimizer helps you clean temporary files, optimize your registry, and monitor system health.$\r$\n$\r$\nClick Next to continue."
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of MTT Windows Infinite Optimizer v1.1.0.$\r$\n$\r$\nMTT Windows Infinite Optimizer helps you clean temporary files, optimize your registry, manage startup programs, fix internet connectivity, and monitor system health.$\r$\n$\r$\nClick Next to continue."
 !define MUI_FINISHPAGE_RUN "$INSTDIR\MTT Windows Infinite Optimizer.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch MTT Windows Infinite Optimizer"
 
@@ -63,7 +63,7 @@ Section "Install"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "DisplayIcon" "$INSTDIR\MTT Windows Infinite Optimizer.exe"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "Publisher" "Macro Tech Titan"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "DisplayVersion" "1.0.0"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "DisplayVersion" "1.1.0"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer" "NoRepair" 1
 

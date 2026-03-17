@@ -49,9 +49,9 @@ if %errorlevel% neq 0 (
 makensis installer.nsi
 echo.
 
-if exist "MTT_InfiniteOptimizer_Setup_v1.0.0.exe" (
+if exist "MTT_InfiniteOptimizer_Setup_v1.1.0.exe" (
     echo [5/5] Installer created successfully!
-    echo    Installer: MTT_InfiniteOptimizer_Setup_v1.0.0.exe
+    echo    Installer: MTT_InfiniteOptimizer_Setup_v1.1.0.exe
 ) else (
     echo [5/5] NSIS build had issues. Check the output above.
 )

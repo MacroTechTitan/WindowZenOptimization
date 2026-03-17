@@ -1,12 +1,12 @@
 [Setup]
 AppName=MTT Windows Infinite Optimizer
-AppVersion=1.0.0
+AppVersion=1.1.0
 AppPublisher=Macro Tech Titan
 AppPublisherURL=https://macrotechtitan.com
 DefaultDirName={autopf}\MTT Windows Infinite Optimizer
 DefaultGroupName=MTT Windows Infinite Optimizer
 OutputDir=installer_output
-OutputBaseFilename=MTT_InfiniteOptimizer_Setup_v1.0.0
+OutputBaseFilename=MTT_InfiniteOptimizer_Setup_v1.1.0
 Compression=lzma2
 SolidCompression=yes
 SetupIconFile=static\icon.ico

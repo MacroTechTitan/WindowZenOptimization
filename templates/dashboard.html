@@ -893,10 +893,15 @@
                         </div>
                     </div>
                     <div class="panel-body">
-                        <div style="margin-bottom: 16px; padding: 12px; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px;">
-                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-yellow); line-height: 1.8;">
-                                &#x26A0; On Windows, these commands require <strong>Administrator privileges</strong>.
-                                Running in demo mode will simulate the output. After running, a <strong>reboot</strong> may be required.
+                        <div id="network-fix-info-bar" style="margin-bottom: 16px; padding: 12px; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px;">
+                            <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+                                <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-yellow); line-height: 1.8; flex:1;">
+                                    &#x26A0; On Windows, these commands require <strong>Administrator privileges</strong>.
+                                    If not running as admin, a UAC prompt will appear. After running, a <strong>reboot</strong> may be required.
+                                </div>
+                                <div id="network-admin-badge" style="flex-shrink:0; font-family:'JetBrains Mono',monospace; font-size:10px; padding:4px 10px; border-radius:4px; background:rgba(156,163,175,0.15); color:var(--text-muted); white-space:nowrap; align-self:center;">
+                                    DEMO MODE
+                                </div>
                             </div>
                         </div>
 

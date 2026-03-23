@@ -9,6 +9,7 @@ import hashlib
 import threading
 import platform
 import shutil
+import tempfile
 import psutil
 import subprocess
 import urllib.request
@@ -1927,6 +1928,8 @@ network_fix_state = {
     "needs_reboot": False,
     "started_at": None,
     "completed_at": None,
+    "admin": False,
+    "platform": platform.system(),
 }
 
 
@@ -1938,6 +1941,42 @@ def _make_step_state():
     ]
 
 
+def _is_admin():
+    """Return True when the process has Windows admin (elevated) privileges."""
+    if not IS_WINDOWS:
+        return False
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def _elevate_and_run_batch(cmds):
+    """
+    Write a .bat file with all commands and launch it elevated via UAC (ShellExecuteW runas).
+    Returns (success, message).  Output cannot be captured when UAC elevation is used.
+    """
+    try:
+        import ctypes
+        bat_path = os.path.join(tempfile.gettempdir(), "mtt_netfix.bat")
+        lines = ["@echo off", "echo MTT Windows Infinite Optimizer — Network Fix", "echo ========================================="]
+        for c in cmds:
+            lines.append(f'echo Running: {c}')
+            lines.append(c)
+            lines.append('echo  Done: %errorlevel%')
+            lines.append("echo.")
+        lines += ["echo All commands complete.", "pause"]
+        with open(bat_path, "w") as f:
+            f.write("\r\n".join(lines) + "\r\n")
+        ret = ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", "cmd.exe", f'/c "{bat_path}"', None, 1
+        )
+        return (ret > 32, bat_path)
+    except Exception as e:
+        return (False, str(e))
+
+
 def _run_network_fix_thread():
     with _net_fix_lock:
         steps = _make_step_state()
@@ -1947,24 +1986,61 @@ def _run_network_fix_thread():
         network_fix_state["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         network_fix_state["completed_at"] = None
         network_fix_state["status"] = "running"
+        network_fix_state["admin"] = _is_admin()
 
-    for i, step in enumerate(steps):
-        with _net_fix_lock:
-            network_fix_state["current_step"] = i
-            step["status"] = "running"
+    admin = network_fix_state["admin"]
 
-        log_activity(f"Network Fix: {step['label']}...", "TASK")
-        cmd = step["cmd"]
-
-        if not IS_WINDOWS:
+    # ── Non-Windows demo mode ─────────────────────────────────────────────────
+    if not IS_WINDOWS:
+        for i, step in enumerate(steps):
+            with _net_fix_lock:
+                network_fix_state["current_step"] = i
+                step["status"] = "running"
+            log_activity(f"Network Fix [DEMO]: {step['label']}...", "TASK")
             time.sleep(0.8)
-            step["output"] = f"[DEMO] {step['description']}\n[DEMO] Command completed successfully."
+            step["output"] = f"[DEMO] {step['description']}\nSuccessfully completed (simulated on non-Windows platform)."
             step["exit_code"] = 0
             step["status"] = "done"
+            if "winsock" in step["cmd"] or "ip reset" in step["cmd"]:
+                network_fix_state["needs_reboot"] = True
+
+    # ── Windows without admin: UAC-elevate the whole batch ───────────────────
+    elif IS_WINDOWS and not admin:
+        log_activity("Network Fix: not running as admin — launching elevated batch via UAC", "WARN")
+        cmds = [s["cmd"] for s in steps]
+        ok, detail = _elevate_and_run_batch(cmds)
+        if ok:
+            for i, step in enumerate(steps):
+                step["status"] = "done"
+                step["output"] = (
+                    "Launched in elevated cmd.exe window via UAC.\n"
+                    "Output is shown in the separate Administrator command prompt window.\n"
+                    "A reboot is required after netsh winsock reset and netsh int ip reset."
+                )
+                step["exit_code"] = 0
+            network_fix_state["needs_reboot"] = True
+            log_activity("Elevated network fix batch launched — check the cmd window", "SUCCESS")
         else:
+            for step in steps:
+                step["status"] = "error"
+                step["output"] = f"UAC elevation failed: {detail}\nRun the app as Administrator to use this feature."
+                step["exit_code"] = -1
+            log_activity("Network Fix elevation failed — please run as Administrator", "ERROR")
+
+    # ── Windows with admin: run each command via cmd.exe /c, stream output ───
+    else:
+        for i, step in enumerate(steps):
+            with _net_fix_lock:
+                network_fix_state["current_step"] = i
+                step["status"] = "running"
+
+            log_activity(f"Network Fix: {step['label']}...", "TASK")
+            cmd_args = ["cmd.exe", "/c", step["cmd"]]
             try:
                 result = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=30
+                    cmd_args,
+                    capture_output=True, text=True, timeout=60,
+                    creationflags=subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0
                 )
                 out_parts = []
                 if result.stdout.strip():
@@ -1974,12 +2050,14 @@ def _run_network_fix_thread():
                 step["output"] = "\n".join(out_parts) if out_parts else "(no output)"
                 step["exit_code"] = result.returncode
                 step["status"] = "done" if result.returncode == 0 else "error"
-                if "winsock" in cmd or "ip reset" in cmd:
+                if "winsock" in step["cmd"] or "ip reset" in step["cmd"]:
                     network_fix_state["needs_reboot"] = True
-                log_activity(f"  Done: {step['label']} (exit {result.returncode})",
-                             "SUCCESS" if result.returncode == 0 else "WARN")
+                log_activity(
+                    f"  Done: {step['label']} (exit {result.returncode})",
+                    "SUCCESS" if result.returncode == 0 else "WARN"
+                )
             except subprocess.TimeoutExpired:
-                step["output"] = "TIMEOUT — command took too long"
+                step["output"] = "TIMEOUT — command exceeded 60 seconds"
                 step["exit_code"] = -1
                 step["status"] = "error"
                 log_activity(f"  Timeout: {step['label']}", "ERROR")

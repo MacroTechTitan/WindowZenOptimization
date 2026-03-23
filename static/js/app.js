@@ -1253,6 +1253,30 @@ const App = {
         if (cOutEl) { cOutEl.style.display = 'none'; cOutEl.textContent = ''; }
         const cRebootEl = document.getElementById('cleaner-network-fix-reboot');
         if (cRebootEl) cRebootEl.style.display = 'none';
+        // Update admin badge
+        this._updateNetworkAdminBadge();
+    },
+
+    async _updateNetworkAdminBadge() {
+        const badge = document.getElementById('network-admin-badge');
+        if (!badge) return;
+        try {
+            const data = await fetch('/api/network-fix/progress').then(r => r.json());
+            const plat = data.platform || 'Unknown';
+            if (plat !== 'Windows') {
+                badge.textContent = 'DEMO MODE';
+                badge.style.background = 'rgba(156,163,175,0.15)';
+                badge.style.color = 'var(--text-muted)';
+            } else if (data.admin) {
+                badge.textContent = '✔ RUNNING AS ADMIN';
+                badge.style.background = 'rgba(16,185,129,0.2)';
+                badge.style.color = 'var(--accent-green)';
+            } else {
+                badge.textContent = '⚠ NOT ADMIN — UAC will prompt';
+                badge.style.background = 'rgba(245,158,11,0.15)';
+                badge.style.color = 'var(--accent-yellow)';
+            }
+        } catch(e) { /* silent */ }
     },
 
     async startNetworkFix(context) {

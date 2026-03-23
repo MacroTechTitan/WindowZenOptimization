@@ -333,6 +333,9 @@
         .feature-card:nth-child(11)::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-red)); }
         .feature-card:nth-child(12)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-yellow)); }
         .feature-card:nth-child(13)::before { background: linear-gradient(90deg, var(--accent-red), var(--accent-purple)); }
+        .feature-card:nth-child(14)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-yellow)); }
+        .feature-card:nth-child(15)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); }
+        .feature-card:nth-child(16)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); }
 
         .feature-icon {
             font-size: 36px;
@@ -1398,7 +1401,7 @@
         <div class="article-callout">
             <div style="font-size: 48px; margin-bottom: 16px;">🛡️</div>
             <h3>MTT Windows Infinite Optimizer Is Built for the AI Era</h3>
-            <p>As AI becomes part of everyday workflows, keeping your system optimized is no longer optional. MTT Windows Infinite Optimizer automates the cleanup process — removing AI caches, temp data, startup bloat, and large file accumulation — so your machine stays fast, clean, and ready for anything.</p>
+            <p>As AI becomes part of everyday workflows, keeping your system optimized is no longer optional. MTT Windows Infinite Optimizer automates the cleanup process — with a real-time <strong>Health Score</strong>, automatic <strong>Bloat Detection</strong>, <strong>Startup Impact Scoring</strong>, AI cache cleanup, large file management, and network repair — so your machine stays fast, clean, and ready for anything.</p>
             <div class="hero-actions" style="justify-content: center; flex-wrap: wrap;">
                 <a href="#" class="btn-hero btn-hero-download" onclick="openDownloadModal(event)">
                     &#x2B07; Download Now — It&rsquo;s Free
@@ -1476,6 +1479,46 @@
                 </ul>
             </div>
             <img src="/static/screenshots/security.png" alt="Cybersecurity" class="showcase-img" onerror="this.style.background='var(--bg-card)';this.style.height='300px'">
+        </div>
+
+        <div class="showcase-item">
+            <div class="showcase-text">
+                <h3>&#x2764;&#xFE0F; System Health Score</h3>
+                <p>Know exactly how healthy your PC is at a glance. The Health Score engine evaluates five key system dimensions every time you open the dashboard.</p>
+                <ul class="showcase-list">
+                    <li>0–100 score ring with color-coded rating</li>
+                    <li>Penalties for high CPU, RAM pressure, or disk fill</li>
+                    <li>Uptime and heavy-process analysis</li>
+                    <li>Clickable recommendations that navigate to the fix</li>
+                    <li>One-click refresh, auto-loads on dashboard open</li>
+                </ul>
+            </div>
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;min-height:260px;padding:32px;flex-direction:column;gap:16px;">
+                <div style="width:120px;height:120px;border-radius:50%;border:8px solid var(--accent-green);display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(16,185,129,0.3);">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--accent-green);">87</span>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-green);">&#x2665; System Health Score</div>
+                <div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:280px;">
+                    <div style="font-size:12px;color:var(--accent-green);">&#x2713; CPU usage is healthy (26%)</div>
+                    <div style="font-size:12px;color:var(--accent-yellow);">&#x26A0; RAM at 76% — consider closing tabs</div>
+                    <div style="font-size:12px;color:var(--accent-green);">&#x2713; Disk usage normal (54%)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="showcase-item">
+            <div class="showcase-text">
+                <h3>&#x1F4E6; App &amp; Bloat Manager</h3>
+                <p>The first optimizer with built-in bloat intelligence — automatically flags likely junkware based on publisher reputation, app name patterns, and install size.</p>
+                <ul class="showcase-list">
+                    <li>Registry-powered full installed app list</li>
+                    <li>Automatic BLOAT badge for suspicious apps</li>
+                    <li>Filter by All / Likely Bloat / Large (&gt;500MB)</li>
+                    <li>Launch native Windows uninstaller directly</li>
+                    <li>Export full list to CSV for auditing</li>
+                </ul>
+            </div>
+            <img src="/static/screenshots/dashboard.png" alt="App Manager" class="showcase-img" onerror="this.style.background='var(--bg-card)';this.style.height='300px'">
         </div>
     </section>
 

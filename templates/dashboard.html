@@ -70,6 +70,10 @@
                 <span class="icon">&#x1F6E1;</span>
                 <span>Cybersecurity</span>
             </div>
+            <div class="nav-item" data-page="network">
+                <span class="icon">&#x1F527;</span>
+                <span>Network</span>
+            </div>
             <div class="nav-item" data-page="system">
                 <span class="icon">&#x1F5A5;&#xFE0F;</span>
                 <span>System Info</span>
@@ -344,6 +348,29 @@
                         <div id="large-files-results">
                             <div style="text-align: center; padding: 16px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 12px;">
                                 Set threshold and click Scan to find large files
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fix Network panel inside Cleaner -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F527; Fix Network</span>
+                        <button class="btn btn-primary" id="btn-cleaner-network-fix" onclick="App.startNetworkFix('cleaner')">&#x25B6; Run Fix Network</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); line-height: 1.8;">
+                            Resets the Windows network stack — useful after system cleaning or if you experience connectivity issues.
+                            Runs separately from the main clean; each command is displayed as it executes.
+                        </div>
+                        <div id="cleaner-network-fix-steps" style="display: grid; gap: 8px; margin-bottom: 12px;"></div>
+                        <div id="cleaner-network-fix-output" style="display: none; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-green); line-height: 1.7; max-height: 240px; overflow-y: auto; white-space: pre-wrap;"></div>
+                        <div id="cleaner-network-fix-reboot" style="display: none; margin-top: 12px; padding: 12px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan);">
+                            &#x2705; Network stack reset complete. <strong>Reboot required</strong> to apply all changes.
+                            <div style="margin-top: 10px;">
+                                <button class="btn btn-primary" onclick="if(confirm('Reboot now?')) App.rebootSystem()">&#x1F504; Reboot Now</button>
+                                <button class="btn" style="margin-left: 8px;" onclick="this.closest('[id]').style.display='none'">Later</button>
                             </div>
                         </div>
                     </div>
@@ -850,6 +877,95 @@
                             </div>
                             <button class="btn btn-primary" onclick="if(confirm('Reboot now to apply network fixes?')) App.rebootSystem()">&#x1F504; Reboot Now</button>
                             <button class="btn" style="margin-left: 10px;" onclick="document.getElementById('network-fix-reboot').style.display='none'">Later</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NETWORK PAGE -->
+            <div class="page" id="page-network">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F527; Fix Network</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="btn-network-fix-run" onclick="App.startNetworkFix()">&#x25B6; Run Fix Network</button>
+                            <button class="btn" onclick="App.resetNetworkFixUI()" style="display:none;" id="btn-network-fix-reset">&#x1F504; Reset</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom: 16px; padding: 12px; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px;">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-yellow); line-height: 1.8;">
+                                &#x26A0; On Windows, these commands require <strong>Administrator privileges</strong>.
+                                Running in demo mode will simulate the output. After running, a <strong>reboot</strong> may be required.
+                            </div>
+                        </div>
+
+                        <!-- Step cards -->
+                        <div id="network-fix-steps" style="display: grid; gap: 10px;">
+                            <!-- Rendered by JS -->
+                            <div style="text-align: center; color: var(--text-muted); padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                                Press <strong style="color: var(--accent-cyan);">Run Fix Network</strong> to begin. Each command runs in sequence and its output is shown below.
+                            </div>
+                        </div>
+
+                        <!-- Live terminal output -->
+                        <div id="network-fix-terminal" style="display: none; margin-top: 20px;">
+                            <div class="terminal-window">
+                                <div class="terminal-header">
+                                    <div class="terminal-dots">
+                                        <div class="terminal-dot red"></div>
+                                        <div class="terminal-dot yellow"></div>
+                                        <div class="terminal-dot green"></div>
+                                    </div>
+                                    <div class="terminal-title">NETWORK FIX &mdash; live output</div>
+                                    <div id="network-fix-status-badge" style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(6,182,212,0.2); color: var(--accent-cyan);">RUNNING</div>
+                                </div>
+                                <div id="network-fix-terminal-body" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-green); padding: 16px; max-height: 360px; overflow-y: auto; white-space: pre-wrap; line-height: 1.7; background: var(--bg-primary); border-radius: 0 0 8px 8px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Reboot prompt -->
+                        <div id="network-fix-reboot-network" style="display: none; margin-top: 16px; padding: 14px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px; text-align: center;">
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); margin-bottom: 10px;">
+                                &#x2705; Network stack reset complete. A <strong>reboot is required</strong> to fully apply changes.
+                            </div>
+                            <button class="btn btn-primary" onclick="if(confirm('Reboot now to apply network fixes?')) App.rebootSystem()">&#x1F504; Reboot Now</button>
+                            <button class="btn" style="margin-left: 10px;" onclick="document.getElementById('network-fix-reboot-network').style.display='none'">Later</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Command reference panel -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CB; Command Reference</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="process-list">
+                            <div class="process-item process-header">
+                                <span class="name">Command</span>
+                                <span style="flex: 2; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1px; color: var(--text-muted);">What it does</span>
+                            </div>
+                            <div class="process-item">
+                                <span class="name" style="color: var(--accent-cyan);">ipconfig /flushdns</span>
+                                <span style="flex: 2; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary);">Clears the local DNS resolver cache — fixes "site not found" errors caused by stale DNS entries</span>
+                            </div>
+                            <div class="process-item">
+                                <span class="name" style="color: var(--accent-cyan);">netsh winsock reset</span>
+                                <span style="flex: 2; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary);">Resets the Winsock catalog to its default state — fixes corrupt network stack, requires reboot</span>
+                            </div>
+                            <div class="process-item">
+                                <span class="name" style="color: var(--accent-cyan);">netsh int ip reset</span>
+                                <span style="flex: 2; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary);">Resets the TCP/IP protocol stack — repairs deep connectivity issues, requires reboot</span>
+                            </div>
+                            <div class="process-item">
+                                <span class="name" style="color: var(--accent-cyan);">ipconfig /release</span>
+                                <span style="flex: 2; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary);">Releases the current DHCP IP address lease — temporarily disconnects you from the network</span>
+                            </div>
+                            <div class="process-item">
+                                <span class="name" style="color: var(--accent-cyan);">ipconfig /renew</span>
+                                <span style="flex: 2; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary);">Requests a fresh IP address from the DHCP server — reconnects you with a new lease</span>
+                            </div>
                         </div>
                     </div>
                 </div>

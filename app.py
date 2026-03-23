@@ -1911,6 +1911,107 @@ organize_preview_results = {
     "last_preview": None,
 }
 
+NETWORK_FIX_STEPS = [
+    ("ipconfig /flushdns",  "Flush DNS Cache",       "Clears the DNS resolver cache so stale entries are removed"),
+    ("netsh winsock reset", "Reset Winsock Catalog", "Resets the Winsock catalog to its clean default state"),
+    ("netsh int ip reset",  "Reset TCP/IP Stack",    "Reinitialises the TCP/IP stack (reboot required after)"),
+    ("ipconfig /release",   "Release IP Address",    "Releases the current DHCP IP lease"),
+    ("ipconfig /renew",     "Renew IP Address",      "Requests a fresh IP address from the DHCP server"),
+]
+
+_net_fix_lock = threading.Lock()
+network_fix_state = {
+    "status": "idle",
+    "steps": [],
+    "current_step": -1,
+    "needs_reboot": False,
+    "started_at": None,
+    "completed_at": None,
+}
+
+
+def _make_step_state():
+    return [
+        {"cmd": cmd, "label": label, "description": desc,
+         "status": "pending", "output": "", "exit_code": None}
+        for cmd, label, desc in NETWORK_FIX_STEPS
+    ]
+
+
+def _run_network_fix_thread():
+    with _net_fix_lock:
+        steps = _make_step_state()
+        network_fix_state["steps"] = steps
+        network_fix_state["current_step"] = -1
+        network_fix_state["needs_reboot"] = False
+        network_fix_state["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        network_fix_state["completed_at"] = None
+        network_fix_state["status"] = "running"
+
+    for i, step in enumerate(steps):
+        with _net_fix_lock:
+            network_fix_state["current_step"] = i
+            step["status"] = "running"
+
+        log_activity(f"Network Fix: {step['label']}...", "TASK")
+        cmd = step["cmd"]
+
+        if not IS_WINDOWS:
+            time.sleep(0.8)
+            step["output"] = f"[DEMO] {step['description']}\n[DEMO] Command completed successfully."
+            step["exit_code"] = 0
+            step["status"] = "done"
+        else:
+            try:
+                result = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, timeout=30
+                )
+                out_parts = []
+                if result.stdout.strip():
+                    out_parts.append(result.stdout.strip())
+                if result.stderr.strip():
+                    out_parts.append(f"[stderr] {result.stderr.strip()}")
+                step["output"] = "\n".join(out_parts) if out_parts else "(no output)"
+                step["exit_code"] = result.returncode
+                step["status"] = "done" if result.returncode == 0 else "error"
+                if "winsock" in cmd or "ip reset" in cmd:
+                    network_fix_state["needs_reboot"] = True
+                log_activity(f"  Done: {step['label']} (exit {result.returncode})",
+                             "SUCCESS" if result.returncode == 0 else "WARN")
+            except subprocess.TimeoutExpired:
+                step["output"] = "TIMEOUT — command took too long"
+                step["exit_code"] = -1
+                step["status"] = "error"
+                log_activity(f"  Timeout: {step['label']}", "ERROR")
+            except Exception as e:
+                step["output"] = f"ERROR — {e}"
+                step["exit_code"] = -1
+                step["status"] = "error"
+                log_activity(f"  Error: {step['label']}: {e}", "ERROR")
+
+    with _net_fix_lock:
+        network_fix_state["status"] = "complete"
+        network_fix_state["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if network_fix_state["needs_reboot"]:
+            log_activity("Network Fix complete — REBOOT REQUIRED to apply all changes", "SUCCESS")
+        else:
+            log_activity("Network Fix complete", "SUCCESS")
+
+
+@app.route("/api/network-fix/run", methods=["POST"])
+def api_network_fix_run():
+    if network_fix_state["status"] == "running":
+        return jsonify({"status": "already_running"})
+    thread = threading.Thread(target=_run_network_fix_thread, daemon=True)
+    thread.start()
+    return jsonify({"status": "started"})
+
+
+@app.route("/api/network-fix/progress")
+def api_network_fix_progress():
+    with _net_fix_lock:
+        return jsonify(dict(network_fix_state))
+
 
 def log_undo(action_type, description, details=None):
     entry = {

@@ -4,6 +4,7 @@ const App = {
     logInterval: null,
     breakTimerInterval: null,
     breakDismissedUntil: 0,
+    networkFixPoller: null,
 
     init() {
         this.bindNavigation();
@@ -78,6 +79,7 @@ const App = {
             this.refreshUndoLog();
         }
         if (pageName === 'cybersecurity') this.refreshSecurity();
+        if (pageName === 'network') this.resetNetworkFixUI();
     },
 
     startClock() {
@@ -1224,6 +1226,159 @@ const App = {
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = '▶ Run Network Fix (Admin)'; }
         }
+    },
+
+    // ── New streaming network fix (Network page + Cleaner panel) ──────────────
+
+    resetNetworkFixUI() {
+        if (this.networkFixPoller) { clearInterval(this.networkFixPoller); this.networkFixPoller = null; }
+        const stepsEl = document.getElementById('network-fix-steps');
+        if (stepsEl) stepsEl.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:20px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+            Press <strong style="color:var(--accent-cyan);">Run Fix Network</strong> to begin. Each command runs in sequence and its output is shown below.
+        </div>`;
+        const termEl = document.getElementById('network-fix-terminal');
+        if (termEl) termEl.style.display = 'none';
+        const bodyEl = document.getElementById('network-fix-terminal-body');
+        if (bodyEl) bodyEl.textContent = '';
+        const rebootEl = document.getElementById('network-fix-reboot-network');
+        if (rebootEl) rebootEl.style.display = 'none';
+        const runBtn = document.getElementById('btn-network-fix-run');
+        if (runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run Fix Network'; runBtn.style.display = ''; }
+        const resetBtn = document.getElementById('btn-network-fix-reset');
+        if (resetBtn) resetBtn.style.display = 'none';
+        // Also reset cleaner panel
+        const cStepsEl = document.getElementById('cleaner-network-fix-steps');
+        if (cStepsEl) cStepsEl.innerHTML = '';
+        const cOutEl = document.getElementById('cleaner-network-fix-output');
+        if (cOutEl) { cOutEl.style.display = 'none'; cOutEl.textContent = ''; }
+        const cRebootEl = document.getElementById('cleaner-network-fix-reboot');
+        if (cRebootEl) cRebootEl.style.display = 'none';
+    },
+
+    async startNetworkFix(context) {
+        context = context || 'network';
+        const runBtn = document.getElementById('btn-network-fix-run');
+        const cleanerBtn = document.getElementById('btn-cleaner-network-fix');
+
+        // Guard — reset first if a previous run is showing
+        const currentStatus = await fetch('/api/network-fix/progress').then(r => r.json()).catch(() => ({status:'idle'}));
+        if (currentStatus.status === 'running') {
+            this.showNotification('Network fix is already running', 'info');
+            return;
+        }
+
+        // Disable buttons
+        if (runBtn) { runBtn.disabled = true; runBtn.textContent = '⏳ Running...'; }
+        if (cleanerBtn) { cleanerBtn.disabled = true; cleanerBtn.textContent = '⏳ Running...'; }
+
+        // Show terminal on Network page
+        const termEl = document.getElementById('network-fix-terminal');
+        if (termEl) termEl.style.display = 'block';
+        const bodyEl = document.getElementById('network-fix-terminal-body');
+        if (bodyEl) bodyEl.textContent = 'Starting Fix Network...\n';
+
+        // Show cleaner output
+        const cOutEl = document.getElementById('cleaner-network-fix-output');
+        if (cOutEl) { cOutEl.style.display = 'block'; cOutEl.textContent = 'Starting Fix Network...\n'; }
+
+        const badgeEl = document.getElementById('network-fix-status-badge');
+        if (badgeEl) { badgeEl.textContent = 'RUNNING'; badgeEl.style.background = 'rgba(6,182,212,0.2)'; badgeEl.style.color = 'var(--accent-cyan)'; }
+
+        // Start the fix
+        await fetch('/api/network-fix/run', { method: 'POST' }).catch(() => {});
+
+        // Poll for progress
+        if (this.networkFixPoller) clearInterval(this.networkFixPoller);
+        this.networkFixPoller = setInterval(() => this.pollNetworkFix(context), 600);
+    },
+
+    async pollNetworkFix(context) {
+        try {
+            const data = await fetch('/api/network-fix/progress').then(r => r.json());
+            const steps = data.steps || [];
+
+            this._renderNetworkSteps(steps, 'network-fix-steps');
+            this._renderNetworkSteps(steps, 'cleaner-network-fix-steps');
+
+            const termLines = this._buildNetworkTerminal(steps);
+            const bodyEl = document.getElementById('network-fix-terminal-body');
+            if (bodyEl) { bodyEl.textContent = termLines; bodyEl.scrollTop = bodyEl.scrollHeight; }
+            const cOutEl = document.getElementById('cleaner-network-fix-output');
+            if (cOutEl) { cOutEl.textContent = termLines; cOutEl.scrollTop = cOutEl.scrollHeight; }
+
+            if (data.status === 'complete') {
+                clearInterval(this.networkFixPoller);
+                this.networkFixPoller = null;
+
+                const badgeEl = document.getElementById('network-fix-status-badge');
+                if (badgeEl) { badgeEl.textContent = 'COMPLETE'; badgeEl.style.background = 'rgba(16,185,129,0.2)'; badgeEl.style.color = 'var(--accent-green)'; }
+
+                const runBtn = document.getElementById('btn-network-fix-run');
+                if (runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run Again'; }
+                const resetBtn = document.getElementById('btn-network-fix-reset');
+                if (resetBtn) resetBtn.style.display = '';
+                const cleanerBtn = document.getElementById('btn-cleaner-network-fix');
+                if (cleanerBtn) { cleanerBtn.disabled = false; cleanerBtn.textContent = '▶ Run Fix Network'; }
+
+                if (data.needs_reboot) {
+                    const rebootEl = document.getElementById('network-fix-reboot-network');
+                    if (rebootEl) rebootEl.style.display = 'block';
+                    const cRebootEl = document.getElementById('cleaner-network-fix-reboot');
+                    if (cRebootEl) cRebootEl.style.display = 'block';
+                }
+                this.showNotification(data.needs_reboot ? 'Network fix complete — reboot required' : 'Network fix complete!', 'success');
+            }
+        } catch(e) {
+            clearInterval(this.networkFixPoller);
+            this.networkFixPoller = null;
+        }
+    },
+
+    _renderNetworkSteps(steps, containerId) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (!steps || steps.length === 0) return;
+        const statusColors = {
+            pending: 'var(--text-muted)',
+            running: 'var(--accent-cyan)',
+            done:    'var(--accent-green)',
+            error:   'var(--accent-red)',
+        };
+        const statusIcons = { pending: '⏳', running: '▶', done: '✅', error: '❌' };
+        el.innerHTML = steps.map((s, i) => {
+            const col = statusColors[s.status] || 'var(--text-muted)';
+            const icon = statusIcons[s.status] || '⬜';
+            const pulse = s.status === 'running' ? 'animation: pulse 1s infinite;' : '';
+            return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg-card);border:1px solid ${col}33;border-left:3px solid ${col};border-radius:8px;${pulse}">
+                <span style="font-size:16px;flex-shrink:0;margin-top:1px;">${icon}</span>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${col};">${s.label}</span>
+                        <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);background:var(--bg-primary);padding:1px 6px;border-radius:3px;">${s.cmd}</code>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${s.description}</div>
+                    ${s.output ? `<pre style="margin:6px 0 0;font-family:'JetBrains Mono',monospace;font-size:10px;color:${s.status==='error'?'var(--accent-red)':'var(--accent-green)'};white-space:pre-wrap;word-break:break-all;max-height:80px;overflow-y:auto;">${s.output}</pre>` : ''}
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${col};text-transform:uppercase;flex-shrink:0;">${s.status}</span>
+            </div>`;
+        }).join('');
+    },
+
+    _buildNetworkTerminal(steps) {
+        if (!steps || steps.length === 0) return 'Waiting for commands...\n';
+        let lines = ['MTT Fix Network — live output', '='.repeat(52), ''];
+        steps.forEach(s => {
+            if (s.status === 'pending') return;
+            lines.push(`> ${s.cmd}  [${s.label}]`);
+            if (s.status === 'running') {
+                lines.push('  Running...');
+            } else if (s.output) {
+                s.output.split('\n').forEach(l => lines.push('  ' + l));
+            }
+            if (s.status === 'done') lines.push('  ✔ Done\n');
+            if (s.status === 'error') lines.push('  ✖ Error — see output above\n');
+        });
+        return lines.join('\n');
     },
 
     openWindowsSetting(setting) {

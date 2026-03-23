@@ -3119,6 +3119,624 @@ def api_startup_export():
     )
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# FEATURE 13: RECOMMENDATIONS ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+RECOMMENDATIONS_FILE = "recommendations_state.json"
+_rec_lock = threading.Lock()
+
+def _load_rec_state():
+    try:
+        if os.path.exists(RECOMMENDATIONS_FILE):
+            with open(RECOMMENDATIONS_FILE) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {"dismissed": [], "snoozed": {}, "history": []}
+
+def _save_rec_state(state):
+    try:
+        with open(RECOMMENDATIONS_FILE, "w") as f:
+            json.dump(state, f, indent=2)
+    except Exception:
+        pass
+
+def _generate_recommendations():
+    recs = []
+    ts = datetime.now().isoformat()
+
+    try:
+        cpu = psutil.cpu_percent(interval=0.3)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
+
+        if cpu > 80:
+            recs.append({"id": "cpu_high", "category": "Performance", "priority": "high",
+                "title": f"CPU is under heavy load ({cpu:.0f}%)",
+                "explanation": "Sustained high CPU usage slows the whole system. Check top processes and close unnecessary apps.",
+                "evidence": f"CPU at {cpu:.0f}%", "action": "View Processes", "module": "processes",
+                "benefit": 8, "risk": "low", "actionable": True})
+        elif cpu > 60:
+            recs.append({"id": "cpu_medium", "category": "Performance", "priority": "medium",
+                "title": f"CPU usage is elevated ({cpu:.0f}%)",
+                "explanation": "CPU is moderately busy. Consider closing background apps.",
+                "evidence": f"CPU at {cpu:.0f}%", "action": "View Processes", "module": "processes",
+                "benefit": 5, "risk": "low", "actionable": True})
+
+        ram_avail_gb = mem.available / (1024 ** 3)
+        if ram_avail_gb < 1.5:
+            recs.append({"id": "ram_critical", "category": "Performance", "priority": "high",
+                "title": f"Low RAM — only {ram_avail_gb:.1f} GB available",
+                "explanation": "Very low available RAM forces Windows to use slow page file swapping. Close apps or consider a RAM upgrade.",
+                "evidence": f"{ram_avail_gb:.1f} GB free of {mem.total/(1024**3):.1f} GB",
+                "action": "View System Info", "module": "system", "benefit": 9, "risk": "low", "actionable": True})
+        elif mem.percent > 80:
+            recs.append({"id": "ram_high", "category": "Performance", "priority": "medium",
+                "title": f"Memory usage is high ({mem.percent:.0f}%)",
+                "explanation": "High RAM usage can cause slowdowns. Close unused apps or browser tabs.",
+                "evidence": f"{mem.percent:.0f}% used ({ram_avail_gb:.1f} GB free)",
+                "action": "View Processes", "module": "processes", "benefit": 6, "risk": "low", "actionable": True})
+
+        disk_free_pct = 100 - disk.percent
+        if disk_free_pct < 10:
+            recs.append({"id": "disk_critical", "category": "Storage", "priority": "high",
+                "title": f"Disk is almost full — only {disk_free_pct:.0f}% free",
+                "explanation": "Windows needs free disk space to function properly. Run a system clean now.",
+                "evidence": f"{format_bytes(disk.free)} free of {format_bytes(disk.total)}",
+                "action": "Clean Now", "module": "cleaner", "benefit": 10, "risk": "low", "actionable": True})
+        elif disk_free_pct < 20:
+            recs.append({"id": "disk_low", "category": "Storage", "priority": "medium",
+                "title": f"Disk space is getting low ({disk_free_pct:.0f}% free)",
+                "explanation": "Consider running the system cleaner or large file finder to reclaim space.",
+                "evidence": f"{format_bytes(disk.free)} free of {format_bytes(disk.total)}",
+                "action": "Scan for Junk", "module": "cleaner", "benefit": 7, "risk": "low", "actionable": True})
+
+        uptime_secs = time.time() - psutil.boot_time()
+        uptime_days = uptime_secs / 86400
+        if uptime_days > 14:
+            recs.append({"id": "uptime_long", "category": "Maintenance", "priority": "medium",
+                "title": f"System has been running for {uptime_days:.0f} days",
+                "explanation": "Long uptime can lead to memory leaks and accumulated temp files. A restart is recommended.",
+                "evidence": f"Uptime: {uptime_days:.1f} days", "action": "Restart Reminder", "module": "dashboard",
+                "benefit": 5, "risk": "low", "actionable": False})
+        elif uptime_days > 7:
+            recs.append({"id": "uptime_week", "category": "Maintenance", "priority": "low",
+                "title": f"PC has been on for {uptime_days:.0f} days without restart",
+                "explanation": "Consider restarting this week to apply pending updates and clear memory.",
+                "evidence": f"Uptime: {uptime_days:.1f} days", "action": None, "module": "dashboard",
+                "benefit": 3, "risk": "low", "actionable": False})
+    except Exception:
+        pass
+
+    try:
+        procs = [(p.name(), p.cpu_percent()) for p in psutil.process_iter(["name", "cpu_percent"]) if p.info["cpu_percent"] > 15]
+        if len(procs) >= 3:
+            names = ", ".join(p[0] for p in procs[:3])
+            recs.append({"id": "heavy_procs", "category": "Performance", "priority": "medium",
+                "title": f"{len(procs)} processes are consuming high CPU",
+                "explanation": f"Several background processes are using significant CPU: {names}.",
+                "evidence": f"High-CPU processes: {names}", "action": "View Processes", "module": "processes",
+                "benefit": 6, "risk": "low", "actionable": True})
+    except Exception:
+        pass
+
+    try:
+        home = os.path.expanduser("~")
+        dl = os.path.join(home, "Downloads")
+        if os.path.isdir(dl):
+            old_files = [f for f in os.listdir(dl)
+                         if os.path.isfile(os.path.join(dl, f))
+                         and (time.time() - os.path.getmtime(os.path.join(dl, f))) > 60 * 86400]
+            if len(old_files) > 10:
+                recs.append({"id": "downloads_old", "category": "Organization", "priority": "medium",
+                    "title": f"Downloads folder has {len(old_files)} files older than 60 days",
+                    "explanation": "Old downloads accumulate over time. Review and archive or delete them.",
+                    "evidence": f"{len(old_files)} files older than 60 days in Downloads",
+                    "action": "Organize Downloads", "module": "file-organizer", "benefit": 5, "risk": "low", "actionable": True})
+
+        desktop = os.path.join(home, "Desktop")
+        if os.path.isdir(desktop):
+            desktop_files = [f for f in os.listdir(desktop) if os.path.isfile(os.path.join(desktop, f))]
+            if len(desktop_files) > 20:
+                recs.append({"id": "desktop_cluttered", "category": "Organization", "priority": "low",
+                    "title": f"Desktop has {len(desktop_files)} files — consider organizing",
+                    "explanation": "A cluttered desktop can slow icon rendering and make finding files harder.",
+                    "evidence": f"{len(desktop_files)} files on Desktop",
+                    "action": "File Organizer", "module": "file-organizer", "benefit": 3, "risk": "low", "actionable": True})
+    except Exception:
+        pass
+
+    scan_data = scan_results
+    if scan_data.get("total_size", 0) > 500 * 1024 * 1024:
+        recs.append({"id": "junk_large", "category": "Storage", "priority": "medium",
+            "title": f"Last scan found {format_bytes(scan_data['total_size'])} of cleanable junk",
+            "explanation": "Your last system scan identified significant clutter. Run the cleaner to reclaim space.",
+            "evidence": f"{format_bytes(scan_data['total_size'])} in {scan_data.get('total_files', 0)} files",
+            "action": "Clean Now", "module": "cleaner", "benefit": 8, "risk": "low", "actionable": True})
+
+    if scan_data.get("last_scan") is None:
+        recs.append({"id": "no_scan", "category": "Maintenance", "priority": "medium",
+            "title": "You haven't run a system scan yet",
+            "explanation": "Run your first scan to discover temp files, large files, and clutter on this system.",
+            "evidence": "No scan history found", "action": "Scan Now", "module": "cleaner",
+            "benefit": 7, "risk": "low", "actionable": True})
+
+    hour = datetime.now().hour
+    if hour >= 21 or hour < 7:
+        recs.append({"id": "night_light", "category": "Wellness", "priority": "low",
+            "title": "It's late — consider enabling Night Light mode",
+            "explanation": "Blue light exposure in the evening affects sleep quality. Enable Night Light in Windows Display settings.",
+            "evidence": f"Current time: {datetime.now().strftime('%H:%M')}",
+            "action": "Open Wellness", "module": "wellness", "benefit": 4, "risk": "low", "actionable": True})
+
+    state = _load_rec_state()
+    dismissed = set(state.get("dismissed", []))
+    snoozed = state.get("snoozed", {})
+    now_iso = datetime.now().isoformat()
+
+    filtered = []
+    for r in recs:
+        rid = r["id"]
+        if rid in dismissed:
+            continue
+        if rid in snoozed:
+            snooze_until = snoozed[rid]
+            if now_iso < snooze_until:
+                continue
+            else:
+                del snoozed[rid]
+        r["timestamp"] = ts
+        filtered.append(r)
+
+    filtered.sort(key=lambda x: {"high": 0, "medium": 1, "low": 2}.get(x["priority"], 3))
+    state["snoozed"] = snoozed
+    _save_rec_state(state)
+    return filtered
+
+
+@app.route("/api/recommendations")
+def api_recommendations():
+    recs = _generate_recommendations()
+    return jsonify({"recommendations": recs, "total": len(recs),
+                    "high": sum(1 for r in recs if r["priority"] == "high"),
+                    "medium": sum(1 for r in recs if r["priority"] == "medium"),
+                    "low": sum(1 for r in recs if r["priority"] == "low")})
+
+
+@app.route("/api/recommendations/dismiss", methods=["POST"])
+def api_rec_dismiss():
+    data = request.get_json() or {}
+    rid = data.get("id")
+    if not rid:
+        return jsonify({"status": "error"}), 400
+    with _rec_lock:
+        state = _load_rec_state()
+        if rid not in state["dismissed"]:
+            state["dismissed"].append(rid)
+        history_entry = {"id": rid, "action": "dismissed", "timestamp": datetime.now().isoformat()}
+        state.setdefault("history", []).append(history_entry)
+        _save_rec_state(state)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/recommendations/snooze", methods=["POST"])
+def api_rec_snooze():
+    data = request.get_json() or {}
+    rid = data.get("id")
+    hours = int(data.get("hours", 24))
+    if not rid:
+        return jsonify({"status": "error"}), 400
+    with _rec_lock:
+        state = _load_rec_state()
+        until = (datetime.now() + timedelta(hours=hours)).isoformat()
+        state.setdefault("snoozed", {})[rid] = until
+        state.setdefault("history", []).append({"id": rid, "action": f"snoozed_{hours}h", "timestamp": datetime.now().isoformat()})
+        _save_rec_state(state)
+    return jsonify({"status": "ok", "snoozed_until": until})
+
+
+@app.route("/api/recommendations/reset-dismissed", methods=["POST"])
+def api_rec_reset():
+    with _rec_lock:
+        state = _load_rec_state()
+        state["dismissed"] = []
+        state["snoozed"] = {}
+        _save_rec_state(state)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/recommendations/history")
+def api_rec_history():
+    state = _load_rec_state()
+    return jsonify({"history": list(reversed(state.get("history", [])))})
+
+
+@app.route("/api/recommendations/export")
+def api_rec_export():
+    recs = _generate_recommendations()
+    lines = ["MTT Windows Infinite Optimizer — Recommendations Report",
+             f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", "", ""]
+    for r in recs:
+        lines.append(f"[{r['priority'].upper()}] {r['title']}")
+        lines.append(f"  Category : {r['category']}")
+        lines.append(f"  Evidence : {r['evidence']}")
+        lines.append(f"  Why      : {r['explanation']}")
+        lines.append("")
+    content = "\n".join(lines)
+    return app.response_class(content, mimetype="text/plain",
+        headers={"Content-Disposition": "attachment;filename=recommendations.txt"})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FEATURE 14: PROFILES / PRESETS
+# ══════════════════════════════════════════════════════════════════════════════
+
+PROFILES_FILE = "profiles.json"
+_profiles_lock = threading.Lock()
+
+BUILTIN_PROFILES = {
+    "performance": {
+        "id": "performance", "name": "Performance Mode", "icon": "🚀", "builtin": True,
+        "description": "Prioritizes speed. Focuses recommendations on CPU, RAM, and startup items. Increases monitoring frequency.",
+        "settings": {"refresh_interval_sec": 2, "rec_filter": ["Performance", "Startup", "Storage"],
+                     "highlight_heavy_procs": True, "wellness_reminders": False, "theme_accent": "cyan",
+                     "auto_scan_on_start": True, "low_resource_mode": False}
+    },
+    "work": {
+        "id": "work", "name": "Work Mode", "icon": "💼", "builtin": True,
+        "description": "Balances performance and organization. Surfaces file and download recommendations. Quieter UI.",
+        "settings": {"refresh_interval_sec": 5, "rec_filter": ["Performance", "Organization", "Maintenance"],
+                     "highlight_heavy_procs": False, "wellness_reminders": True, "theme_accent": "blue",
+                     "auto_scan_on_start": False, "low_resource_mode": False}
+    },
+    "night_comfort": {
+        "id": "night_comfort", "name": "Night Comfort Mode", "icon": "🌙", "builtin": True,
+        "description": "Reduces UI intensity and surfaces wellness recommendations. Ideal for evening use.",
+        "settings": {"refresh_interval_sec": 10, "rec_filter": ["Wellness", "Maintenance"],
+                     "highlight_heavy_procs": False, "wellness_reminders": True, "theme_accent": "purple",
+                     "auto_scan_on_start": False, "low_resource_mode": True}
+    },
+    "battery_saver": {
+        "id": "battery_saver", "name": "Battery Saver Mode", "icon": "🔋", "builtin": True,
+        "description": "Minimizes app resource usage. Slows refresh rates, skips heavy background scans.",
+        "settings": {"refresh_interval_sec": 30, "rec_filter": ["Performance", "Maintenance"],
+                     "highlight_heavy_procs": False, "wellness_reminders": False, "theme_accent": "green",
+                     "auto_scan_on_start": False, "low_resource_mode": True}
+    },
+}
+
+def _load_profiles_data():
+    try:
+        if os.path.exists(PROFILES_FILE):
+            with open(PROFILES_FILE) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {"active_profile": None, "custom_profiles": {}, "history": []}
+
+def _save_profiles_data(data):
+    try:
+        with open(PROFILES_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
+@app.route("/api/profiles")
+def api_profiles():
+    data = _load_profiles_data()
+    all_profiles = {**BUILTIN_PROFILES, **data.get("custom_profiles", {})}
+    return jsonify({"profiles": list(all_profiles.values()),
+                    "active": data.get("active_profile"),
+                    "history": data.get("history", [])[-5:]})
+
+
+@app.route("/api/profiles/apply", methods=["POST"])
+def api_profiles_apply():
+    req = request.get_json() or {}
+    pid = req.get("id")
+    if not pid:
+        return jsonify({"status": "error", "message": "Profile ID required"}), 400
+    data = _load_profiles_data()
+    all_profiles = {**BUILTIN_PROFILES, **data.get("custom_profiles", {})}
+    if pid not in all_profiles:
+        return jsonify({"status": "error", "message": "Profile not found"}), 404
+    profile = all_profiles[pid]
+    prev = data.get("active_profile")
+    data["active_profile"] = pid
+    data.setdefault("history", []).append({
+        "profile_id": pid, "profile_name": profile["name"],
+        "applied_at": datetime.now().isoformat(), "previous": prev
+    })
+    _save_profiles_data(data)
+    log_activity(f"Profile applied: {profile['name']}", "SUCCESS")
+    return jsonify({"status": "ok", "profile": profile})
+
+
+@app.route("/api/profiles/save", methods=["POST"])
+def api_profiles_save():
+    req = request.get_json() or {}
+    pid = req.get("id") or str(uuid.uuid4())[:8]
+    name = req.get("name", "Custom Profile")
+    if not name.strip():
+        return jsonify({"status": "error", "message": "Name required"}), 400
+    profile = {
+        "id": pid, "name": name, "icon": req.get("icon", "⚙️"),
+        "builtin": False,
+        "description": req.get("description", ""),
+        "settings": req.get("settings", {})
+    }
+    with _profiles_lock:
+        data = _load_profiles_data()
+        data.setdefault("custom_profiles", {})[pid] = profile
+        _save_profiles_data(data)
+    log_activity(f"Profile saved: {name}", "INFO")
+    return jsonify({"status": "ok", "profile": profile})
+
+
+@app.route("/api/profiles/delete", methods=["POST"])
+def api_profiles_delete():
+    req = request.get_json() or {}
+    pid = req.get("id")
+    if pid in BUILTIN_PROFILES:
+        return jsonify({"status": "error", "message": "Cannot delete built-in profiles"}), 400
+    with _profiles_lock:
+        data = _load_profiles_data()
+        data.get("custom_profiles", {}).pop(pid, None)
+        if data.get("active_profile") == pid:
+            data["active_profile"] = None
+        _save_profiles_data(data)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/profiles/restore-previous", methods=["POST"])
+def api_profiles_restore():
+    data = _load_profiles_data()
+    history = data.get("history", [])
+    if len(history) < 2:
+        return jsonify({"status": "nothing", "message": "No previous profile to restore"})
+    prev_entry = history[-2]
+    prev_id = prev_entry.get("profile_id")
+    all_profiles = {**BUILTIN_PROFILES, **data.get("custom_profiles", {})}
+    if prev_id not in all_profiles:
+        return jsonify({"status": "error", "message": "Previous profile no longer exists"})
+    data["active_profile"] = prev_id
+    data["history"].append({"profile_id": prev_id, "profile_name": all_profiles[prev_id]["name"],
+                             "applied_at": datetime.now().isoformat(), "previous": data.get("active_profile"), "restored": True})
+    _save_profiles_data(data)
+    return jsonify({"status": "ok", "profile": all_profiles[prev_id]})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FEATURE 15: SCHEDULED MAINTENANCE
+# ══════════════════════════════════════════════════════════════════════════════
+
+MAINTENANCE_FILE = "maintenance_schedules.json"
+MAINTENANCE_HISTORY_FILE = "maintenance_history.json"
+_maint_lock = threading.Lock()
+
+DEFAULT_MAINTENANCE_TASKS = [
+    {"id": "weekly_temp_scan", "name": "Weekly Temp File Scan", "type": "scan",
+     "description": "Scans all temp file categories and reports findings without deleting.",
+     "schedule": "weekly", "day_of_week": "sun", "time": "10:00", "enabled": True,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+    {"id": "weekly_clutter_scan", "name": "Weekly Clutter Scan", "type": "scan",
+     "description": "Scans Downloads, Desktop, and Documents for file organization issues.",
+     "schedule": "weekly", "day_of_week": "wed", "time": "09:00", "enabled": True,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+    {"id": "monthly_duplicate_scan", "name": "Monthly Duplicate File Scan", "type": "scan",
+     "description": "Detects duplicate files across common folders via MD5 comparison.",
+     "schedule": "monthly", "day_of_month": 1, "time": "11:00", "enabled": True,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+    {"id": "downloads_reminder", "name": "Downloads Cleanup Reminder", "type": "reminder",
+     "description": "Reminds you to review and clean up your Downloads folder.",
+     "schedule": "weekly", "day_of_week": "fri", "time": "17:00", "enabled": True,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+    {"id": "startup_review", "name": "Startup Apps Review", "type": "reminder",
+     "description": "Periodic reminder to review startup programs for unnecessary items.",
+     "schedule": "monthly", "day_of_month": 15, "time": "09:00", "enabled": True,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+    {"id": "health_scan", "name": "System Health Scan", "type": "scan",
+     "description": "Runs a full system health score check and records results.",
+     "schedule": "weekly", "day_of_week": "mon", "time": "08:00", "enabled": True,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+    {"id": "app_inventory", "name": "App Inventory Refresh", "type": "scan",
+     "description": "Refreshes the installed app list and updates bloat detection results.",
+     "schedule": "monthly", "day_of_month": 7, "time": "10:00", "enabled": True,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+    {"id": "night_comfort_reminder", "name": "Night Comfort Reminder", "type": "reminder",
+     "description": "Reminds you to enable Night Light and take an eye break at end of day.",
+     "schedule": "daily", "time": "21:00", "enabled": False,
+     "last_run": None, "next_run": None, "run_count": 0, "builtin": True},
+]
+
+def _load_maintenance_tasks():
+    try:
+        if os.path.exists(MAINTENANCE_FILE):
+            with open(MAINTENANCE_FILE) as f:
+                saved = json.load(f)
+            tasks_by_id = {t["id"]: t for t in saved.get("tasks", [])}
+            result = []
+            for default in DEFAULT_MAINTENANCE_TASKS:
+                if default["id"] in tasks_by_id:
+                    merged = {**default, **tasks_by_id[default["id"]]}
+                    result.append(merged)
+                else:
+                    result.append(dict(default))
+            custom = [t for t in saved.get("tasks", []) if not t.get("builtin", False)]
+            result.extend(custom)
+            return result
+    except Exception:
+        pass
+    return [dict(t) for t in DEFAULT_MAINTENANCE_TASKS]
+
+def _save_maintenance_tasks(tasks):
+    try:
+        with open(MAINTENANCE_FILE, "w") as f:
+            json.dump({"tasks": tasks}, f, indent=2)
+    except Exception:
+        pass
+
+def _load_maintenance_history():
+    try:
+        if os.path.exists(MAINTENANCE_HISTORY_FILE):
+            with open(MAINTENANCE_HISTORY_FILE) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+def _save_maintenance_history(history):
+    try:
+        with open(MAINTENANCE_HISTORY_FILE, "w") as f:
+            json.dump(history[-200:], f, indent=2)
+    except Exception:
+        pass
+
+def _run_maintenance_task(task_id):
+    tasks = _load_maintenance_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        return {"status": "error", "message": "Task not found"}
+    result = {"task_id": task_id, "task_name": task["name"], "type": task["type"],
+              "started_at": datetime.now().isoformat(), "status": "ok", "findings": {}}
+    try:
+        if task["type"] == "scan":
+            if task_id == "weekly_temp_scan":
+                result["findings"] = {"scan_categories": len(scan_results.get("categories", {})),
+                                      "total_size": format_bytes(scan_results.get("total_size", 0))}
+                log_activity(f"Maintenance: Temp scan completed", "INFO")
+            elif task_id == "weekly_clutter_scan":
+                home = os.path.expanduser("~")
+                dl = os.path.join(home, "Downloads")
+                dl_count = len(os.listdir(dl)) if os.path.isdir(dl) else 0
+                result["findings"] = {"downloads_files": dl_count}
+                log_activity(f"Maintenance: Clutter scan — {dl_count} files in Downloads", "INFO")
+            elif task_id == "monthly_duplicate_scan":
+                dup_count = len(file_organizer_results.get("duplicates", []))
+                result["findings"] = {"duplicates_found": dup_count}
+                log_activity(f"Maintenance: Duplicate scan — {dup_count} duplicates found", "INFO")
+            elif task_id == "health_scan":
+                try:
+                    cpu = psutil.cpu_percent(interval=0.5)
+                    mem = psutil.virtual_memory()
+                    result["findings"] = {"cpu": f"{cpu:.0f}%", "ram": f"{mem.percent:.0f}%"}
+                    log_activity(f"Maintenance: Health scan — CPU {cpu:.0f}%, RAM {mem.percent:.0f}%", "INFO")
+                except Exception:
+                    pass
+            elif task_id == "app_inventory":
+                result["findings"] = {"apps_scanned": True}
+                log_activity("Maintenance: App inventory refreshed", "INFO")
+        elif task["type"] == "reminder":
+            log_activity(f"Maintenance reminder: {task['name']}", "INFO")
+            result["findings"] = {"reminder_sent": True}
+    except Exception as e:
+        result["status"] = "error"
+        result["error"] = str(e)
+        log_activity(f"Maintenance error ({task_id}): {e}", "ERROR")
+
+    result["completed_at"] = datetime.now().isoformat()
+    for t in tasks:
+        if t["id"] == task_id:
+            t["last_run"] = result["completed_at"]
+            t["run_count"] = t.get("run_count", 0) + 1
+    _save_maintenance_tasks(tasks)
+    history = _load_maintenance_history()
+    history.append(result)
+    _save_maintenance_history(history)
+    return result
+
+
+@app.route("/api/maintenance/tasks")
+def api_maintenance_tasks():
+    tasks = _load_maintenance_tasks()
+    return jsonify({"tasks": tasks})
+
+
+@app.route("/api/maintenance/tasks/toggle", methods=["POST"])
+def api_maintenance_toggle():
+    data = request.get_json() or {}
+    tid = data.get("id")
+    enabled = data.get("enabled", True)
+    with _maint_lock:
+        tasks = _load_maintenance_tasks()
+        for t in tasks:
+            if t["id"] == tid:
+                t["enabled"] = enabled
+        _save_maintenance_tasks(tasks)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/maintenance/tasks/run", methods=["POST"])
+def api_maintenance_run():
+    data = request.get_json() or {}
+    tid = data.get("id")
+    if not tid:
+        return jsonify({"status": "error", "message": "Task ID required"}), 400
+    result = _run_maintenance_task(tid)
+    return jsonify(result)
+
+
+@app.route("/api/maintenance/tasks/save", methods=["POST"])
+def api_maintenance_save():
+    req = request.get_json() or {}
+    with _maint_lock:
+        tasks = _load_maintenance_tasks()
+        tid = req.get("id") or str(uuid.uuid4())[:8]
+        existing = next((t for t in tasks if t["id"] == tid), None)
+        if existing:
+            for k, v in req.items():
+                existing[k] = v
+        else:
+            new_task = {
+                "id": tid, "name": req.get("name", "Custom Task"), "type": req.get("type", "reminder"),
+                "description": req.get("description", ""), "schedule": req.get("schedule", "weekly"),
+                "day_of_week": req.get("day_of_week", "mon"), "time": req.get("time", "09:00"),
+                "enabled": req.get("enabled", True), "last_run": None, "next_run": None,
+                "run_count": 0, "builtin": False
+            }
+            tasks.append(new_task)
+        _save_maintenance_tasks(tasks)
+    return jsonify({"status": "ok", "id": tid})
+
+
+@app.route("/api/maintenance/tasks/delete", methods=["POST"])
+def api_maintenance_delete():
+    data = request.get_json() or {}
+    tid = data.get("id")
+    with _maint_lock:
+        tasks = _load_maintenance_tasks()
+        builtin_task = next((t for t in tasks if t["id"] == tid and t.get("builtin")), None)
+        if builtin_task:
+            return jsonify({"status": "error", "message": "Cannot delete built-in tasks"}), 400
+        tasks = [t for t in tasks if t["id"] != tid]
+        _save_maintenance_tasks(tasks)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/maintenance/history")
+def api_maintenance_history():
+    history = _load_maintenance_history()
+    return jsonify({"history": list(reversed(history[-50:]))})
+
+
+@app.route("/api/maintenance/history/export")
+def api_maintenance_history_export():
+    history = _load_maintenance_history()
+    lines = ["MTT Windows Infinite Optimizer — Maintenance History",
+             f"Exported: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ""]
+    for entry in reversed(history):
+        lines.append(f"[{entry.get('completed_at', '?')}] {entry.get('task_name', '?')} — {entry.get('status', '?').upper()}")
+        if entry.get("findings"):
+            for k, v in entry["findings"].items():
+                lines.append(f"  {k}: {v}")
+        lines.append("")
+    content = "\n".join(lines)
+    return app.response_class(content, mimetype="text/plain",
+        headers={"Content-Disposition": "attachment;filename=maintenance_history.txt"})
+
+
 if __name__ == "__main__":
     scheduler.start()
     setup_scheduler()

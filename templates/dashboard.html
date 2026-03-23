@@ -84,6 +84,23 @@
             </div>
 
             <div class="sidebar-section">
+                <div class="sidebar-label">Insights</div>
+            </div>
+            <div class="nav-item" data-page="recommendations">
+                <span class="icon">&#x1F4A1;</span>
+                <span>Recommendations</span>
+                <span class="nav-badge" id="rec-badge" style="display:none;background:var(--accent-red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:auto;font-family:'JetBrains Mono',monospace;"></span>
+            </div>
+            <div class="nav-item" data-page="profiles">
+                <span class="icon">&#x1F3AD;</span>
+                <span>Profiles</span>
+            </div>
+            <div class="nav-item" data-page="maintenance">
+                <span class="icon">&#x1F4C5;</span>
+                <span>Maintenance</span>
+            </div>
+
+            <div class="sidebar-section">
                 <div class="sidebar-label">Configure</div>
             </div>
             <div class="nav-item" data-page="scheduler">
@@ -2334,6 +2351,225 @@ United States
 
 Email: <a href="mailto:info@macrotechtitan.com" style="color: var(--accent-cyan);">info@macrotechtitan.com</a>
 Website: <a href="https://legal.macrotechtitan.com" style="color: var(--accent-cyan);">https://legal.macrotechtitan.com</a></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- PAGE: RECOMMENDATIONS                                          -->
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <div class="page" id="page-recommendations">
+                <div class="panel" style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                        <h2 style="font-size:18px;font-weight:700;">&#x1F4A1; Recommendations</h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <select id="rec-filter-cat" onchange="App.filterRecs()" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+                                <option value="">All Categories</option>
+                                <option value="Performance">Performance</option>
+                                <option value="Storage">Storage</option>
+                                <option value="Startup">Startup</option>
+                                <option value="Organization">Organization</option>
+                                <option value="Wellness">Wellness</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Network">Network</option>
+                            </select>
+                            <select id="rec-filter-pri" onchange="App.filterRecs()" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+                                <option value="">All Priorities</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                            <button class="btn btn-outline" onclick="App.refreshRecs()" style="font-size:12px;padding:6px 14px;">&#x21BB; Refresh</button>
+                            <button class="btn btn-outline" onclick="App.exportRecs()" style="font-size:12px;padding:6px 14px;">&#x1F4BE; Export</button>
+                            <button class="btn btn-outline" onclick="App.resetDismissedRecs()" style="font-size:12px;padding:6px 14px;color:var(--text-muted);">Reset Dismissed</button>
+                        </div>
+                    </div>
+                    <div id="rec-summary-bar" style="display:flex;gap:20px;margin-top:16px;flex-wrap:wrap;"></div>
+                </div>
+
+                <div id="rec-top3" style="margin-bottom:16px;"></div>
+
+                <div id="rec-list" style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="text-align:center;color:var(--text-muted);padding:40px;font-family:'JetBrains Mono',monospace;">Loading recommendations...</div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <h3 style="font-size:14px;font-weight:600;color:var(--text-secondary);">&#x1F4DC; Recommendation History</h3>
+                    </div>
+                    <div id="rec-history-list" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);max-height:180px;overflow-y:auto;">
+                        <div style="text-align:center;padding:20px;">No history yet</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- PAGE: PROFILES                                                  -->
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <div class="page" id="page-profiles">
+                <div class="panel" style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                        <h2 style="font-size:18px;font-weight:700;">&#x1F3AD; Profiles &amp; Presets</h2>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-outline" onclick="App.showNewProfileDialog()" style="font-size:12px;padding:6px 14px;">&#x2B; New Profile</button>
+                            <button class="btn btn-outline" onclick="App.refreshProfiles()" style="font-size:12px;padding:6px 14px;">&#x21BB; Refresh</button>
+                            <button class="btn btn-outline" onclick="App.restorePreviousProfile()" style="font-size:12px;padding:6px 14px;color:var(--text-muted);">&#x21A9; Restore Previous</button>
+                        </div>
+                    </div>
+                    <div id="active-profile-bar" style="margin-top:12px;"></div>
+                </div>
+
+                <div id="profiles-builtin" style="margin-bottom:16px;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Built-in Profiles</div>
+                    <div id="profiles-builtin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;"></div>
+                </div>
+
+                <div id="profiles-custom-section">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Custom Profiles</div>
+                    <div id="profiles-custom-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
+                        <div style="color:var(--text-muted);font-size:13px;padding:20px;">No custom profiles yet. Click "+ New Profile" to create one.</div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <h3 style="font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;">&#x1F4DC; Profile History</h3>
+                    <div id="profile-history-list" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">
+                        <div style="text-align:center;padding:16px;">No profile changes recorded yet</div>
+                    </div>
+                </div>
+
+                <!-- New Profile Dialog (hidden) -->
+                <div id="profile-dialog" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+                    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:32px;max-width:480px;width:90%;position:relative;">
+                        <button onclick="App.closeProfileDialog()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">&#x2715;</button>
+                        <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">&#x2B; Create Custom Profile</h3>
+                        <div style="display:flex;flex-direction:column;gap:12px;">
+                            <div>
+                                <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Profile Name</label>
+                                <input id="new-profile-name" type="text" placeholder="e.g. Gaming Mode" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:6px;font-size:13px;">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Description</label>
+                                <input id="new-profile-desc" type="text" placeholder="What does this profile do?" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:6px;font-size:13px;">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Icon (emoji)</label>
+                                <input id="new-profile-icon" type="text" placeholder="⚙️" maxlength="4" style="width:80px;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:6px;font-size:18px;">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Refresh Interval</label>
+                                <select id="new-profile-refresh" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:6px;font-size:13px;">
+                                    <option value="2">Fast (2s)</option>
+                                    <option value="5" selected>Normal (5s)</option>
+                                    <option value="10">Slow (10s)</option>
+                                    <option value="30">Battery Saver (30s)</option>
+                                </select>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+                                <label class="toggle"><input type="checkbox" id="new-profile-wellness"><span class="toggle-slider"></span></label>
+                                <span style="font-size:13px;color:var(--text-secondary);">Enable wellness reminders</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <label class="toggle"><input type="checkbox" id="new-profile-lowres"><span class="toggle-slider"></span></label>
+                                <span style="font-size:13px;color:var(--text-secondary);">Low resource mode</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:20px;">
+                            <button class="btn btn-primary" onclick="App.saveNewProfile()" style="flex:1;">Save Profile</button>
+                            <button class="btn btn-outline" onclick="App.closeProfileDialog()" style="flex:1;">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- PAGE: MAINTENANCE                                               -->
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <div class="page" id="page-maintenance">
+                <div class="panel" style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                        <h2 style="font-size:18px;font-weight:700;">&#x1F4C5; Scheduled Maintenance</h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-outline" onclick="App.refreshMaintenance()" style="font-size:12px;padding:6px 14px;">&#x21BB; Refresh</button>
+                            <button class="btn btn-outline" onclick="App.showNewTaskDialog()" style="font-size:12px;padding:6px 14px;">&#x2B; Add Task</button>
+                            <button class="btn btn-outline" onclick="App.exportMaintenanceHistory()" style="font-size:12px;padding:6px 14px;">&#x1F4BE; Export History</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;font-size:13px;color:var(--text-secondary);">
+                        All tasks default to <strong style="color:var(--accent-green);">scan-only</strong> or <strong style="color:var(--accent-cyan);">reminder</strong> mode — no files are automatically deleted.
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-bottom:16px;">
+                    <h3 style="font-size:14px;font-weight:600;margin-bottom:14px;">&#x1F4CB; Task Schedule</h3>
+                    <div id="maintenance-task-list" style="display:flex;flex-direction:column;gap:0;">
+                        <div style="text-align:center;color:var(--text-muted);padding:30px;font-family:'JetBrains Mono',monospace;">Loading tasks...</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                        <h3 style="font-size:14px;font-weight:600;">&#x1F4DC; Maintenance History</h3>
+                    </div>
+                    <div id="maintenance-history-list" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;">
+                        <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:12px;">No history yet — run a task to start logging.</div>
+                    </div>
+                </div>
+
+                <!-- New Task Dialog (hidden) -->
+                <div id="task-dialog" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+                    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:32px;max-width:460px;width:90%;position:relative;">
+                        <button onclick="App.closeTaskDialog()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">&#x2715;</button>
+                        <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">&#x2B; Add Custom Task</h3>
+                        <div style="display:flex;flex-direction:column;gap:12px;">
+                            <div>
+                                <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Task Name</label>
+                                <input id="new-task-name" type="text" placeholder="e.g. Monthly Storage Check" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:6px;font-size:13px;">
+                            </div>
+                            <div>
+                                <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Description</label>
+                                <input id="new-task-desc" type="text" placeholder="What will this task do?" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:6px;font-size:13px;">
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                <div>
+                                    <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Type</label>
+                                    <select id="new-task-type" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-size:13px;">
+                                        <option value="scan">Scan</option>
+                                        <option value="reminder">Reminder</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Schedule</label>
+                                    <select id="new-task-schedule" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-size:13px;">
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly" selected>Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                <div>
+                                    <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Day</label>
+                                    <select id="new-task-day" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-size:13px;">
+                                        <option value="mon">Monday</option>
+                                        <option value="tue">Tuesday</option>
+                                        <option value="wed">Wednesday</option>
+                                        <option value="thu">Thursday</option>
+                                        <option value="fri">Friday</option>
+                                        <option value="sat">Saturday</option>
+                                        <option value="sun">Sunday</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Time</label>
+                                    <input id="new-task-time" type="time" value="09:00" style="width:100%;margin-top:4px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-size:13px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:20px;">
+                            <button class="btn btn-primary" onclick="App.saveNewTask()" style="flex:1;">Save Task</button>
+                            <button class="btn btn-outline" onclick="App.closeTaskDialog()" style="flex:1;">Cancel</button>
+                        </div>
                     </div>
                 </div>
             </div>

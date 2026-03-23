@@ -336,6 +336,9 @@
         .feature-card:nth-child(14)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-yellow)); }
         .feature-card:nth-child(15)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); }
         .feature-card:nth-child(16)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); }
+        .feature-card:nth-child(17)::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple)); }
+        .feature-card:nth-child(18)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+        .feature-card:nth-child(19)::before { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-blue)); }
 
         .feature-icon {
             font-size: 36px;
@@ -976,7 +979,7 @@
 
     <section class="hero">
         <div class="hero-content">
-            <div class="hero-badge">Windows System Utility v1.1 &nbsp;&#x2022;&nbsp; Now with Health Score &amp; Bloat Detection</div>
+            <div class="hero-badge">Windows System Utility v1.1 &nbsp;&#x2022;&nbsp; Insights Suite: Recommendations, Profiles &amp; Scheduled Maintenance</div>
             <h1 class="hero-title">
                 Your PC, <span class="gradient">Optimized.</span>
             </h1>
@@ -1014,7 +1017,7 @@
             <div class="stat-label">Cleanup Categories</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">15+</div>
+            <div class="stat-value">18+</div>
             <div class="stat-label">Feature Modules</div>
         </div>
         <div class="stat-item">
@@ -1035,7 +1038,7 @@
         <div class="section-header">
             <div class="section-tag">Feature Set</div>
             <h2 class="section-title">Everything You Need</h2>
-            <p class="section-desc">15+ powerful modules working together to keep your Windows system fast, clean, and secure — now with Health Score diagnostics and App Bloat Detection.</p>
+            <p class="section-desc">18+ powerful modules working together to keep your Windows system fast, clean, and secure — now with an Insights suite: Recommendations, Profiles, and Scheduled Maintenance.</p>
         </div>
 
         <div class="features-grid">
@@ -1215,6 +1218,39 @@
                     <span class="feature-tag">Folder Sizes</span>
                 </div>
             </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4A1;</div>
+                <h3 class="feature-title">Recommendations Engine</h3>
+                <p class="feature-desc">AI-powered system advisor that evaluates CPU, RAM, disk, uptime, and habits to surface actionable tips. Dismiss, snooze, or filter by category and priority. Exports to JSON.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Priority Scoring</span>
+                    <span class="feature-tag">Snooze</span>
+                    <span class="feature-tag">Export</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F3AD;</div>
+                <h3 class="feature-title">Profiles &amp; Presets</h3>
+                <p class="feature-desc">Switch between <strong style="color:var(--accent-cyan)">Performance, Work, Night Comfort, and Battery Saver</strong> modes instantly — or build fully custom profiles. One-click restore to previous state.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Built-in Presets</span>
+                    <span class="feature-tag">Custom Profiles</span>
+                    <span class="feature-tag">Restore</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4C5;</div>
+                <h3 class="feature-title">Scheduled Maintenance</h3>
+                <p class="feature-desc">8 built-in recurring tasks — weekly temp scans, monthly duplicate checks, download reminders, and health scans. Add custom tasks. Full history log with export. Safe scan-only defaults.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Auto-Schedule</span>
+                    <span class="feature-tag">Run Now</span>
+                    <span class="feature-tag">History Log</span>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -1224,7 +1260,7 @@
             <div class="section-header" style="margin-bottom: 40px;">
                 <div class="section-tag" style="color:var(--accent-green);">&#x2728; Latest Updates</div>
                 <h2 class="section-title" style="font-size: clamp(22px,3vw,32px);">New in This Release</h2>
-                <p class="section-desc">Three major new modules added alongside scanner improvements and startup intelligence.</p>
+                <p class="section-desc">Six modules added across two releases — scanner improvements, startup intelligence, and a full Insights suite.</p>
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                 <div style="background: var(--bg-card); border: 1px solid rgba(16,185,129,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
@@ -1254,6 +1290,30 @@
                     <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-purple);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Enhanced</div>
                     <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">4 New Deep Scanners</h3>
                     <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">Broken Shortcut Finder, Empty Folder Remover, Folder Size Explorer, and Desktop Wizard added to the Cleaner and File Organizer pages — each with preview, safe-delete, and demo mode.</p>
+                </div>
+
+                <div style="background: var(--bg-card); border: 1px solid rgba(6,182,212,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-purple));"></div>
+                    <div style="font-size:32px;margin-bottom:12px;">&#x1F4A1;</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">New Module</div>
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Recommendations Engine</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">Real-time system advisor that scores your CPU, RAM, disk, uptime, and habits to surface prioritized actions — filter by category, snooze or dismiss, and export your history to JSON.</p>
+                </div>
+
+                <div style="background: var(--bg-card); border: 1px solid rgba(16,185,129,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan));"></div>
+                    <div style="font-size:32px;margin-bottom:12px;">&#x1F3AD;</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">New Module</div>
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Profiles &amp; Presets</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">Four built-in optimization profiles — Performance, Work, Night Comfort, Battery Saver — plus full custom profile creation. One-click apply with automatic restore-previous safety net.</p>
+                </div>
+
+                <div style="background: var(--bg-card); border: 1px solid rgba(245,158,11,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-yellow),var(--accent-blue));"></div>
+                    <div style="font-size:32px;margin-bottom:12px;">&#x1F4C5;</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">New Module</div>
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Scheduled Maintenance</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">8 pre-built maintenance tasks run on daily, weekly, or monthly schedules. Toggle each on or off, run any task on demand, view the full history log, and add custom reminder tasks.</p>
                 </div>
             </div>
         </div>

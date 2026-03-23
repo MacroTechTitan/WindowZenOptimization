@@ -82,6 +82,9 @@ const App = {
         if (pageName === 'network') this.resetNetworkFixUI();
         if (pageName === 'dashboard') this.refreshHealthScore();
         if (pageName === 'apps' && this._appsData.length === 0) this.refreshApps();
+        if (pageName === 'recommendations') this.refreshRecs();
+        if (pageName === 'profiles') this.refreshProfiles();
+        if (pageName === 'maintenance') { this.refreshMaintenance(); this.refreshMaintenanceHistory(); }
     },
 
     startClock() {
@@ -2042,6 +2045,409 @@ const App = {
             this.showNotification('Error executing Desktop Wizard', 'error');
         }
     },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FEATURE 13: RECOMMENDATIONS ENGINE
+    // ═══════════════════════════════════════════════════════════════════════
+    _recsData: [],
+
+    async refreshRecs() {
+        try {
+            const res = await fetch('/api/recommendations');
+            const data = await res.json();
+            this._recsData = data.recommendations || [];
+            this._renderRecSummary(data);
+            this._renderRecTop3(this._recsData);
+            this._renderRecList(this._recsData);
+            this._renderRecHistory();
+            this._updateRecBadge(data.high || 0);
+        } catch(e) {
+            document.getElementById('rec-list').innerHTML = '<div style="text-align:center;color:var(--accent-red);padding:30px;">Failed to load recommendations</div>';
+        }
+    },
+
+    _updateRecBadge(count) {
+        const badge = document.getElementById('rec-badge');
+        if (!badge) return;
+        if (count > 0) { badge.style.display = 'inline'; badge.textContent = count; }
+        else badge.style.display = 'none';
+    },
+
+    _renderRecSummary(data) {
+        const el = document.getElementById('rec-summary-bar');
+        if (!el) return;
+        const items = [
+            { label: 'Total', val: data.total || 0, color: 'var(--text-primary)' },
+            { label: 'High Priority', val: data.high || 0, color: 'var(--accent-red)' },
+            { label: 'Medium', val: data.medium || 0, color: 'var(--accent-yellow)' },
+            { label: 'Low', val: data.low || 0, color: 'var(--accent-green)' },
+        ];
+        el.innerHTML = items.map(i => `
+            <div style="display:flex;flex-direction:column;align-items:center;min-width:80px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:${i.color};">${i.val}</div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">${i.label}</div>
+            </div>`).join('<div style="width:1px;background:var(--border);"></div>');
+    },
+
+    _renderRecTop3(recs) {
+        const el = document.getElementById('rec-top3');
+        if (!el) return;
+        const top = recs.filter(r => r.priority === 'high').slice(0, 3);
+        if (!top.length) { el.innerHTML = ''; return; }
+        el.innerHTML = `
+            <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px 20px;margin-bottom:4px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-red);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">&#x26A1; Top Priority Actions</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${top.map(r => `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                        <span style="font-size:13px;font-weight:600;">${r.title}</span>
+                        ${r.actionable && r.action ? `<button class="btn btn-outline" style="font-size:11px;padding:3px 10px;white-space:nowrap;" onclick="App.navigateToModule('${r.module}')">${r.action} →</button>` : ''}
+                    </div>`).join('')}
+                </div>
+            </div>`;
+    },
+
+    filterRecs() {
+        const cat = document.getElementById('rec-filter-cat')?.value || '';
+        const pri = document.getElementById('rec-filter-pri')?.value || '';
+        const filtered = this._recsData.filter(r =>
+            (!cat || r.category === cat) && (!pri || r.priority === pri));
+        this._renderRecList(filtered);
+    },
+
+    _renderRecList(recs) {
+        const el = document.getElementById('rec-list');
+        if (!el) return;
+        if (!recs.length) {
+            el.innerHTML = '<div class="panel" style="text-align:center;color:var(--accent-green);padding:40px;"><div style="font-size:36px;margin-bottom:12px;">✅</div><div style="font-size:15px;font-weight:600;">All clear! No recommendations right now.</div><div style="font-size:13px;color:var(--text-muted);margin-top:6px;">Your system looks healthy. Check back later.</div></div>';
+            return;
+        }
+        const priColors = { high: 'var(--accent-red)', medium: 'var(--accent-yellow)', low: 'var(--accent-green)' };
+        const catIcons = { Performance:'⚡', Storage:'💾', Startup:'🚀', Organization:'📁', Wellness:'💚', Maintenance:'🔧', Network:'🌐', Apps:'📦' };
+        el.innerHTML = recs.map(r => {
+            const pc = priColors[r.priority] || 'var(--text-muted)';
+            const ic = catIcons[r.category] || '📋';
+            return `<div class="panel" style="padding:16px 20px;border-left:3px solid ${pc};">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                            <span style="font-size:16px;">${ic}</span>
+                            <span style="font-size:14px;font-weight:700;">${r.title}</span>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border:1px solid ${pc};color:${pc};border-radius:4px;text-transform:uppercase;">${r.priority}</span>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--text-muted);">${r.category}</span>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:8px;">${r.explanation}</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">Evidence: ${r.evidence}</div>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;">
+                        ${r.actionable && r.action ? `<button class="btn btn-primary" style="font-size:11px;padding:5px 12px;" onclick="App.navigateToModule('${r.module}')">${r.action}</button>` : ''}
+                        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="App.snoozeRec('${r.id}',24)" title="Snooze 24h">💤</button>
+                        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="App.dismissRec('${r.id}')" title="Dismiss">✕</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    async _renderRecHistory() {
+        const el = document.getElementById('rec-history-list');
+        if (!el) return;
+        try {
+            const res = await fetch('/api/recommendations/history');
+            const data = await res.json();
+            const history = data.history || [];
+            if (!history.length) { el.innerHTML = '<div style="text-align:center;padding:20px;">No history yet</div>'; return; }
+            el.innerHTML = history.slice(0, 20).map(h =>
+                `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">[${(h.timestamp||'').slice(0,16).replace('T',' ')}] ${h.action.replace('_',' ')} — <span style="color:var(--accent-cyan);">${h.id}</span></div>`
+            ).join('');
+        } catch(e) {}
+    },
+
+    async dismissRec(id) {
+        await fetch('/api/recommendations/dismiss', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) });
+        this.showNotification('Recommendation dismissed', 'success');
+        this.refreshRecs();
+    },
+
+    async snoozeRec(id, hours) {
+        await fetch('/api/recommendations/snooze', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, hours}) });
+        this.showNotification(`Snoozed for ${hours}h`, 'success');
+        this.refreshRecs();
+    },
+
+    async resetDismissedRecs() {
+        if (!confirm('Reset all dismissed recommendations? They will reappear.')) return;
+        await fetch('/api/recommendations/reset-dismissed', { method:'POST' });
+        this.showNotification('Dismissed recommendations reset', 'success');
+        this.refreshRecs();
+    },
+
+    exportRecs() { window.location.href = '/api/recommendations/export'; },
+
+    navigateToModule(module) { this.showPage(module); },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FEATURE 14: PROFILES / PRESETS
+    // ═══════════════════════════════════════════════════════════════════════
+    _profilesData: { profiles: [], active: null },
+
+    async refreshProfiles() {
+        try {
+            const res = await fetch('/api/profiles');
+            const data = await res.json();
+            this._profilesData = data;
+            this._renderActiveProfileBar(data.active, data.profiles);
+            this._renderProfilesGrid(data.profiles, data.active);
+            this._renderProfileHistory(data.history || []);
+        } catch(e) {}
+    },
+
+    _renderActiveProfileBar(activeId, profiles) {
+        const el = document.getElementById('active-profile-bar');
+        if (!el) return;
+        if (!activeId) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">No profile active — click Apply on any profile below.</div>'; return; }
+        const prof = profiles.find(p => p.id === activeId);
+        if (!prof) return;
+        el.innerHTML = `<div style="display:flex;align-items:center;gap:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:10px 16px;">
+            <span style="font-size:22px;">${prof.icon}</span>
+            <div>
+                <div style="font-size:13px;font-weight:700;color:var(--accent-green);">Active: ${prof.name}</div>
+                <div style="font-size:11px;color:var(--text-muted);">${prof.description}</div>
+            </div>
+            <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 10px;border:1px solid rgba(16,185,129,0.4);border-radius:6px;color:var(--accent-green);">ACTIVE</span>
+        </div>`;
+    },
+
+    _renderProfilesGrid(profiles, activeId) {
+        const builtinEl = document.getElementById('profiles-builtin-grid');
+        const customEl = document.getElementById('profiles-custom-grid');
+        if (!builtinEl || !customEl) return;
+        const builtin = profiles.filter(p => p.builtin);
+        const custom = profiles.filter(p => !p.builtin);
+        const accents = { performance:'var(--accent-cyan)', work:'var(--accent-blue)', night_comfort:'var(--accent-purple)', battery_saver:'var(--accent-green)' };
+        const renderCard = (p, allowDelete) => {
+            const isActive = p.id === activeId;
+            const accent = accents[p.id] || 'var(--accent-cyan)';
+            return `<div style="background:var(--bg-card);border:1px solid ${isActive ? accent : 'var(--border)'};border-radius:12px;padding:20px;position:relative;overflow:hidden;transition:border-color 0.2s;">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${accent};"></div>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <span style="font-size:28px;">${p.icon}</span>
+                    <div>
+                        <div style="font-size:14px;font-weight:700;">${p.name}</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${p.builtin ? 'var(--text-muted)' : accent};text-transform:uppercase;">${p.builtin ? 'Built-in' : 'Custom'}</div>
+                    </div>
+                    ${isActive ? `<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;background:${accent};color:#000;border-radius:4px;">ACTIVE</span>` : ''}
+                </div>
+                <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;">${p.description}</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'}" style="font-size:11px;padding:5px 14px;flex:1;" onclick="App.applyProfile('${p.id}')">${isActive ? '✓ Active' : '▶ Apply'}</button>
+                    ${allowDelete ? `<button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:var(--accent-red);" onclick="App.deleteProfile('${p.id}')">✕</button>` : ''}
+                </div>
+            </div>`;
+        };
+        builtinEl.innerHTML = builtin.map(p => renderCard(p, false)).join('');
+        if (!custom.length) {
+            customEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:20px;">No custom profiles yet. Click "+ New Profile" to create one.</div>';
+        } else {
+            customEl.innerHTML = custom.map(p => renderCard(p, true)).join('');
+        }
+    },
+
+    _renderProfileHistory(history) {
+        const el = document.getElementById('profile-history-list');
+        if (!el) return;
+        if (!history.length) { el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);">No profile changes recorded yet</div>'; return; }
+        el.innerHTML = history.map(h =>
+            `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">[${(h.applied_at||'').slice(0,16).replace('T',' ')}] Applied: <span style="color:var(--accent-cyan);">${h.profile_name}</span></div>`
+        ).join('');
+    },
+
+    async applyProfile(id) {
+        try {
+            const res = await fetch('/api/profiles/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                this.showNotification(`Profile applied: ${data.profile.name}`, 'success');
+                this.refreshProfiles();
+            }
+        } catch(e) { this.showNotification('Failed to apply profile', 'error'); }
+    },
+
+    async deleteProfile(id) {
+        if (!confirm('Delete this custom profile?')) return;
+        await fetch('/api/profiles/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) });
+        this.showNotification('Profile deleted', 'success');
+        this.refreshProfiles();
+    },
+
+    async restorePreviousProfile() {
+        try {
+            const res = await fetch('/api/profiles/restore-previous', { method:'POST' });
+            const data = await res.json();
+            if (data.status === 'ok') { this.showNotification(`Restored: ${data.profile.name}`, 'success'); this.refreshProfiles(); }
+            else this.showNotification(data.message || 'No previous profile', 'info');
+        } catch(e) {}
+    },
+
+    showNewProfileDialog() {
+        const d = document.getElementById('profile-dialog');
+        if (d) d.style.display = 'flex';
+    },
+
+    closeProfileDialog() {
+        const d = document.getElementById('profile-dialog');
+        if (d) d.style.display = 'none';
+    },
+
+    async saveNewProfile() {
+        const name = document.getElementById('new-profile-name')?.value?.trim();
+        if (!name) { this.showNotification('Profile name required', 'error'); return; }
+        const settings = {
+            refresh_interval_sec: parseInt(document.getElementById('new-profile-refresh')?.value || '5'),
+            wellness_reminders: document.getElementById('new-profile-wellness')?.checked || false,
+            low_resource_mode: document.getElementById('new-profile-lowres')?.checked || false,
+        };
+        try {
+            await fetch('/api/profiles/save', { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ name, description: document.getElementById('new-profile-desc')?.value || '',
+                    icon: document.getElementById('new-profile-icon')?.value || '⚙️', settings }) });
+            this.showNotification(`Profile "${name}" saved`, 'success');
+            this.closeProfileDialog();
+            this.refreshProfiles();
+        } catch(e) { this.showNotification('Failed to save profile', 'error'); }
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FEATURE 15: SCHEDULED MAINTENANCE
+    // ═══════════════════════════════════════════════════════════════════════
+    _maintenanceTasks: [],
+
+    async refreshMaintenance() {
+        try {
+            const res = await fetch('/api/maintenance/tasks');
+            const data = await res.json();
+            this._maintenanceTasks = data.tasks || [];
+            this._renderMaintenanceTasks(this._maintenanceTasks);
+        } catch(e) {}
+    },
+
+    async refreshMaintenanceHistory() {
+        try {
+            const res = await fetch('/api/maintenance/history');
+            const data = await res.json();
+            this._renderMaintenanceHistory(data.history || []);
+        } catch(e) {}
+    },
+
+    _renderMaintenanceTasks(tasks) {
+        const el = document.getElementById('maintenance-task-list');
+        if (!el) return;
+        if (!tasks.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:30px;">No tasks configured</div>'; return; }
+        const typeColors = { scan:'var(--accent-cyan)', reminder:'var(--accent-yellow)' };
+        const scheduleLabel = t => {
+            if (t.schedule === 'daily') return `Daily at ${t.time}`;
+            if (t.schedule === 'weekly') return `Weekly (${t.day_of_week?.toUpperCase()}) at ${t.time}`;
+            if (t.schedule === 'monthly') return `Monthly (day ${t.day_of_month||'?'}) at ${t.time}`;
+            return t.schedule;
+        };
+        el.innerHTML = tasks.map((t, i) => {
+            const tc = typeColors[t.type] || 'var(--text-muted)';
+            return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < tasks.length-1 ? 'border-bottom:1px solid rgba(255,255,255,0.05)' : ''};flex-wrap:wrap;">
+                <label class="toggle" title="${t.enabled ? 'Enabled' : 'Disabled'}">
+                    <input type="checkbox" ${t.enabled ? 'checked' : ''} onchange="App.toggleMaintenanceTask('${t.id}', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+                <div style="flex:1;min-width:180px;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:2px;">${t.name}</div>
+                    <div style="font-size:11px;color:var(--text-secondary);">${t.description}</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border:1px solid ${tc};color:${tc};border-radius:4px;text-transform:uppercase;">${t.type}</span>
+                        <span style="font-size:11px;color:var(--text-muted);">${scheduleLabel(t)}</span>
+                        ${t.last_run ? `<span style="font-size:10px;color:var(--text-muted);">Last run: ${t.last_run.slice(0,10)}</span>` : ''}
+                        ${t.run_count ? `<span style="font-size:10px;color:var(--text-muted);">(${t.run_count} runs)</span>` : ''}
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;flex-shrink:0;">
+                    <button class="btn btn-primary" style="font-size:11px;padding:4px 12px;" onclick="App.runMaintenanceTask('${t.id}', '${t.name}')">▶ Run Now</button>
+                    ${!t.builtin ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 8px;color:var(--accent-red);" onclick="App.deleteMaintenanceTask('${t.id}')">✕</button>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    _renderMaintenanceHistory(history) {
+        const el = document.getElementById('maintenance-history-list');
+        if (!el) return;
+        if (!history.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:12px;">No history yet — run a task to start logging.</div>'; return; }
+        const statusColors = { ok:'var(--accent-green)', error:'var(--accent-red)' };
+        el.innerHTML = history.map(h => {
+            const sc = statusColors[h.status] || 'var(--text-muted)';
+            const findings = h.findings ? Object.entries(h.findings).map(([k,v]) => `${k}: ${v}`).join(' • ') : '';
+            return `<div style="background:rgba(255,255,255,0.02);border-radius:6px;padding:10px 12px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+                    <span style="font-size:12px;font-weight:600;">${h.task_name || h.task_id}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 7px;border:1px solid ${sc};color:${sc};border-radius:4px;text-transform:uppercase;">${h.status}</span>
+                    <span style="font-size:10px;color:var(--text-muted);margin-left:auto;">${(h.completed_at||'').slice(0,16).replace('T',' ')}</span>
+                </div>
+                ${findings ? `<div style="font-size:11px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;">${findings}</div>` : ''}
+            </div>`;
+        }).join('');
+    },
+
+    async toggleMaintenanceTask(id, enabled) {
+        await fetch('/api/maintenance/tasks/toggle', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, enabled}) });
+        this.showNotification(`Task ${enabled ? 'enabled' : 'disabled'}`, 'success');
+    },
+
+    async runMaintenanceTask(id, name) {
+        this.showNotification(`Running: ${name}...`, 'info');
+        try {
+            const res = await fetch('/api/maintenance/tasks/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                const findings = data.findings ? Object.entries(data.findings).map(([k,v]) => `${k}: ${v}`).join(', ') : '';
+                this.showNotification(`✓ ${name} complete. ${findings}`, 'success');
+            } else { this.showNotification(`Error: ${data.error || 'Task failed'}`, 'error'); }
+            this.refreshMaintenance();
+            this.refreshMaintenanceHistory();
+        } catch(e) { this.showNotification('Failed to run task', 'error'); }
+    },
+
+    async deleteMaintenanceTask(id) {
+        if (!confirm('Delete this custom task?')) return;
+        await fetch('/api/maintenance/tasks/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) });
+        this.showNotification('Task deleted', 'success');
+        this.refreshMaintenance();
+    },
+
+    showNewTaskDialog() {
+        const d = document.getElementById('task-dialog');
+        if (d) d.style.display = 'flex';
+    },
+
+    closeTaskDialog() {
+        const d = document.getElementById('task-dialog');
+        if (d) d.style.display = 'none';
+    },
+
+    async saveNewTask() {
+        const name = document.getElementById('new-task-name')?.value?.trim();
+        if (!name) { this.showNotification('Task name required', 'error'); return; }
+        try {
+            await fetch('/api/maintenance/tasks/save', { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ name,
+                    description: document.getElementById('new-task-desc')?.value || '',
+                    type: document.getElementById('new-task-type')?.value || 'reminder',
+                    schedule: document.getElementById('new-task-schedule')?.value || 'weekly',
+                    day_of_week: document.getElementById('new-task-day')?.value || 'mon',
+                    time: document.getElementById('new-task-time')?.value || '09:00',
+                    enabled: true }) });
+            this.showNotification(`Task "${name}" saved`, 'success');
+            this.closeTaskDialog();
+            this.refreshMaintenance();
+        } catch(e) { this.showNotification('Failed to save task', 'error'); }
+    },
+
+    exportMaintenanceHistory() { window.location.href = '/api/maintenance/history/export'; },
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());

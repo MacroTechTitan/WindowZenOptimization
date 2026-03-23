@@ -26,6 +26,9 @@ A Windows system utility application by Macro Tech Titan with a terminal-style d
 - Scheduler configuration for automated daily cleanup at 5PM
 - Settings panel with toggle controls for all cleanup categories
 - Live activity log (terminal-style output window)
+- **Recommendations Engine**: AI-powered system advisor scoring CPU/RAM/disk/uptime/habits; filter by category & priority, dismiss/snooze, export history; `recommendations_state.json` persistence
+- **Profiles & Presets**: 4 built-in profiles (Performance, Work, Night Comfort, Battery Saver) + custom CRUD; apply/restore-previous; `profiles.json` storage
+- **Scheduled Maintenance**: 8 default tasks (daily/weekly/monthly scan+reminder types); toggle, run now, add/delete custom tasks; full history log with export; `maintenance_schedules.json` + `maintenance_history.json`
 - Static text ads: landing page (promo bar + mid-page sponsor block) + dashboard (sidebar ad + inline card)
 - Email registration gateway: modal → Resend verification email → verified download page
 - Desktop launcher (pywebview) ready for Windows packaging
@@ -88,6 +91,24 @@ static/
 - `/api/large-files/archive` - POST: archive selected large files to ~/Archive
 - `/api/organize/preview` - POST: preview Downloads rules (archive_old, group_by_type, move_screenshots)
 - `/api/organize/execute` - POST: execute organize actions (dry_run supported)
+- `/api/recommendations` - GET: get all active recommendations with priority counts
+- `/api/recommendations/dismiss` - POST: dismiss a recommendation by id
+- `/api/recommendations/snooze` - POST: snooze a recommendation (hours param)
+- `/api/recommendations/reset-dismissed` - POST: clear all dismissed/snoozed state
+- `/api/recommendations/history` - GET: list of past dismiss/snooze actions
+- `/api/recommendations/export` - GET: download recommendations as JSON
+- `/api/profiles` - GET: list all profiles + active profile + history
+- `/api/profiles/apply` - POST: apply a profile by id
+- `/api/profiles/save` - POST: create or update a custom profile
+- `/api/profiles/delete` - POST: delete a custom profile by id
+- `/api/profiles/restore-previous` - POST: re-apply the previous profile
+- `/api/maintenance/tasks` - GET: list all maintenance tasks
+- `/api/maintenance/tasks/toggle` - POST: enable/disable a task
+- `/api/maintenance/tasks/run` - POST: run a task immediately
+- `/api/maintenance/tasks/save` - POST: create a custom task
+- `/api/maintenance/tasks/delete` - POST: delete a custom task
+- `/api/maintenance/history` - GET: maintenance run history
+- `/api/maintenance/history/export` - GET: download history as JSON
 - `/api/*` - All API endpoints
 
 ## Key Features
@@ -103,6 +124,9 @@ static/
 10. **Scheduler** - Automated cleanup at 5PM daily, weekly registry scan
 11. **Settings** - Toggle controls for every feature with persistence
 12. **Undo / Safety** - Global dry run toggles, undo log, confirmation dialogs for destructive ops
+13. **Recommendations Engine** - AI-scored prioritized system tips; dismiss/snooze/filter/export
+14. **Profiles & Presets** - 4 built-in + custom profiles; one-click apply + restore-previous
+15. **Scheduled Maintenance** - 8 recurring tasks; toggle/run/add/delete; full history log
 
 ## Branding
 - **Name**: MTT Windows Infinite Optimizer

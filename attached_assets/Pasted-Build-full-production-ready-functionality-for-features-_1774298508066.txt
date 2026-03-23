@@ -1,0 +1,452 @@
+Build full production-ready functionality for features 13–15 in my Python Windows app called WindowZen.
+
+Context:
+- WindowZen is a Windows optimization app written in Python for Windows 10 and Windows 11.
+- The app already has network tools and is expanding into performance, organization, clutter reduction, and wellness.
+- Features 1–5 cover startup optimization, storage cleaning, app management, performance dashboard, and file organization.
+- Now I want to add the next smart product layer: recommendations, presets, and scheduled maintenance.
+- These features should feel polished, practical, safe, and beginner-friendly.
+- Avoid fake optimization claims. All suggestions must be based on real system state and safe actions.
+
+Goal:
+Implement these 3 modules with real logic and clean UI:
+
+13. Recommendations Engine
+14. Profiles / Presets
+15. Scheduled Maintenance
+
+General requirements:
+- Language: Python
+- Platform: Windows only
+- Architecture: modular, scalable, maintainable
+- UI: clean modern desktop UI using customtkinter or PySide6
+- All scans and recommendations should be explainable
+- Every system-changing action must require preview + confirmation
+- Use logs for all automated and manual actions
+- Add rollback/restore where realistic
+- Keep settings in JSON
+- Support background tasks/threads so the UI does not freeze
+- Add comments and docstrings
+- Include robust error handling
+
+Recommended packages:
+- psutil
+- schedule or APScheduler
+- pathlib
+- json
+- logging
+- datetime
+- shutil
+- winreg
+- pywin32 if needed
+- customtkinter or PySide6
+
+==================================================
+FEATURE 13: RECOMMENDATIONS ENGINE
+==================================================
+
+Build a smart Recommendations Engine for WindowZen that analyzes the computer state and produces useful, prioritized, non-alarmist recommendations.
+
+Purpose:
+Turn raw diagnostics into clear suggestions that help users make their Windows PC faster, leaner, less cluttered, and easier to use.
+
+Data sources:
+The engine should ingest data from existing or planned modules such as:
+- startup optimizer
+- storage cleaner
+- app and bloat manager
+- performance dashboard
+- file organization tools
+- brightness / wellness tools if available
+- network health module if available
+
+Recommendation categories:
+- Performance
+- Storage
+- Startup
+- Apps
+- Organization
+- Wellness
+- Maintenance
+- Network
+- Accessibility / comfort
+
+Examples of recommendation logic:
+- “Your Downloads folder has 14.3 GB of old installers older than 60 days.”
+- “You have 11 startup items, including 4 high-impact apps.”
+- “Disk C: is below 15% free space.”
+- “Desktop contains 132 files; organization is recommended.”
+- “There are 27 GB of duplicate or reclaimable files.”
+- “Brightness is still high during late evening hours.”
+- “You have not run maintenance in 12 days.”
+- “3 very large apps may be worth reviewing.”
+- “Memory pressure is high with only 1.1 GB RAM available.”
+- “Repeated installer downloads were detected.”
+
+Each recommendation must include:
+- title
+- category
+- severity or priority
+- explanation in plain language
+- evidence/metrics
+- suggested action
+- related module
+- estimated benefit score
+- risk level
+- whether it is informational or actionable
+
+Scoring:
+Create a prioritization engine that ranks suggestions by:
+- potential speed gain
+- potential clutter reduction
+- potential ease-of-use improvement
+- urgency
+- confidence
+- safety
+
+Support:
+- high priority
+- medium priority
+- low priority
+- informational only
+
+Functionality:
+- Generate recommendations from current system state
+- Refresh recommendations manually or automatically
+- Deduplicate similar recommendations
+- Group recommendations by category
+- Allow user to dismiss or snooze recommendations
+- Allow recommendations to link to the relevant app module
+- Store recommendation history with timestamps
+- Mark which recommendations have been completed, ignored, or deferred
+- Add “top 3 recommended actions” summary card
+
+UI:
+- Recommendation summary page
+- Cards or list view
+- Filters by category, severity, status
+- “Why am I seeing this?” detail panel
+- Buttons:
+  - Refresh recommendations
+  - Apply related action
+  - Dismiss
+  - Snooze
+  - View evidence
+  - Export recommendations report
+
+Safety:
+- Never automatically perform destructive actions
+- Recommendations must be based on actual collected data
+- Keep explanations transparent
+- Avoid fear-based wording
+- Clearly label “safe quick wins” vs “review carefully”
+
+Deliver:
+- recommendations_engine.py
+- recommendation_models.py
+- recommendation_rules.py
+- recommendation_history.py
+- UI screen/component
+- sample rules with real working logic
+
+==================================================
+FEATURE 14: PROFILES / PRESETS
+==================================================
+
+Build a full Profiles / Presets system for WindowZen.
+
+Purpose:
+Allow users to quickly switch their PC behavior and WindowZen settings based on context.
+
+Profiles to include:
+- Performance Mode
+- Work Mode
+- Night Comfort Mode
+- Battery Saver Mode
+
+Optional future-ready profile support:
+- Travel Mode
+- Quiet Mode
+- Deep Focus Mode
+- Accessibility Comfort Mode
+- Gaming Mode placeholder
+
+Each preset should be a bundle of recommended settings/actions across modules.
+
+Examples:
+
+Performance Mode:
+- suggest disabling nonessential startup apps
+- reduce clutter indicators
+- enable performance-focused recommendations
+- prioritize cleanup suggestions
+- optionally lower background scan frequency
+- show CPU/RAM focused dashboard layout
+
+Work Mode:
+- emphasize organization tools
+- focus session readiness checks
+- cleaner desktop suggestions
+- productivity app shortcuts placeholder
+- fewer interruptions in WindowZen UI
+- default recommendation categories: performance + organization
+
+Night Comfort Mode:
+- reduce brightness or enable dim overlay through WindowZen wellness module
+- enable warm screen / eye comfort suggestion
+- surface break reminders
+- use dark UI theme
+- reduce notification intensity
+- highlight wind-down recommendations
+
+Battery Saver Mode:
+- reduce app refresh frequency
+- lower monitoring frequency
+- prioritize energy-aware suggestions
+- suppress nonessential background scans
+- focus on low-resource mode for the WindowZen app itself
+
+Profile system requirements:
+- Presets must be editable
+- Users can create custom profiles
+- Users can duplicate built-in profiles
+- Users can save, rename, import, export, and delete custom profiles
+- Support one-click Apply Profile
+- Support Preview Changes before applying
+- Support Restore Previous Profile / Undo Last Apply
+- Persist profile state in JSON
+- Track when a profile was last applied
+
+Settings a profile can control:
+- WindowZen theme
+- refresh interval
+- recommendation filters
+- notification settings
+- maintenance defaults
+- cleanup suggestion thresholds
+- organization thresholds
+- wellness defaults
+- dashboard default tab
+- whether heavy scans run automatically
+- low-resource mode for the app
+
+Architecture:
+- Separate built-in profiles from user-defined profiles
+- Validate profile schema before applying
+- Merge profile settings with user config safely
+- Back up prior active settings before apply
+
+UI:
+- Profiles page with cards
+- Built-in vs custom section
+- Buttons:
+  - Apply
+  - Preview
+  - Duplicate
+  - Edit
+  - Export
+  - Import
+  - Delete
+  - Restore previous
+- Active profile indicator
+- “What this changes” detail panel
+
+Safety:
+- Profiles should primarily affect WindowZen behavior unless explicitly tied to a safe system helper action
+- System-level actions must still require confirmation
+- Do not silently change Windows power plans, services, or registry values unless implemented carefully and confirmed
+
+Deliver:
+- profile_manager.py
+- preset_definitions.py
+- profile_storage.py
+- profile_validator.py
+- profile_apply_service.py
+- UI screen/component
+- JSON schemas/examples for built-in and custom profiles
+
+==================================================
+FEATURE 15: SCHEDULED MAINTENANCE
+==================================================
+
+Build a Scheduled Maintenance system for WindowZen.
+
+Purpose:
+Let users automate safe recurring maintenance tasks that keep their Windows PC lean and organized.
+
+Supported scheduled tasks:
+- Weekly temp file scan
+- Weekly clutter scan
+- Monthly duplicate file scan
+- Monthly desktop organization suggestion scan
+- Downloads cleanup reminder
+- Startup apps review reminder
+- App inventory refresh
+- Health scan
+- Night comfort reminder
+- End-of-day organization reminder
+
+Task behavior:
+- Support scan-only mode
+- Support reminder-only mode
+- Support scan + notify mode
+- Support scan + preview results mode
+- For destructive or system-changing tasks, never auto-delete by default
+- Automated jobs should generate reports and recommendations, not silently remove important files
+
+Scheduling features:
+- Daily, weekly, monthly schedules
+- Select time of day
+- Select weekdays
+- Enable/disable each task
+- Pause all schedules
+- Run now
+- Last run / next run
+- Failure tracking
+- Retry rules for non-destructive jobs
+- Quiet hours support
+- Low battery / low resource skip rules if feasible
+- On-startup catch-up logic for missed runs
+
+Maintenance actions should integrate with:
+- recommendations engine
+- storage cleaner
+- startup optimizer
+- app inventory
+- file organization tools
+- wellness reminders
+
+Logging and reporting:
+- Log every scheduled job run
+- Save task result summaries
+- Save what was scanned, found, skipped, or recommended
+- Generate maintenance history view
+- Export maintenance reports
+
+Architecture:
+- Use APScheduler or similar
+- Support background scheduler service
+- Keep schedules persistent in JSON
+- Include task registry pattern for maintainability
+- Separate scheduler engine from task execution logic
+- Use thread-safe UI notifications or event callbacks
+
+UI:
+- Scheduled Maintenance page
+- List of all tasks with:
+  - name
+  - status
+  - type
+  - schedule
+  - last run
+  - next run
+- Buttons:
+  - Add task
+  - Edit
+  - Enable/disable
+  - Run now
+  - View logs
+  - Delete
+  - Pause all
+- Detail editor dialog for creating/editing scheduled tasks
+- Maintenance history panel
+
+Safety:
+- Default all schedules to scan-only or reminder-only
+- Auto-cleanup must be opt-in and heavily confirmed
+- Respect excluded folders and safe cleanup rules
+- Skip destructive actions if quarantine path unavailable
+- Show clear labels for passive vs active maintenance
+
+Deliver:
+- scheduler_service.py
+- maintenance_task_registry.py
+- maintenance_jobs.py
+- maintenance_history.py
+- schedule_storage.py
+- UI screen/component
+- example scheduled task definitions
+- startup hook to initialize scheduler safely
+
+==================================================
+INTEGRATION REQUIREMENTS
+==================================================
+
+Integrate features 13–15 into the main WindowZen app.
+
+Need:
+- Sidebar entries for:
+  - Recommendations
+  - Profiles
+  - Scheduled Maintenance
+- Shared theme and component system
+- Shared settings manager
+- Shared logs/history
+- Shared event bus or callback pattern for refreshing modules after changes
+- Notifications/toasts when:
+  - new recommendations are generated
+  - profile applied
+  - maintenance task completed
+- Export support:
+  - recommendations report
+  - profile export/import JSON
+  - maintenance history export
+
+Cross-feature behavior:
+- Recommendations engine should react to profile changes
+- Scheduled maintenance should generate or refresh recommendations
+- Profiles can change scheduler defaults and recommendation filters
+- Maintenance results should appear inside recommendation history where relevant
+
+==================================================
+PROJECT STRUCTURE
+==================================================
+
+Use or extend a structure like:
+
+- main.py
+- ui/
+  - recommendations_page.py
+  - profiles_page.py
+  - maintenance_page.py
+  - components/
+- modules/
+  - recommendations/
+  - profiles/
+  - maintenance/
+- services/
+  - scheduler_service.py
+  - profile_apply_service.py
+  - recommendation_service.py
+- utils/
+- data/
+  - config/
+  - profiles/
+  - schedules/
+  - history/
+- logs/
+- exports/
+- backups/
+
+==================================================
+WHAT TO OUTPUT
+==================================================
+
+Return:
+1. Recommended folder structure for these 3 features
+2. Required Python packages
+3. Full starter implementation
+4. Working code stubs with real logic where feasible
+5. JSON examples for:
+   - recommendations
+   - profile definitions
+   - schedule definitions
+6. TODO notes for Windows-specific integrations
+7. UI styling suggestions
+8. Notes on safe automation and rollback behavior
+
+Important:
+- Write real code, not just pseudocode
+- Make it organized enough to paste into Replit and continue building
+- Favor a polished working MVP over overengineered abstractions
+- Where full system automation is risky, implement safe scan/reminder/report behavior first and mark more advanced actions as TODO

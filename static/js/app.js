@@ -80,6 +80,8 @@ const App = {
         }
         if (pageName === 'cybersecurity') this.refreshSecurity();
         if (pageName === 'network') this.resetNetworkFixUI();
+        if (pageName === 'dashboard') this.refreshHealthScore();
+        if (pageName === 'apps' && this._appsData.length === 0) this.refreshApps();
     },
 
     startClock() {
@@ -777,26 +779,33 @@ const App = {
                 if (!container) return;
                 if (items.length > 0) {
                     container.innerHTML = items.map(item => {
-                        const impact = item.hive === 'HKLM' ? 'High' : 'Medium';
-                        const impactColor = impact === 'High' ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                        const impact = item.impact || (item.hive === 'HKLM' ? 'Medium' : 'Low');
+                        const impactColor = impact === 'High' ? 'var(--accent-red)' : impact === 'Medium' ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                        const cat = item.category || 'review';
+                        const catLabel = { safe_to_disable:'✔ Safe to disable', review:'Review', system_related:'⚠ System/caution' }[cat] || cat;
+                        const catColor = { safe_to_disable:'var(--accent-green)', review:'var(--accent-yellow)', system_related:'var(--accent-red)' }[cat] || 'var(--text-muted)';
+                        const rec = item.recommendation || '';
                         if (enhanced) {
-                            return `<div class="process-item">
+                            return `<div class="process-item" style="flex-wrap:wrap;gap:4px;" title="${rec}">
                                 <span class="name">${item.name}</span>
-                                <span class="cpu" style="font-size: 11px; color: var(--text-muted);">${item.hive}</span>
-                                <span class="mem" style="font-size: 11px; color: ${impactColor};">${impact}</span>
+                                <span class="cpu" style="font-size:10px;color:var(--text-muted);">${item.hive}</span>
+                                <span class="mem" style="font-size:10px;">
+                                    <span style="color:${impactColor};font-weight:600;">${impact}</span>
+                                    &nbsp;<span style="color:${catColor};font-size:9px;padding:1px 5px;border:1px solid ${catColor};border-radius:3px;">${catLabel}</span>
+                                </span>
                                 <label class="toggle">
                                     <input type="checkbox" ${item.enabled ? 'checked' : ''}
-                                        onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked)">
+                                        onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked, '${item.path?.replace(/'/g,"\\'")||''}')">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>`;
                         }
                         return `<div class="process-item">
                             <span class="name">${item.name}</span>
-                            <span class="cpu" style="font-size: 11px;">${item.path || 'N/A'}</span>
+                            <span class="cpu" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.path || 'N/A'}</span>
                             <label class="toggle">
                                 <input type="checkbox" ${item.enabled ? 'checked' : ''}
-                                    onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked)">
+                                    onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked, '${item.path?.replace(/'/g,"\\'")||''}')">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>`;
@@ -810,12 +819,12 @@ const App = {
         } catch(e) {}
     },
 
-    async toggleStartupItem(name, hive, enabled) {
+    async toggleStartupItem(name, hive, enabled, path) {
         try {
             await fetch('/api/startup-items/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, hive, enabled })
+                body: JSON.stringify({ name, hive, enabled, path: path || '' })
             });
             this.showNotification(`Startup item "${name}" ${enabled ? 'enabled' : 'disabled'}`);
             this.refreshUndoLog();
@@ -1646,7 +1655,393 @@ const App = {
             const data = await res.json();
             this.renderProcesses(data.top_processes);
         } catch(e) {}
-    }
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // HEALTH SCORE
+    // ══════════════════════════════════════════════════════════════
+
+    async refreshHealthScore() {
+        const valueEl = document.getElementById('health-score-value');
+        const gradeEl = document.getElementById('health-score-grade');
+        const ringEl  = document.getElementById('health-score-ring');
+        const recsEl  = document.getElementById('health-recommendations');
+        if (valueEl) valueEl.textContent = '…';
+        try {
+            const data = await fetch('/api/health-score').then(r => r.json());
+            const colorMap = { green: 'var(--accent-green)', cyan: 'var(--accent-cyan)', yellow: 'var(--accent-yellow)', red: 'var(--accent-red)' };
+            const col = colorMap[data.color] || 'var(--accent-green)';
+            if (valueEl) { valueEl.textContent = data.score; valueEl.style.color = col; }
+            if (gradeEl) gradeEl.textContent = data.grade.toUpperCase();
+            if (ringEl)  { ringEl.style.borderColor = col; ringEl.style.background = col.replace('var(', 'rgba(').replace(')', ',0.08)') || `rgba(16,185,129,0.08)`; }
+            if (recsEl) {
+                const sevColor = { high: 'var(--accent-red)', medium: 'var(--accent-yellow)', low: 'var(--accent-green)' };
+                recsEl.innerHTML = data.recommendations.map(r => `
+                    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-left:3px solid ${sevColor[r.severity]||'var(--border)'};border-radius:6px;cursor:pointer;" onclick="App.showPage('${r.page}')">
+                        <span style="font-size:16px;flex-shrink:0;">${r.icon}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);flex:1;">${r.text}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);flex-shrink:0;white-space:nowrap;">→ Go</span>
+                    </div>`).join('');
+            }
+        } catch(e) {
+            if (recsEl) recsEl.innerHTML = '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-muted);">Unable to compute health score.</div>';
+        }
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // APP & BLOAT MANAGER
+    // ══════════════════════════════════════════════════════════════
+
+    _appsData: [],
+    _appsFilter: 'all',
+
+    async refreshApps() {
+        const listEl = document.getElementById('apps-list');
+        const countEl = document.getElementById('apps-count');
+        if (listEl) listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:32px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">Scanning registry for installed apps…</div>';
+        try {
+            this._appsData = await fetch('/api/apps/list').then(r => r.json());
+            if (countEl) countEl.textContent = `${this._appsData.length} apps found`;
+            this.renderApps();
+            this._renderBloatPanel();
+        } catch(e) {
+            if (listEl) listEl.innerHTML = '<div style="text-align:center;color:var(--accent-red);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">Failed to load app list.</div>';
+        }
+    },
+
+    setAppsFilter(filter) {
+        this._appsFilter = filter;
+        ['all','bloat','large'].forEach(f => {
+            const btn = document.getElementById(`apps-filter-${f}`);
+            if (btn) { btn.style.background = f === filter ? 'var(--accent-cyan)' : ''; btn.style.color = f === filter ? '#000' : ''; }
+        });
+        this.renderApps();
+    },
+
+    filterApps() {
+        this.renderApps();
+    },
+
+    renderApps() {
+        const listEl = document.getElementById('apps-list');
+        const countEl = document.getElementById('apps-count');
+        const query = (document.getElementById('apps-search')?.value || '').toLowerCase();
+        const sortBy = document.getElementById('apps-sort')?.value || 'name';
+
+        let apps = this._appsData.slice();
+        if (this._appsFilter === 'bloat') apps = apps.filter(a => a.is_bloat);
+        if (this._appsFilter === 'large') apps = apps.filter(a => (a.size_mb || 0) >= 500);
+        if (query) apps = apps.filter(a => (a.name||'').toLowerCase().includes(query) || (a.publisher||'').toLowerCase().includes(query));
+
+        if (sortBy === 'size') apps.sort((a,b) => (b.size_mb||0) - (a.size_mb||0));
+        else if (sortBy === 'date') apps.sort((a,b) => (b.install_date||'').localeCompare(a.install_date||''));
+        else if (sortBy === 'publisher') apps.sort((a,b) => (a.publisher||'').localeCompare(b.publisher||''));
+        else apps.sort((a,b) => a.name.localeCompare(b.name));
+
+        if (countEl) countEl.textContent = `${apps.length} apps`;
+        if (!listEl) return;
+        if (apps.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">No apps match the current filter.</div>';
+            return;
+        }
+
+        const tagColors = { likely_bloat:'var(--accent-red)', unknown:'var(--accent-yellow)', system:'var(--text-muted)', trusted:'var(--accent-green)', large_app:'var(--accent-cyan)', normal:'var(--border)' };
+        const tagLabels = { likely_bloat:'⚠ BLOAT', unknown:'? UNKNOWN', system:'SYS', trusted:'✔ TRUSTED', large_app:'LARGE', normal:'' };
+
+        listEl.innerHTML = apps.map(a => {
+            const tag = a.tag || 'normal';
+            const tc = tagColors[tag] || 'var(--border)';
+            const tl = tagLabels[tag] || '';
+            const sizeTxt = a.size_mb > 0 ? `${a.size_mb > 1000 ? (a.size_mb/1024).toFixed(1)+' GB' : a.size_mb+' MB'}` : '—';
+            const hasUninstall = !!(a.uninstall_cmd);
+            const hasFolder = !!(a.install_location);
+            return `<div class="process-item" style="border-left: 3px solid ${tc}; padding-left: 10px;">
+                <span class="name" title="${a.name}">${a.name}</span>
+                <span style="flex:1.2;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.publisher || '—'}</span>
+                <span class="cpu" style="color:var(--text-secondary);">${sizeTxt}</span>
+                <span class="mem" style="color:var(--text-muted);font-size:10px;">${a.install_date || '—'}</span>
+                <span class="cpu">${tl ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border:1px solid ${tc};border-radius:3px;color:${tc};">${tl}</span>` : ''}</span>
+                <span class="cpu" style="display:flex;gap:4px;">
+                    ${hasUninstall ? `<button class="btn" style="padding:2px 8px;font-size:10px;" onclick="App.launchUninstall(${JSON.stringify(a.name)}, ${JSON.stringify(a.uninstall_cmd)})">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">—</span>'}
+                    ${hasFolder ? `<button class="btn" style="padding:2px 8px;font-size:10px;" onclick="App.openAppFolder(${JSON.stringify(a.install_location)})">&#x1F4C2;</button>` : ''}
+                </span>
+            </div>`;
+        }).join('');
+    },
+
+    _renderBloatPanel() {
+        const el = document.getElementById('apps-bloat-list');
+        if (!el) return;
+        const bloat = this._appsData.filter(a => a.is_bloat);
+        if (bloat.length === 0) {
+            el.innerHTML = '<div style="text-align:center;color:var(--accent-green);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">✔ No likely bloat detected.</div>';
+            return;
+        }
+        el.innerHTML = bloat.map(a => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+                <span style="font-size:18px;">⚠</span>
+                <div style="flex:1;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-yellow);font-weight:600;">${a.name}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${a.publisher || 'Unknown publisher'}${a.size_mb ? ' · ' + a.size_mb + ' MB' : ''}</div>
+                </div>
+                ${a.uninstall_cmd ? `<button class="btn" style="padding:3px 10px;font-size:10px;border-color:var(--accent-red);color:var(--accent-red);" onclick="App.launchUninstall(${JSON.stringify(a.name)}, ${JSON.stringify(a.uninstall_cmd)})">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">No uninstaller</span>'}
+            </div>`).join('');
+    },
+
+    async launchUninstall(name, cmd) {
+        if (!confirm(`Uninstall "${name}"?\n\nThis will run the official uninstaller. Windows UAC may prompt for confirmation.\n\nUninstall command: ${cmd}`)) return;
+        try {
+            const res = await fetch('/api/apps/uninstall', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({name, uninstall_cmd: cmd})
+            }).then(r => r.json());
+            if (res.ok) {
+                this.showNotification(res.msg || `Uninstaller launched for ${name}`, 'success');
+            } else {
+                this.showNotification(res.error || 'Failed to launch uninstaller', 'error');
+            }
+        } catch(e) {
+            this.showNotification('Network error launching uninstaller', 'error');
+        }
+    },
+
+    async openAppFolder(path) {
+        try {
+            const res = await fetch('/api/apps/open-folder', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({path})
+            }).then(r => r.json());
+            if (!res.ok) this.showNotification(res.error || 'Folder not found', 'error');
+        } catch(e) {}
+    },
+
+    exportApps() {
+        window.location.href = '/api/apps/export';
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // BROKEN SHORTCUTS
+    // ══════════════════════════════════════════════════════════════
+
+    async scanBrokenShortcuts() {
+        const el = document.getElementById('broken-shortcuts-results');
+        if (el) el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">Scanning shortcuts…</div>';
+        try {
+            const data = await fetch('/api/cleaner/broken-shortcuts').then(r => r.json());
+            const items = data.items || [];
+            if (!el) return;
+            if (items.length === 0) {
+                el.innerHTML = '<div style="text-align:center;color:var(--accent-green);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">✔ No broken shortcuts found.</div>';
+                return;
+            }
+            const demoTag = data.demo ? '<span style="color:var(--accent-yellow);font-size:10px;"> [DEMO]</span>' : '';
+            el.innerHTML = `<div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-yellow);">Found ${items.length} broken shortcut(s)${demoTag}</div>
+            <div class="process-list">
+                <div class="process-item process-header"><span class="name">Shortcut</span><span style="flex:2;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">Missing Target</span><span class="cpu">Action</span></div>
+                ${items.map(i => `<div class="process-item">
+                    <span class="name" title="${i.path}"><input type="checkbox" class="broken-shortcut-cb" value="${i.path}" style="margin-right:6px;">${i.name}</span>
+                    <span style="flex:2;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-red);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${i.target}">${i.target}</span>
+                    <span class="cpu"><button class="btn" style="padding:2px 8px;font-size:10px;border-color:var(--accent-red);color:var(--accent-red);" onclick="App._deleteShortcut('${i.path.replace(/'/g,"\\'")}')">Delete</button></span>
+                </div>`).join('')}
+            </div>
+            <div style="margin-top:12px;text-align:center;">
+                <button class="btn" style="border-color:var(--accent-red);color:var(--accent-red);" onclick="App._deleteSelectedShortcuts()">Delete Selected</button>
+            </div>`;
+        } catch(e) {
+            if (el) el.innerHTML = '<div style="color:var(--accent-red);font-family:\'JetBrains Mono\',monospace;font-size:12px;text-align:center;">Error scanning shortcuts.</div>';
+        }
+    },
+
+    async _deleteShortcut(path) {
+        if (!confirm(`Delete broken shortcut?\n${path}`)) return;
+        const res = await fetch('/api/cleaner/delete-shortcuts', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({paths:[path]})
+        }).then(r => r.json());
+        this.showNotification(res.deleted?.length ? 'Shortcut deleted' : 'Delete failed', res.deleted?.length ? 'success' : 'error');
+        this.scanBrokenShortcuts();
+    },
+
+    async _deleteSelectedShortcuts() {
+        const cbs = document.querySelectorAll('.broken-shortcut-cb:checked');
+        const paths = Array.from(cbs).map(c => c.value);
+        if (!paths.length) { this.showNotification('No shortcuts selected', 'info'); return; }
+        if (!confirm(`Delete ${paths.length} broken shortcut(s)?`)) return;
+        const res = await fetch('/api/cleaner/delete-shortcuts', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({paths})
+        }).then(r => r.json());
+        this.showNotification(`Deleted ${res.deleted?.length || 0} shortcut(s)`, 'success');
+        this.scanBrokenShortcuts();
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // EMPTY FOLDERS
+    // ══════════════════════════════════════════════════════════════
+
+    async scanEmptyFolders() {
+        const el = document.getElementById('empty-folders-results');
+        if (el) el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">Scanning for empty folders…</div>';
+        try {
+            const data = await fetch('/api/cleaner/empty-folders').then(r => r.json());
+            const items = data.items || [];
+            if (!el) return;
+            if (items.length === 0) {
+                el.innerHTML = '<div style="text-align:center;color:var(--accent-green);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">✔ No empty folders found.</div>';
+                return;
+            }
+            const demoTag = data.demo ? '<span style="color:var(--accent-yellow);font-size:10px;"> [DEMO]</span>' : '';
+            el.innerHTML = `<div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-yellow);">Found ${items.length} empty folder(s)${demoTag}</div>
+            <div class="process-list">
+                <div class="process-item process-header"><span class="name">Folder Path</span><span class="cpu">Location</span><span class="cpu">Action</span></div>
+                ${items.map(i => `<div class="process-item">
+                    <span class="name"><input type="checkbox" class="empty-folder-cb" value="${i.path}" style="margin-right:6px;">${i.path.split(/[\\/]/).pop()}</span>
+                    <span class="cpu" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${i.parent}</span>
+                    <span class="cpu"><button class="btn" style="padding:2px 8px;font-size:10px;" onclick="App._deleteEmptyFolder('${i.path.replace(/'/g,"\\'")}')">Remove</button></span>
+                </div>`).join('')}
+            </div>
+            <div style="margin-top:12px;text-align:center;">
+                <button class="btn btn-primary" onclick="App._deleteSelectedEmptyFolders()">Remove Selected</button>
+            </div>`;
+        } catch(e) {
+            if (el) el.innerHTML = '<div style="color:var(--accent-red);font-family:\'JetBrains Mono\',monospace;font-size:12px;text-align:center;">Error scanning folders.</div>';
+        }
+    },
+
+    async _deleteEmptyFolder(path) {
+        if (!confirm(`Remove empty folder?\n${path}`)) return;
+        const res = await fetch('/api/cleaner/delete-empty-folders', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({paths:[path]})
+        }).then(r => r.json());
+        this.showNotification(res.deleted?.length ? 'Folder removed' : (res.errors?.[0]?.error || 'Remove failed'), res.deleted?.length ? 'success' : 'error');
+        this.scanEmptyFolders();
+    },
+
+    async _deleteSelectedEmptyFolders() {
+        const cbs = document.querySelectorAll('.empty-folder-cb:checked');
+        const paths = Array.from(cbs).map(c => c.value);
+        if (!paths.length) { this.showNotification('No folders selected', 'info'); return; }
+        if (!confirm(`Remove ${paths.length} empty folder(s)? This cannot be undone.`)) return;
+        const res = await fetch('/api/cleaner/delete-empty-folders', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({paths})
+        }).then(r => r.json());
+        this.showNotification(`Removed ${res.deleted?.length || 0} folder(s)`, 'success');
+        this.scanEmptyFolders();
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // FOLDER SIZE EXPLORER
+    // ══════════════════════════════════════════════════════════════
+
+    async scanFolderSizes() {
+        const el = document.getElementById('folder-size-results');
+        const path = document.getElementById('folder-size-path')?.value.trim() || '';
+        if (el) el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">Computing folder sizes… this may take a moment.</div>';
+        try {
+            const data = await fetch('/api/folder-sizes/scan', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({path, depth:2})
+            }).then(r => r.json());
+            const folders = data.folders || [];
+            if (!el) return;
+            if (folders.length === 0) {
+                el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">No folders found at that path.</div>';
+                return;
+            }
+            const demoTag = data.demo ? ' <span style="color:var(--accent-yellow);font-size:10px;">[DEMO]</span>' : '';
+            const maxSize = folders[0]?.size_bytes || 1;
+            el.innerHTML = `<div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">Showing ${folders.length} largest folders${demoTag}</div>
+            ${folders.map(f => {
+                const pct = Math.round((f.size_bytes / maxSize) * 100);
+                const indent = f.depth > 1 ? `margin-left:${(f.depth-1)*16}px;` : '';
+                return `<div style="${indent}margin-bottom:6px;">
+                    <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:3px;">
+                        <span style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;" title="${f.path}">${f.depth > 1 ? '↳ ' : ''}${f.name}</span>
+                        <span style="color:var(--accent-cyan);flex-shrink:0;margin-left:10px;">${f.size_human} <span style="color:var(--text-muted);font-size:10px;">(${f.file_count} files)</span></span>
+                    </div>
+                    <div style="background:var(--bg-primary);border-radius:3px;height:4px;overflow:hidden;">
+                        <div style="height:100%;width:${pct}%;background:var(--accent-cyan);border-radius:3px;transition:width 0.3s;"></div>
+                    </div>
+                </div>`;
+            }).join('')}`;
+        } catch(e) {
+            if (el) el.innerHTML = '<div style="color:var(--accent-red);font-family:\'JetBrains Mono\',monospace;font-size:12px;text-align:center;">Error computing folder sizes.</div>';
+        }
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // DESKTOP CLEANER WIZARD
+    // ══════════════════════════════════════════════════════════════
+
+    _desktopWizardData: null,
+
+    async runDesktopWizard() {
+        const resultsEl = document.getElementById('desktop-wizard-results');
+        const actionsEl = document.getElementById('desktop-wizard-actions');
+        const suggestEl = document.getElementById('desktop-wizard-suggestions');
+        if (resultsEl) resultsEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">Scanning Desktop…</div>';
+        if (actionsEl) actionsEl.style.display = 'none';
+
+        try {
+            const data = await fetch('/api/organize/preview', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({action:'desktop_wizard', dry_run:true})
+            }).then(r => r.json());
+            this._desktopWizardData = data;
+            const items = data.items || [];
+            const demoTag = data.demo ? ' [DEMO]' : '';
+
+            if (!resultsEl) return;
+            if (items.length === 0) {
+                resultsEl.innerHTML = '<div style="text-align:center;color:var(--accent-green);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">✔ Desktop is already well-organized!</div>';
+                return;
+            }
+
+            const cats = {};
+            items.forEach(i => { cats[i.category] = (cats[i.category] || []); cats[i.category].push(i); });
+
+            resultsEl.innerHTML = `<div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">Found ${items.length} files to organize${demoTag}</div>
+            <div class="process-list">
+                <div class="process-item process-header"><span class="name">File</span><span class="cpu">Category</span><span class="mem">Size</span><span class="cpu">Suggested Destination</span></div>
+                ${items.slice(0,30).map(i => `<div class="process-item">
+                    <span class="name" title="${i.src || i.path}">${(i.src || i.path || '').split(/[\\/]/).pop()}</span>
+                    <span class="cpu" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);">${i.category || '—'}</span>
+                    <span class="mem" style="font-size:10px;">${i.size_human || ''}</span>
+                    <span class="cpu" style="font-size:10px;color:var(--text-muted);" title="${i.dst||''}">${(i.dst||'').split(/[\\/]/).pop() || '—'}</span>
+                </div>`).join('')}
+                ${items.length > 30 ? `<div style="text-align:center;padding:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">… and ${items.length-30} more files</div>` : ''}
+            </div>`;
+
+            if (actionsEl && suggestEl) {
+                actionsEl.style.display = 'block';
+                const summary = Object.entries(cats).map(([cat, arr]) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-cyan);font-weight:600;width:100px;">${cat}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);">${arr.length} file(s) → moved to ${cat} folder</span>
+                </div>`).join('');
+                suggestEl.innerHTML = summary;
+            }
+        } catch(e) {
+            if (resultsEl) resultsEl.innerHTML = '<div style="color:var(--accent-red);font-family:\'JetBrains Mono\',monospace;font-size:12px;text-align:center;">Error scanning Desktop.</div>';
+        }
+    },
+
+    async executeDesktopWizard() {
+        const dryRun = document.getElementById('desktop-wizard-dry-run')?.checked ?? true;
+        if (!dryRun && !confirm('Move these files? This action is logged and can be undone via the Undo Log.')) return;
+        try {
+            const res = await fetch('/api/organize/execute', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({action:'desktop_wizard', dry_run:dryRun})
+            }).then(r => r.json());
+            const msg = dryRun ? `Dry run: ${res.moved||0} files would be moved.` : `Moved ${res.moved||0} files. Check Undo Log to revert.`;
+            this.showNotification(msg, 'success');
+            if (!dryRun) this.runDesktopWizard();
+        } catch(e) {
+            this.showNotification('Error executing Desktop Wizard', 'error');
+        }
+    },
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());

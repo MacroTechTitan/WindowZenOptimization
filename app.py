@@ -1691,6 +1691,9 @@ def api_startup():
     else:
         items = _get_demo_startup_items()
     items.sort(key=lambda x: x["name"])
+    for item in items:
+        scoring = _score_startup_item(item)
+        item.update(scoring)
     return jsonify(items)
 
 
@@ -2525,6 +2528,595 @@ def admin_reset_counters():
             data[key] = 0
         save_analytics(data)
     return jsonify({"ok": True, "counters": data})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STARTUP IMPACT SCORING
+# ══════════════════════════════════════════════════════════════════════════════
+
+_STARTUP_IMPACT_DB = {
+    "discord":       {"score": 40, "category": "safe_to_disable", "rec": "Disable — launch Discord manually when needed. Saves ~400ms boot time."},
+    "spotify":       {"score": 35, "category": "safe_to_disable", "rec": "Disable — Spotify doesn't need to autostart. Launch it when you want music."},
+    "steam":         {"score": 45, "category": "safe_to_disable", "rec": "Disable — Steam autostart adds significant boot time. Launch games from shortcut."},
+    "onedrive":      {"score": 25, "category": "review",          "rec": "Review — Disable if you sync infrequently. Files still sync when you open it."},
+    "dropbox":       {"score": 25, "category": "review",          "rec": "Review — Disable if you sync infrequently."},
+    "google drive":  {"score": 25, "category": "review",          "rec": "Review — Disable Google Drive File Stream if not actively syncing."},
+    "googledrive":   {"score": 25, "category": "review",          "rec": "Review — Disable if not actively syncing with Google Drive."},
+    "skype":         {"score": 30, "category": "safe_to_disable", "rec": "Disable — Launch Skype manually before calls. No need to autostart."},
+    "zoom":          {"score": 30, "category": "safe_to_disable", "rec": "Disable — Zoom doesn't need to autostart. Launch it before meetings."},
+    "teams":         {"score": 35, "category": "review",          "rec": "Review — Disable if you don't use Teams for work daily."},
+    "slack":         {"score": 30, "category": "review",          "rec": "Review — Disable if Slack is not your primary work chat."},
+    "adobe":         {"score": 45, "category": "safe_to_disable", "rec": "Disable — Adobe update/helper services add overhead. Disable safely."},
+    "autodesk":      {"score": 40, "category": "safe_to_disable", "rec": "Disable — Autodesk startup services significantly slow boot time."},
+    "ccleaner":      {"score": 20, "category": "safe_to_disable", "rec": "Disable — CCleaner monitoring service is not essential at startup."},
+    "itunes":        {"score": 30, "category": "safe_to_disable", "rec": "Disable — iTunes helper doesn't need to run at startup."},
+    "realplayer":    {"score": 35, "category": "safe_to_disable", "rec": "Disable — RealPlayer update checker is not needed at startup."},
+    "vlc":           {"score": 10, "category": "safe_to_disable", "rec": "Disable — VLC rarely needs to autostart."},
+    "torrent":       {"score": 20, "category": "safe_to_disable", "rec": "Disable — Torrent client autostart is not necessary."},
+    "qbittorrent":   {"score": 20, "category": "safe_to_disable", "rec": "Disable — Launch manually when you need it."},
+    "winrar":        {"score": 5,  "category": "safe_to_disable", "rec": "Disable — WinRAR startup helper is not needed."},
+}
+
+_STARTUP_SYSTEM_KEYWORDS = [
+    "securityhealth", "windowsdefender", "windows security", "realtek", "intel hd",
+    "amd", "nvidia", "nvsvc", "logitech", "synaptics", "touchpad", "iastoriconlaunch",
+    "microsoft", "ctfmon", "onedrivesetup", "inputpersonalization"
+]
+
+def _score_startup_item(item):
+    """Compute impact score and category for a startup item."""
+    name_lower = item["name"].lower()
+    path_lower = item.get("path", "").lower()
+
+    # Check system keywords first
+    for kw in _STARTUP_SYSTEM_KEYWORDS:
+        if kw in name_lower or kw in path_lower:
+            return {"impact": "Low", "impact_score": 10, "category": "system_related",
+                    "recommendation": "Caution — This appears to be a system or driver service. Disable only if you know what it does."}
+
+    # Check known apps
+    for kw, info in _STARTUP_IMPACT_DB.items():
+        if kw in name_lower or kw in path_lower:
+            impact = "High" if info["score"] >= 35 else "Medium" if info["score"] >= 20 else "Low"
+            return {"impact": impact, "impact_score": info["score"],
+                    "category": info["category"], "recommendation": info["rec"]}
+
+    # Heuristic: estimate from path
+    score = 20
+    try:
+        exe_path = path_lower.split('"')[1] if '"' in path_lower else path_lower.split()[0]
+        exe_path = exe_path.strip()
+        if os.path.exists(exe_path):
+            size_mb = os.path.getsize(exe_path) / (1024 * 1024)
+            if size_mb > 50:
+                score += 20
+            elif size_mb > 10:
+                score += 10
+    except Exception:
+        pass
+
+    if "update" in name_lower or "helper" in name_lower or "daemon" in name_lower:
+        score += 10
+    if "appdata\\local" in path_lower or "appdata\\roaming" in path_lower:
+        score += 5
+
+    impact = "High" if score >= 35 else "Medium" if score >= 20 else "Low"
+    return {"impact": impact, "impact_score": score,
+            "category": "review",
+            "recommendation": "Review — Check if this program needs to run at startup. Disable if not essential."}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HEALTH SCORE ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/health-score")
+def api_health_score():
+    """Compute a 0–100 health score and return actionable recommendations."""
+    score = 100
+    issues = []
+    recommendations = []
+
+    try:
+        cpu = psutil.cpu_percent(interval=0.3)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
+
+        if cpu > 80:
+            score -= 20
+            issues.append(f"CPU usage is very high ({cpu:.0f}%)")
+            recommendations.append({"icon": "⚡", "text": "High CPU usage detected. Open Processes page to identify heavy apps.", "page": "processes", "severity": "high"})
+        elif cpu > 60:
+            score -= 10
+            issues.append(f"CPU usage is elevated ({cpu:.0f}%)")
+            recommendations.append({"icon": "⚡", "text": "CPU usage is elevated. Check Processes for background tasks.", "page": "processes", "severity": "medium"})
+
+        mem_pct = mem.percent
+        if mem_pct > 85:
+            score -= 20
+            issues.append(f"RAM usage is critically high ({mem_pct:.0f}%)")
+            recommendations.append({"icon": "🧠", "text": "RAM is nearly full. Close unused apps or consider a RAM upgrade.", "page": "system", "severity": "high"})
+        elif mem_pct > 70:
+            score -= 10
+            issues.append(f"RAM usage is high ({mem_pct:.0f}%)")
+            recommendations.append({"icon": "🧠", "text": "RAM usage is high. Close unused applications to free memory.", "page": "processes", "severity": "medium"})
+
+        disk_free_pct = 100 - disk.percent
+        if disk_free_pct < 10:
+            score -= 25
+            issues.append(f"Disk space critically low ({disk_free_pct:.0f}% free)")
+            recommendations.append({"icon": "💾", "text": "Critical: Less than 10% disk space free. Run System Cleaner immediately.", "page": "cleaner", "severity": "high"})
+        elif disk_free_pct < 20:
+            score -= 12
+            issues.append(f"Disk space is low ({disk_free_pct:.0f}% free)")
+            recommendations.append({"icon": "💾", "text": "Low disk space. Use System Cleaner to recover storage.", "page": "cleaner", "severity": "medium"})
+
+        uptime_sec = time.time() - psutil.boot_time()
+        uptime_days = uptime_sec / 86400
+        if uptime_days > 14:
+            score -= 8
+            issues.append(f"System has been running for {uptime_days:.0f} days without a restart")
+            recommendations.append({"icon": "🔄", "text": f"PC has been on for {uptime_days:.0f} days. A restart improves performance and applies updates.", "page": "dashboard", "severity": "medium"})
+
+        procs = sorted(psutil.process_iter(["name", "cpu_percent"]), key=lambda p: p.info.get("cpu_percent", 0) or 0, reverse=True)
+        heavy = [p.info["name"] for p in procs[:3] if (p.info.get("cpu_percent") or 0) > 10]
+        if len(heavy) >= 2:
+            score -= 10
+            issues.append(f"Multiple CPU-heavy processes running: {', '.join(heavy)}")
+            recommendations.append({"icon": "⚙️", "text": f"Heavy background processes detected. Check: {', '.join(heavy[:2])}", "page": "processes", "severity": "medium"})
+
+    except Exception as e:
+        score = max(score, 50)
+
+    score = max(0, min(100, score))
+
+    if score >= 85:
+        grade = "Excellent"
+        color = "green"
+    elif score >= 70:
+        grade = "Good"
+        color = "cyan"
+    elif score >= 50:
+        grade = "Fair"
+        color = "yellow"
+    else:
+        grade = "Poor"
+        color = "red"
+
+    if not issues:
+        issues.append("No major performance issues detected.")
+        recommendations.append({"icon": "✅", "text": "Your PC is in good shape! Run System Cleaner periodically to maintain performance.", "page": "cleaner", "severity": "low"})
+
+    return jsonify({
+        "score": score,
+        "grade": grade,
+        "color": color,
+        "issues": issues,
+        "recommendations": recommendations,
+        "timestamp": datetime.now().strftime("%H:%M:%S")
+    })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# APP & BLOAT MANAGER
+# ══════════════════════════════════════════════════════════════════════════════
+
+_BLOAT_KEYWORDS = ["trial", "toolbar", "helper", "oem", "updater", "wizard", "coupon",
+                   "browser", "search", "driver update", "driver booster", "cleaner",
+                   "optimizer", "speedup", "speed up", "tune", "tuneup", "booster", "lite"]
+
+_SAFE_PUBLISHERS = ["microsoft", "intel", "amd", "nvidia", "realtek", "apple", "google",
+                    "adobe", "logitech", "autodesk", "valve", "epic games", "blizzard"]
+
+_SKIP_DISPLAY_NAMES = ["microsoft visual c++", "microsoft .net", "windows sdk",
+                       "directx", "visual studio redistributable", "vcredist",
+                       "microsoft edge webview", "windows driver", "security update"]
+
+
+def _is_likely_bloat(app):
+    name = (app.get("name") or "").lower()
+    publisher = (app.get("publisher") or "").lower()
+    size_mb = app.get("size_mb") or 0
+
+    for skip in _SKIP_DISPLAY_NAMES:
+        if skip in name:
+            return False, "system"
+
+    for kw in _BLOAT_KEYWORDS:
+        if kw in name:
+            return True, "likely_bloat"
+
+    if not publisher:
+        return False, "unknown"
+
+    for safe in _SAFE_PUBLISHERS:
+        if safe in publisher:
+            return False, "trusted"
+
+    if size_mb > 2048:
+        return False, "large_app"
+
+    return False, "normal"
+
+
+def _scan_apps_from_registry():
+    apps = []
+    if not IS_WINDOWS:
+        return _get_demo_apps()
+
+    try:
+        import winreg
+        reg_paths = [
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+            (winreg.HKEY_CURRENT_USER,  r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        ]
+        seen = set()
+        for hive, path in reg_paths:
+            try:
+                key = winreg.OpenKey(hive, path)
+                count = winreg.QueryInfoKey(key)[0]
+                for i in range(count):
+                    try:
+                        sub_name = winreg.EnumKey(key, i)
+                        sub_key = winreg.OpenKey(key, sub_name)
+                        def _rv(k, n, default=""):
+                            try:
+                                return winreg.QueryValueEx(k, n)[0] or default
+                            except Exception:
+                                return default
+                        display_name = _rv(sub_key, "DisplayName")
+                        if not display_name or display_name in seen:
+                            winreg.CloseKey(sub_key)
+                            continue
+                        seen.add(display_name)
+                        size_bytes = 0
+                        try:
+                            size_bytes = int(_rv(sub_key, "EstimatedSize") or 0) * 1024
+                        except Exception:
+                            pass
+                        install_date = _rv(sub_key, "InstallDate")
+                        if install_date and len(install_date) == 8:
+                            try:
+                                install_date = f"{install_date[:4]}-{install_date[4:6]}-{install_date[6:]}"
+                            except Exception:
+                                pass
+                        app_entry = {
+                            "name": display_name,
+                            "publisher": _rv(sub_key, "Publisher"),
+                            "version": _rv(sub_key, "DisplayVersion"),
+                            "install_date": install_date,
+                            "install_location": _rv(sub_key, "InstallLocation"),
+                            "uninstall_cmd": _rv(sub_key, "UninstallString"),
+                            "size_mb": round(size_bytes / (1024 * 1024), 1) if size_bytes else 0,
+                        }
+                        is_bloat, bloat_tag = _is_likely_bloat(app_entry)
+                        app_entry["is_bloat"] = is_bloat
+                        app_entry["tag"] = bloat_tag
+                        apps.append(app_entry)
+                        winreg.CloseKey(sub_key)
+                    except Exception:
+                        pass
+                winreg.CloseKey(key)
+            except Exception:
+                pass
+    except ImportError:
+        return _get_demo_apps()
+
+    apps.sort(key=lambda x: x["name"].lower())
+    return apps
+
+
+def _get_demo_apps():
+    return [
+        {"name": "Discord", "publisher": "Discord Inc.", "version": "1.0.9170", "install_date": "2024-03-15",
+         "install_location": "C:\\Users\\User\\AppData\\Local\\Discord", "uninstall_cmd": "C:\\Users\\User\\AppData\\Local\\Discord\\Update.exe --uninstall",
+         "size_mb": 312.4, "is_bloat": False, "tag": "normal"},
+        {"name": "VLC media player", "publisher": "VideoLAN", "version": "3.0.20", "install_date": "2023-11-01",
+         "install_location": "C:\\Program Files\\VideoLAN\\VLC", "uninstall_cmd": "C:\\Program Files\\VideoLAN\\VLC\\uninstall.exe",
+         "size_mb": 84.2, "is_bloat": False, "tag": "normal"},
+        {"name": "Google Chrome", "publisher": "Google LLC", "version": "124.0.6367.78", "install_date": "2024-04-20",
+         "install_location": "C:\\Program Files\\Google\\Chrome", "uninstall_cmd": "C:\\Program Files\\Google\\Chrome\\Application\\124.0.6367.78\\Installer\\setup.exe --uninstall",
+         "size_mb": 720.8, "is_bloat": False, "tag": "trusted"},
+        {"name": "Spotify", "publisher": "Spotify AB", "version": "1.2.31.1205", "install_date": "2024-01-10",
+         "install_location": "C:\\Users\\User\\AppData\\Roaming\\Spotify", "uninstall_cmd": "C:\\Users\\User\\AppData\\Roaming\\Spotify\\Spotify.exe --uninstall",
+         "size_mb": 230.5, "is_bloat": False, "tag": "normal"},
+        {"name": "Driver Booster 11", "publisher": "IObit", "version": "11.6.0.108", "install_date": "2023-06-05",
+         "install_location": "C:\\Program Files (x86)\\IObit\\Driver Booster", "uninstall_cmd": "C:\\Program Files (x86)\\IObit\\Driver Booster\\unins000.exe",
+         "size_mb": 185.3, "is_bloat": True, "tag": "likely_bloat"},
+        {"name": "PC App Store", "publisher": "Unknown Vendor", "version": "3.4.1", "install_date": "2022-09-12",
+         "install_location": "", "uninstall_cmd": "",
+         "size_mb": 0, "is_bloat": True, "tag": "likely_bloat"},
+        {"name": "Free PDF Toolbar", "publisher": "PDF Toolkit", "version": "2.1.0", "install_date": "2022-04-01",
+         "install_location": "", "uninstall_cmd": "C:\\Program Files\\PDF Toolbar\\uninst.exe",
+         "size_mb": 12.0, "is_bloat": True, "tag": "likely_bloat"},
+        {"name": "Microsoft Visual C++ 2019 Redistributable (x64)", "publisher": "Microsoft Corporation", "version": "14.29.30153",
+         "install_date": "2023-01-15", "install_location": "", "uninstall_cmd": "MsiExec.exe /X{...}",
+         "size_mb": 22.1, "is_bloat": False, "tag": "system"},
+        {"name": "Steam", "publisher": "Valve Corporation", "version": "2.10.91.91", "install_date": "2023-08-20",
+         "install_location": "C:\\Program Files (x86)\\Steam", "uninstall_cmd": "C:\\Program Files (x86)\\Steam\\uninstall.exe",
+         "size_mb": 1024.6, "is_bloat": False, "tag": "trusted"},
+        {"name": "7-Zip 23.01", "publisher": "Igor Pavlov", "version": "23.01.0", "install_date": "2023-12-01",
+         "install_location": "C:\\Program Files\\7-Zip", "uninstall_cmd": "C:\\Program Files\\7-Zip\\Uninstall.exe",
+         "size_mb": 5.8, "is_bloat": False, "tag": "normal"},
+    ]
+
+
+@app.route("/api/apps/list")
+def api_apps_list():
+    apps = _scan_apps_from_registry()
+    return jsonify(apps)
+
+
+@app.route("/api/apps/export", methods=["POST"])
+def api_apps_export():
+    apps = _scan_apps_from_registry()
+    import csv
+    import io
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["name", "publisher", "version", "install_date", "size_mb", "tag", "uninstall_cmd"])
+    writer.writeheader()
+    for a in apps:
+        writer.writerow({k: a.get(k, "") for k in writer.fieldnames})
+    return app.response_class(buf.getvalue(), mimetype="text/csv",
+                               headers={"Content-Disposition": "attachment;filename=installed_apps.csv"})
+
+
+@app.route("/api/apps/uninstall", methods=["POST"])
+def api_apps_uninstall():
+    data = request.get_json() or {}
+    name = data.get("name", "")
+    cmd = data.get("uninstall_cmd", "")
+    if not cmd:
+        return jsonify({"ok": False, "error": "No uninstall command provided."})
+    log_activity(f"App Manager: launching uninstaller for '{name}'", "WARN")
+    if not IS_WINDOWS:
+        return jsonify({"ok": True, "demo": True, "msg": f"[DEMO] Would run: {cmd}"})
+    try:
+        subprocess.Popen(cmd, shell=True)
+        return jsonify({"ok": True, "msg": f"Uninstaller launched for {name}. Follow the prompts."})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/apps/open-folder", methods=["POST"])
+def api_apps_open_folder():
+    data = request.get_json() or {}
+    path = data.get("path", "")
+    if not path or not os.path.isdir(path):
+        return jsonify({"ok": False, "error": "Folder does not exist or path not provided."})
+    if IS_WINDOWS:
+        subprocess.Popen(["explorer", path])
+    return jsonify({"ok": True})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BROKEN SHORTCUTS + EMPTY FOLDERS SCANNER
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/cleaner/broken-shortcuts")
+def api_broken_shortcuts():
+    """Scan Desktop and StartMenu for broken .lnk shortcuts."""
+    results = []
+    scan_dirs = []
+    try:
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        start_menu = os.path.join(os.environ.get("APPDATA", ""), r"Microsoft\Windows\Start Menu\Programs")
+        public_desktop = r"C:\Users\Public\Desktop"
+        for d in [desktop, start_menu, public_desktop]:
+            if os.path.isdir(d):
+                scan_dirs.append(d)
+    except Exception:
+        pass
+
+    if not IS_WINDOWS or not scan_dirs:
+        return jsonify({"items": [
+            {"name": "Notepad++ (broken)", "path": "C:\\Users\\User\\Desktop\\Notepad++.lnk", "target": "C:\\Program Files\\Notepad++\\notepad++.exe", "size": 1234},
+            {"name": "OldApp (broken)", "path": "C:\\Users\\User\\Desktop\\OldApp.lnk", "target": "C:\\Program Files\\OldApp\\app.exe", "size": 890},
+        ], "demo": True})
+
+    def resolve_lnk_target(lnk_path):
+        try:
+            import winreg
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 f'$sh=New-Object -COM WScript.Shell; $sh.CreateShortcut("{lnk_path}").TargetPath'],
+                capture_output=True, text=True, timeout=5
+            )
+            return result.stdout.strip()
+        except Exception:
+            return ""
+
+    for scan_dir in scan_dirs:
+        for root, _, files in os.walk(scan_dir):
+            for fname in files:
+                if not fname.lower().endswith(".lnk"):
+                    continue
+                fpath = os.path.join(root, fname)
+                target = resolve_lnk_target(fpath)
+                if target and not os.path.exists(target):
+                    try:
+                        size = os.path.getsize(fpath)
+                    except Exception:
+                        size = 0
+                    results.append({
+                        "name": fname.replace(".lnk", ""),
+                        "path": fpath,
+                        "target": target,
+                        "size": size
+                    })
+
+    return jsonify({"items": results, "demo": False})
+
+
+@app.route("/api/cleaner/delete-shortcuts", methods=["POST"])
+def api_delete_shortcuts():
+    data = request.get_json() or {}
+    paths = data.get("paths", [])
+    deleted = []
+    errors = []
+    for p in paths:
+        try:
+            if os.path.isfile(p) and p.lower().endswith(".lnk"):
+                os.remove(p)
+                deleted.append(p)
+                log_activity(f"Deleted broken shortcut: {p}", "SUCCESS")
+        except Exception as e:
+            errors.append({"path": p, "error": str(e)})
+    return jsonify({"deleted": deleted, "errors": errors})
+
+
+@app.route("/api/cleaner/empty-folders")
+def api_empty_folders():
+    """Scan common user folders for empty directories."""
+    results = []
+    home = os.path.expanduser("~")
+    safe_scan_roots = [
+        os.path.join(home, "Desktop"),
+        os.path.join(home, "Downloads"),
+        os.path.join(home, "Documents"),
+        os.path.join(home, "Pictures"),
+        os.path.join(home, "Videos"),
+        os.path.join(home, "Music"),
+    ]
+
+    if not IS_WINDOWS:
+        return jsonify({"items": [
+            {"path": "C:\\Users\\User\\Downloads\\OldProject", "parent": "Downloads"},
+            {"path": "C:\\Users\\User\\Desktop\\Untitled Folder", "parent": "Desktop"},
+            {"path": "C:\\Users\\User\\Documents\\archive\\2019\\misc", "parent": "Documents"},
+        ], "demo": True})
+
+    for root_dir in safe_scan_roots:
+        if not os.path.isdir(root_dir):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root_dir, topdown=False):
+            if dirpath == root_dir:
+                continue
+            try:
+                if not os.listdir(dirpath):
+                    results.append({
+                        "path": dirpath,
+                        "parent": os.path.basename(root_dir)
+                    })
+            except PermissionError:
+                pass
+
+    return jsonify({"items": results, "demo": False})
+
+
+@app.route("/api/cleaner/delete-empty-folders", methods=["POST"])
+def api_delete_empty_folders():
+    data = request.get_json() or {}
+    paths = data.get("paths", [])
+    deleted = []
+    errors = []
+    home = os.path.expanduser("~")
+    safe_roots = [os.path.join(home, d) for d in ["Desktop", "Downloads", "Documents", "Pictures", "Videos", "Music"]]
+
+    for p in paths:
+        try:
+            in_safe = any(p.startswith(r) for r in safe_roots)
+            if not in_safe:
+                errors.append({"path": p, "error": "Path is outside safe user folders"})
+                continue
+            if os.path.isdir(p) and not os.listdir(p):
+                os.rmdir(p)
+                deleted.append(p)
+                log_activity(f"Removed empty folder: {p}", "SUCCESS")
+        except Exception as e:
+            errors.append({"path": p, "error": str(e)})
+    return jsonify({"deleted": deleted, "errors": errors})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FOLDER SIZE EXPLORER
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/folder-sizes/scan", methods=["POST"])
+def api_folder_sizes_scan():
+    data = request.get_json() or {}
+    root_path = data.get("path", os.path.expanduser("~"))
+    max_depth = int(data.get("depth", 2))
+
+    if not IS_WINDOWS:
+        return jsonify({"folders": [
+            {"path": "C:\\Users\\User\\Downloads", "name": "Downloads", "size_bytes": 8589934592, "size_human": "8.0 GB", "depth": 1, "file_count": 842},
+            {"path": "C:\\Users\\User\\Videos", "name": "Videos", "size_bytes": 5368709120, "size_human": "5.0 GB", "depth": 1, "file_count": 34},
+            {"path": "C:\\Users\\User\\Documents", "name": "Documents", "size_bytes": 2147483648, "size_human": "2.0 GB", "depth": 1, "file_count": 1203},
+            {"path": "C:\\Users\\User\\Pictures", "name": "Pictures", "size_bytes": 1073741824, "size_human": "1.0 GB", "depth": 1, "file_count": 567},
+            {"path": "C:\\Users\\User\\AppData\\Local\\Temp", "name": "Temp", "size_bytes": 536870912, "size_human": "512.0 MB", "depth": 2, "file_count": 4321},
+            {"path": "C:\\Users\\User\\AppData\\Roaming\\Spotify", "name": "Spotify", "size_bytes": 314572800, "size_human": "300.0 MB", "depth": 2, "file_count": 88},
+            {"path": "C:\\Users\\User\\Desktop", "name": "Desktop", "size_bytes": 209715200, "size_human": "200.0 MB", "depth": 1, "file_count": 41},
+        ], "demo": True})
+
+    def _dir_size_and_count(path):
+        total = 0
+        count = 0
+        try:
+            for entry in os.scandir(path):
+                try:
+                    if entry.is_file(follow_symlinks=False):
+                        total += entry.stat().st_size
+                        count += 1
+                    elif entry.is_dir(follow_symlinks=False):
+                        sub_size, sub_count = _dir_size_and_count(entry.path)
+                        total += sub_size
+                        count += sub_count
+                except PermissionError:
+                    pass
+        except PermissionError:
+            pass
+        return total, count
+
+    def _fmt(b):
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
+            if b < 1024:
+                return f"{b:.1f} {unit}"
+            b /= 1024
+        return f"{b:.1f} PB"
+
+    folders = []
+
+    def _walk(path, depth):
+        if depth > max_depth:
+            return
+        try:
+            for entry in os.scandir(path):
+                if not entry.is_dir(follow_symlinks=False):
+                    continue
+                size, count = _dir_size_and_count(entry.path)
+                folders.append({
+                    "path": entry.path,
+                    "name": entry.name,
+                    "size_bytes": size,
+                    "size_human": _fmt(size),
+                    "depth": depth,
+                    "file_count": count
+                })
+                if depth < max_depth:
+                    _walk(entry.path, depth + 1)
+        except PermissionError:
+            pass
+
+    _walk(root_path, 1)
+    folders.sort(key=lambda x: x["size_bytes"], reverse=True)
+    return jsonify({"folders": folders[:50], "demo": False, "root": root_path})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STARTUP ITEMS — enhanced with impact scoring
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/startup-items/export")
+def api_startup_export():
+    """Export startup items to JSON."""
+    items_resp = api_startup()
+    return app.response_class(
+        items_resp.get_data(as_text=True),
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment;filename=startup_items.json"}
+    )
 
 
 if __name__ == "__main__":

@@ -54,6 +54,10 @@
                 <span class="icon">&#x1F527;</span>
                 <span>Registry</span>
             </div>
+            <div class="nav-item" data-page="apps">
+                <span class="icon">&#x1F4E6;</span>
+                <span>Apps</span>
+            </div>
 
             <div class="sidebar-section">
                 <div class="sidebar-label">Monitor</div>
@@ -203,6 +207,33 @@
                     <a href="https://macrotechtitan.com" target="_blank" rel="noopener" class="dash-ad-cta">
                         Learn More &#x2192;
                     </a>
+                </div>
+
+                <!-- Health Score Panel -->
+                <div class="panel" style="margin-bottom: 16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x2764; System Health Score</span>
+                        <button class="btn" id="btn-health-refresh" onclick="App.refreshHealthScore()">&#x1F504; Refresh</button>
+                    </div>
+                    <div class="panel-body" id="health-score-body">
+                        <div style="display:grid; grid-template-columns: 160px 1fr; gap: 20px; align-items: center;">
+                            <!-- Score circle -->
+                            <div style="text-align:center;">
+                                <div id="health-score-ring" style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center; width:120px; height:120px; border-radius:50%; border:6px solid var(--accent-green); background:rgba(16,185,129,0.08);">
+                                    <div id="health-score-value" style="font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700; color:var(--accent-green);">--</div>
+                                    <div id="health-score-grade" style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); letter-spacing:1px;">LOADING</div>
+                                </div>
+                                <div style="margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted);">out of 100</div>
+                            </div>
+                            <!-- Recommendations -->
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); margin-bottom:10px; letter-spacing:1px;">DIAGNOSTICS &amp; RECOMMENDATIONS</div>
+                                <div id="health-recommendations" style="display:flex; flex-direction:column; gap:8px;">
+                                    <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted); text-align:center; padding:16px;">Analyzing system...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="split-view">
@@ -375,6 +406,38 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Broken Shortcuts Panel -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F517; Broken Shortcuts</span>
+                        <button class="btn btn-primary" onclick="App.scanBrokenShortcuts()">&#x1F50D; Scan Shortcuts</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+                            Scans Desktop and Start Menu for .lnk shortcut files whose target program no longer exists.
+                        </div>
+                        <div id="broken-shortcuts-results">
+                            <div style="text-align:center;padding:16px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Click "Scan Shortcuts" to find broken links</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty Folders Panel -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4C2; Empty Folders</span>
+                        <button class="btn btn-primary" onclick="App.scanEmptyFolders()">&#x1F50D; Scan Empty Folders</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+                            Scans Desktop, Downloads, Documents, Pictures, Videos, and Music for empty directories that can be safely removed.
+                        </div>
+                        <div id="empty-folders-results">
+                            <div style="text-align:center;padding:16px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Click "Scan Empty Folders" to find empty directories</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- SPEED UP PAGE -->
@@ -469,6 +532,76 @@
                         <div id="speedup-undo-log">
                             <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
                                 No actions recorded yet
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APPS PAGE -->
+            <div class="page" id="page-apps">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4E6; Installed Apps &amp; Bloat Manager</span>
+                        <div class="btn-group">
+                            <input type="text" id="apps-search" placeholder="Search apps..." oninput="App.filterApps()" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;width:200px;">
+                            <button class="btn" onclick="App.refreshApps()">&#x1F504; Refresh</button>
+                            <button class="btn" onclick="App.exportApps()">&#x1F4E4; Export CSV</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <!-- Filter bar -->
+                        <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center;">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">Filter:</span>
+                            <button class="btn" id="apps-filter-all" onclick="App.setAppsFilter('all')" style="padding:3px 10px;font-size:10px;background:var(--accent-cyan);color:#000;">All</button>
+                            <button class="btn" id="apps-filter-bloat" onclick="App.setAppsFilter('bloat')" style="padding:3px 10px;font-size:10px;">Likely Bloat</button>
+                            <button class="btn" id="apps-filter-large" onclick="App.setAppsFilter('large')" style="padding:3px 10px;font-size:10px;">Large (&gt;500MB)</button>
+                            <span id="apps-count" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);"></span>
+                        </div>
+                        <!-- Sort options -->
+                        <div style="display:flex; gap:10px; margin-bottom:14px; align-items:center;">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">Sort:</span>
+                            <select id="apps-sort" onchange="App.renderApps()" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);padding:4px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;">
+                                <option value="name">Name A–Z</option>
+                                <option value="size">Size (largest first)</option>
+                                <option value="date">Install Date (newest)</option>
+                                <option value="publisher">Publisher</option>
+                            </select>
+                        </div>
+                        <!-- Apps table -->
+                        <div class="process-list">
+                            <div class="process-item process-header">
+                                <span class="name">Application</span>
+                                <span style="flex:1.2;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--text-muted);">Publisher</span>
+                                <span class="cpu">Size</span>
+                                <span class="mem">Installed</span>
+                                <span class="cpu">Status</span>
+                                <span class="cpu">Actions</span>
+                            </div>
+                            <div id="apps-list">
+                                <div style="text-align:center;color:var(--text-muted);padding:32px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                    Click Refresh to load installed applications
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloat Suggestions Panel -->
+                <div class="panel" style="margin-top:20px;" id="apps-bloat-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F6A8; Bloat Detection Report</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:12px;padding:12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:8px;">
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-yellow);line-height:1.8;">
+                                &#x26A0; Bloat detection uses heuristics (app name, publisher, install size). Always verify before uninstalling.
+                                <strong>Never uninstall Microsoft Visual C++, .NET, or Windows components.</strong>
+                            </div>
+                        </div>
+                        <div id="apps-bloat-list">
+                            <div style="text-align:center;color:var(--text-muted);padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                Refresh apps to see bloat detection results
                             </div>
                         </div>
                     </div>
@@ -1297,6 +1430,51 @@
                         <div id="organizer-undo-log">
                             <div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;">
                                 No actions recorded yet
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Folder Size Explorer -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CA; Folder Size Explorer</span>
+                        <div class="btn-group">
+                            <input type="text" id="folder-size-path" placeholder="Path (default: home folder)" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;width:240px;">
+                            <button class="btn btn-primary" onclick="App.scanFolderSizes()">&#x1F50D; Scan Sizes</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+                            Recursively scans folders and shows which directories use the most space. Helps identify where to free up storage.
+                        </div>
+                        <div id="folder-size-results">
+                            <div style="text-align:center;padding:16px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Enter a folder path and click Scan Sizes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Cleaner Wizard -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F5A5; Desktop Cleaner Wizard</span>
+                        <button class="btn btn-primary" onclick="App.runDesktopWizard()">&#x1F9F9; Scan Desktop</button>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+                            Scans your Desktop and groups files by type, age, and size. Suggests moving old files into organized archive folders.
+                        </div>
+                        <div id="desktop-wizard-results">
+                            <div style="text-align:center;padding:16px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Click "Scan Desktop" to analyze your desktop files</div>
+                        </div>
+                        <div id="desktop-wizard-actions" style="display:none; margin-top:14px; padding:14px; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px;">
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-cyan);margin-bottom:10px;font-weight:600;">Suggested Actions</div>
+                            <div id="desktop-wizard-suggestions" style="display:flex;flex-direction:column;gap:8px;"></div>
+                            <div style="margin-top:14px;text-align:center;">
+                                <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;margin-right:16px;">
+                                    <input type="checkbox" id="desktop-wizard-dry-run" checked style="margin-right:6px;"> Dry Run (preview only)
+                                </label>
+                                <button class="btn btn-primary" onclick="App.executeDesktopWizard()">&#x2705; Move Files</button>
                             </div>
                         </div>
                     </div>

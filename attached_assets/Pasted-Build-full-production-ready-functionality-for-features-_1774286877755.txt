@@ -1,0 +1,441 @@
+Build full production-ready functionality for features 1–5 in my Python Windows app called WindowZen.
+
+Context:
+- WindowZen is a Windows optimization app written in Python.
+- It already has network-related features.
+- I now want to add full functionality for the next core modules focused on speed, organization, and reduced clutter.
+- Target platform is Windows 10 and Windows 11.
+- The code should be modular, safe, and realistic for Windows.
+- Avoid fake “boost” features. Only implement real diagnostics and safe optimization actions.
+- Every cleanup, disable, or delete action must support preview, confirmation, logging, and rollback where possible.
+
+Goal:
+Add full functionality for these 5 modules:
+
+1. Startup Optimizer
+2. Smart Storage Cleaner
+3. App and Bloat Manager
+4. Performance Dashboard
+5. File Organization Tools
+
+General requirements:
+- Language: Python
+- App structure must be modular and scalable
+- Build for Windows only
+- Clean, modern desktop UI
+- Use a maintainable architecture with separate modules/services/helpers
+- Include comments and docstrings
+- Add error handling everywhere
+- Add action logs for all scans and changes
+- Use safe operations only
+- Before any system-changing action, show what will happen and ask for confirmation
+- Add restore / undo support where realistically possible
+- Do not use dangerous registry edits unless clearly necessary and reversible
+- Do not silently delete anything
+- Prefer quarantine/archive over permanent deletion when possible
+
+Recommended stack:
+- UI: customtkinter or PySide6
+- System/process info: psutil
+- Windows registry access: winreg
+- Installed app discovery: winreg + PowerShell where helpful
+- File handling: pathlib, shutil, os
+- Hashing for duplicates: hashlib
+- Shortcuts: winshell or pywin32 if needed
+- Logging: logging module
+- Optional charts: matplotlib or Qt charts if using PySide6
+
+Build the following in full:
+
+==================================================
+FEATURE 1: STARTUP OPTIMIZER
+==================================================
+
+Implement a complete Startup Optimizer module with:
+
+Core functionality:
+- Detect startup apps from:
+  - HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+  - HKLM\Software\Microsoft\Windows\CurrentVersion\Run
+  - Startup folders for current user and all users
+- Parse app name, command, location source, path if resolvable
+- Detect whether the startup item is currently enabled
+- Estimate a simple startup impact score using heuristics such as:
+  - known heavy apps
+  - file existence
+  - executable size
+  - whether app runs in background
+  - command complexity
+- Categorize items:
+  - Safe to disable
+  - Review recommended
+  - System-related / caution
+- Allow:
+  - disable startup item
+  - re-enable startup item
+  - backup original state before change
+  - restore previous state
+- Maintain a history of startup changes
+
+UI:
+- Table/list of startup items
+- Columns:
+  - Name
+  - Status
+  - Source
+  - Command
+  - Impact
+  - Recommendation
+- Detail panel for selected item
+- Buttons:
+  - Scan
+  - Disable selected
+  - Enable selected
+  - Restore previous state
+  - Export list
+
+Safety:
+- Do not disable critical Windows system items automatically
+- Show warning before changing anything
+- Save backup JSON before edits
+- Log every action
+
+Deliver:
+- startup_optimizer.py
+- startup_service.py
+- startup_backup_manager.py
+- UI screen/component
+- helper methods for registry and startup folder scanning
+
+==================================================
+FEATURE 2: SMART STORAGE CLEANER
+==================================================
+
+Implement a full Smart Storage Cleaner with scan, preview, and cleanup.
+
+Scan categories:
+- Temp files
+- Windows temp files where access is allowed
+- User temp folders
+- Recycle Bin size
+- Downloads older than X days
+- Large files above configurable size
+- Empty folders
+- Broken shortcuts
+- Old installers (.exe, .msi, .zip) in Downloads/Desktop/Documents
+- Duplicate files using hash comparison
+- Optional log/cache folders in safe user locations
+
+Functionality:
+- Run a full system clutter scan for selected directories
+- Show reclaimable space by category
+- Let user expand category and preview files
+- Multi-select files/folders for cleanup
+- Default cleanup action should move to quarantine folder when possible
+- Permanent delete should be optional and clearly marked
+- Duplicate file manager should:
+  - group duplicates
+  - show size, path, hash
+  - recommend keeping the newest or shortest-path version
+- Large file finder should sort descending by size
+- Broken shortcut finder should verify target existence
+- Empty folder finder should ignore system-protected folders
+
+UI:
+- Storage summary cards
+- Category list with total reclaimable space
+- Preview pane
+- Filters:
+  - file size threshold
+  - file age threshold
+  - included folders
+- Buttons:
+  - Scan
+  - Preview cleanup
+  - Quarantine selected
+  - Delete selected
+  - Restore from quarantine
+  - Export report
+
+Safety:
+- Never clean system-critical directories blindly
+- Exclude Windows, Program Files, Program Files (x86), System32 by default from destructive actions
+- Require confirmation before cleanup
+- Log all moved/deleted files
+- Quarantine metadata should support restore
+
+Deliver:
+- storage_cleaner.py
+- duplicate_scanner.py
+- quarantine_manager.py
+- cleanup_rules.py
+- UI screen/component
+- report export to JSON or CSV
+
+==================================================
+FEATURE 3: APP AND BLOAT MANAGER
+==================================================
+
+Implement a full App and Bloat Manager.
+
+Detection:
+- Enumerate installed applications from registry uninstall keys in HKCU and HKLM
+- Capture:
+  - Display name
+  - Publisher
+  - Version
+  - Install location
+  - Estimated size if available
+  - Install date if available
+  - Uninstall command
+- Optionally augment with PowerShell app discovery for more complete results
+- Flag apps with heuristics:
+  - large apps
+  - rarely updated apps
+  - likely OEM bundle / trialware / optional utilities
+  - entries with missing uninstall info
+- Mark apps as:
+  - likely safe to review
+  - caution
+  - unknown
+
+Functionality:
+- Search and filter installed apps
+- Sort by size, publisher, install date, name
+- Show app details panel
+- Launch uninstall command safely after confirmation
+- Open install folder if path exists
+- Export installed app inventory
+- Add “review suggestions” panel such as:
+  - largest apps
+  - oldest apps
+  - probable bloat
+  - apps without valid uninstallers
+
+UI:
+- Installed apps table
+- Filters:
+  - search
+  - size
+  - publisher
+  - category tags
+- Buttons:
+  - Refresh
+  - Open install folder
+  - Run uninstaller
+  - Export inventory
+
+Safety:
+- Do not auto-uninstall anything
+- Do not mislabel Microsoft Visual C++ runtimes, drivers, security software, or core Microsoft components as disposable
+- Show strong warning before running uninstallers
+- Log all launched uninstall actions
+
+Deliver:
+- app_manager.py
+- uninstall_registry_scanner.py
+- bloat_heuristics.py
+- app_inventory_exporter.py
+- UI screen/component
+
+==================================================
+FEATURE 4: PERFORMANCE DASHBOARD
+==================================================
+
+Implement a real-time Performance Dashboard with diagnostics and recommendations.
+
+Metrics:
+- CPU usage
+- RAM usage
+- Disk usage
+- Disk free space
+- Top CPU-consuming processes
+- Top RAM-consuming processes
+- Startup item count
+- Temp/junk estimate from cleaner scan summary
+- System uptime
+- Basic network summary placeholder integration with existing network module
+
+Diagnostic engine:
+Create a “Why is my PC slow?” panel that analyzes conditions such as:
+- High CPU use
+- High memory pressure
+- Low disk free space
+- Too many startup apps
+- Large junk/temp buildup
+- Heavy background processes
+- Potential disk bottleneck indicators if available
+- Low available RAM relative to total
+
+Output actionable recommendations like:
+- Disable high-impact startup apps
+- Clean temp files
+- Review duplicate files
+- Close specific heavy processes
+- Uninstall large unused apps
+- Free up disk space
+
+UI:
+- Dashboard cards for key metrics
+- Process tables for CPU and RAM
+- Health score summary
+- Recommendation panel
+- Refresh / auto-refresh toggle
+- Historical mini-log for recent alerts
+
+Functionality:
+- Real-time refresh every few seconds
+- Manual refresh button
+- Export health report
+- Integrate counts from other modules:
+  - startup items
+  - junk size
+  - duplicate groups
+  - installed app count
+
+Safety:
+- Read-only dashboard by default
+- Any action button should redirect to the relevant module instead of directly killing processes unless explicitly implemented with confirmation
+
+Deliver:
+- performance_dashboard.py
+- diagnostics_engine.py
+- metrics_collector.py
+- health_score.py
+- UI screen/component
+
+==================================================
+FEATURE 5: FILE ORGANIZATION TOOLS
+==================================================
+
+Implement practical file organization tools for Desktop, Downloads, and user-selected folders.
+
+Tools to build:
+1. Clean Desktop Wizard
+- Scan Desktop
+- Group files by type, age, and size
+- Suggest moving old files into archive folders
+- Suggest grouping screenshots, documents, installers, videos, and miscellaneous items
+- Show before/after preview
+
+2. Downloads Organizer
+- Organize files by:
+  - file extension
+  - category
+  - date
+- Optional archive old downloads older than X days
+- Detect repeated installer downloads
+
+3. Duplicate Screenshot Finder
+- Focus on likely screenshot patterns in Desktop/Pictures/Downloads
+- Group duplicates or near-duplicates by filename pattern and hash
+- Show preview metadata
+
+4. Archive Old Files
+- Move old files from selected folders into dated archive folders
+- Keep original folder structure optionally
+- Support restore log
+
+5. Folder Size Explorer
+- Recursively compute folder sizes
+- Show largest folders first
+- Allow open in explorer
+
+Functionality:
+- All organization actions need preview mode
+- Let user choose destination folder
+- Support undo/restore where possible by logging original and new paths
+- Support category rules such as:
+  - Images
+  - Documents
+  - Videos
+  - Audio
+  - Installers
+  - Archives
+  - Code
+  - Misc
+- Include dry-run mode
+
+UI:
+- Folder scan panel
+- Suggested actions panel
+- File preview table
+- Buttons:
+  - Scan
+  - Preview organization
+  - Move selected
+  - Archive old files
+  - Restore last operation
+  - Open folder
+
+Safety:
+- No silent moves
+- No operations outside approved user folders unless user explicitly selects them
+- Keep a move manifest for undo
+- Skip missing files gracefully
+
+Deliver:
+- file_organizer.py
+- desktop_cleaner.py
+- downloads_organizer.py
+- folder_size_explorer.py
+- operation_manifest.py
+- UI screen/component
+
+==================================================
+MAIN APP REQUIREMENTS
+==================================================
+
+Build the app structure and connect all 5 features into one application.
+
+Need:
+- Sidebar navigation
+- Separate views/pages for each module
+- Shared theme
+- Shared logging service
+- Shared config/settings
+- Shared dialog utilities
+- Shared Windows helper utilities
+- Central app entry point
+- Background worker/threading for long scans so UI stays responsive
+- Status bar for scan progress
+- Notification/toast system for completed tasks
+
+Create project structure like:
+- main.py
+- ui/
+- modules/
+- services/
+- utils/
+- data/
+- logs/
+- backups/
+- quarantine/
+- exports/
+
+Also include:
+- settings manager
+- JSON config file
+- action history log
+- backup/restore helpers
+- reusable table/card/dialog UI components
+
+==================================================
+WHAT TO OUTPUT
+==================================================
+
+Return:
+1. A recommended project folder structure
+2. Required Python packages
+3. Full starter implementation for the app
+4. Full code stubs with real working logic where feasible
+5. TODO comments for Windows-specific areas that may need elevation or extra testing
+6. Modern UI styling recommendations
+7. Notes on safe permissions and rollback behavior
+
+Important:
+- Write clean code, not pseudocode
+- Use real Windows-compatible Python logic where feasible
+- Where full implementation is system-sensitive, provide the best safe implementation plus clear TODO notes
+- Make the code organized enough to paste directly into Replit and continue building
+- Prefer a polished MVP that already works over overly abstract architecture

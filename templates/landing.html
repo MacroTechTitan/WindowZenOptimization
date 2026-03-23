@@ -973,12 +973,12 @@
 
     <section class="hero">
         <div class="hero-content">
-            <div class="hero-badge">Windows System Utility v1.1</div>
+            <div class="hero-badge">Windows System Utility v1.1 &nbsp;&#x2022;&nbsp; Now with Health Score &amp; Bloat Detection</div>
             <h1 class="hero-title">
                 Your PC, <span class="gradient">Optimized.</span>
             </h1>
             <p class="hero-subtitle">
-                A comprehensive Windows system utility with real-time monitoring, intelligent cleanup, cybersecurity scanning, and wellness tracking. All in a sleek terminal-style interface.
+                A comprehensive Windows system utility with real-time monitoring, intelligent cleanup, Health Score diagnostics, App &amp; Bloat Manager, startup impact scoring, cybersecurity scanning, and wellness tracking — in a sleek terminal-style interface.
             </p>
             <div class="hero-actions">
                 <a href="#" class="btn-hero btn-hero-download" onclick="openDownloadModal(event)">
@@ -1011,8 +1011,12 @@
             <div class="stat-label">Cleanup Categories</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">10</div>
+            <div class="stat-value">15+</div>
             <div class="stat-label">Feature Modules</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">100</div>
+            <div class="stat-label">Health Score Engine</div>
         </div>
         <div class="stat-item">
             <div class="stat-value" id="stat-visits">–</div>
@@ -1028,7 +1032,7 @@
         <div class="section-header">
             <div class="section-tag">Feature Set</div>
             <h2 class="section-title">Everything You Need</h2>
-            <p class="section-desc">13 powerful modules working together to keep your Windows system fast, clean, and secure.</p>
+            <p class="section-desc">15+ powerful modules working together to keep your Windows system fast, clean, and secure — now with Health Score diagnostics and App Bloat Detection.</p>
         </div>
 
         <div class="features-grid">
@@ -1146,9 +1150,9 @@
             <div class="feature-card">
                 <div class="feature-icon">&#x1F680;</div>
                 <h3 class="feature-title">Speed Up</h3>
-                <p class="feature-desc">Manage startup programs grouped by registry source. Launch Windows performance presets, adjust visual effects, and switch Power Mode — all from one panel.</p>
+                <p class="feature-desc">Startup Manager with <strong style="color:var(--accent-yellow)">Impact Scoring</strong> — each program rated High / Medium / Low with Safe-to-Disable categories. Launch Visual Effects presets and Power Mode from one panel.</p>
                 <div class="feature-tags">
-                    <span class="feature-tag">Startup Manager</span>
+                    <span class="feature-tag">Impact Scoring</span>
                     <span class="feature-tag">Power Mode</span>
                     <span class="feature-tag">Visual Effects</span>
                 </div>
@@ -1168,15 +1172,89 @@
             <div class="feature-card">
                 <div class="feature-icon">&#x1F310;</div>
                 <h3 class="feature-title">Fix Internet</h3>
-                <p class="feature-desc">One-click network repair: resets Winsock, flushes DNS cache, releases and renews your IP, and resets the TCP/IP stack — no command-line knowledge needed.</p>
+                <p class="feature-desc">One-click network repair: resets Winsock, flushes DNS cache, releases and renews your IP, and resets the TCP/IP stack — with live streaming terminal output.</p>
                 <div class="feature-tags">
                     <span class="feature-tag">Winsock Reset</span>
                     <span class="feature-tag">DNS Flush</span>
                     <span class="feature-tag">TCP/IP Reset</span>
                 </div>
             </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x2764;&#xFE0F;</div>
+                <h3 class="feature-title">System Health Score</h3>
+                <p class="feature-desc">Instant 0–100 health rating computed from CPU load, RAM pressure, disk usage, uptime, and heavy background processes. Clickable recommendations guide you to the right fix.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Score Ring</span>
+                    <span class="feature-tag">Recommendations</span>
+                    <span class="feature-tag">Auto-Refresh</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4E6;</div>
+                <h3 class="feature-title">App &amp; Bloat Manager</h3>
+                <p class="feature-desc">Scans your installed programs and flags likely bloatware by publisher, name, and size. Filter by "Likely Bloat" or "Large Apps", launch the uninstaller, export to CSV — fully sortable.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Bloat Detection</span>
+                    <span class="feature-tag">CSV Export</span>
+                    <span class="feature-tag">Uninstall</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F50D;</div>
+                <h3 class="feature-title">Deep File Scanners</h3>
+                <p class="feature-desc">Four specialist tools in one: Broken Shortcut Finder, Empty Folder Remover, Folder Size Explorer, and Desktop Wizard — all with preview and safe-delete flows.</p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Broken Shortcuts</span>
+                    <span class="feature-tag">Empty Folders</span>
+                    <span class="feature-tag">Folder Sizes</span>
+                </div>
+            </div>
         </div>
     </section>
+
+    <!-- ── What's New ───────────────────────────────────────────── -->
+    <div style="background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(59,130,246,0.06) 100%); border-top: 1px solid rgba(16,185,129,0.15); border-bottom: 1px solid rgba(59,130,246,0.15); padding: 64px 20px;">
+        <div style="max-width: 1100px; margin: 0 auto;">
+            <div class="section-header" style="margin-bottom: 40px;">
+                <div class="section-tag" style="color:var(--accent-green);">&#x2728; Latest Updates</div>
+                <h2 class="section-title" style="font-size: clamp(22px,3vw,32px);">New in This Release</h2>
+                <p class="section-desc">Three major new modules added alongside scanner improvements and startup intelligence.</p>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                <div style="background: var(--bg-card); border: 1px solid rgba(16,185,129,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan));"></div>
+                    <div style="font-size:32px;margin-bottom:12px;">&#x2764;&#xFE0F;</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">New Module</div>
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">System Health Score</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">A live 0–100 score on the dashboard computed from CPU, RAM, disk, uptime, and running processes. Color-coded ring + clickable recommendations that jump you straight to the fix.</p>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid rgba(59,130,246,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-blue),var(--accent-purple));"></div>
+                    <div style="font-size:32px;margin-bottom:12px;">&#x1F4E6;</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">New Module</div>
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">App &amp; Bloat Manager</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">Registry-powered installed app scanner with automatic bloat detection. Filter, sort by size or name, launch the native uninstaller, open install folders, or export everything to CSV.</p>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid rgba(245,158,11,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-yellow),var(--accent-green));"></div>
+                    <div style="font-size:32px;margin-bottom:12px;">&#x1F680;</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Enhanced</div>
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Startup Impact Scoring</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">Every startup item now shows a <span style="color:var(--accent-red);font-weight:600;">High</span> / <span style="color:var(--accent-yellow);font-weight:600;">Medium</span> / <span style="color:var(--accent-green);font-weight:600;">Low</span> impact rating with a Safe-to-Disable or System/Caution badge — so you know exactly what to turn off.</p>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid rgba(139,92,246,0.3); border-radius: 14px; padding: 28px; position: relative; overflow: hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-purple),var(--accent-cyan));"></div>
+                    <div style="font-size:32px;margin-bottom:12px;">&#x1F50D;</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-purple);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Enhanced</div>
+                    <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">4 New Deep Scanners</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">Broken Shortcut Finder, Empty Folder Remover, Folder Size Explorer, and Desktop Wizard added to the Cleaner and File Organizer pages — each with preview, safe-delete, and demo mode.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ── ARTICLE: AI Is Filling Up Your PC ───────────────────── -->
     <div style="background: linear-gradient(180deg, transparent 0%, rgba(6,182,212,0.03) 50%, transparent 100%); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">

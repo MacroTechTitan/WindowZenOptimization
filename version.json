@@ -19,7 +19,7 @@
     "Notification system: info/warn/success/error colour-coded toast messages"
   ],
   "download_url": "https://windowzen.macrotechtitan.com/updates/latest.zip",
-  "installer_url": "https://windows.macrotechtitan.com/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip",
+  "installer_url": "https://windowzen.macrotechtitan.com/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip",
   "min_supported_version": "1.0.0",
   "update_server": "https://windowzen.macrotechtitan.com/updates/version.json"
 }

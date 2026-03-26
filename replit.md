@@ -3,7 +3,7 @@
 ## Overview
 A Windows system utility application by Macro Tech Titan with a terminal-style dashboard interface. Built with Python/Flask for the web-based prototype, designed to be packaged as a Windows desktop application using PyInstaller + pywebview + NSIS.
 
-**URL**: https://windows.macrotechtitan.com
+**URL**: https://windowzen.macrotechtitan.com
 
 ## Current State
 - Landing page at `/` with feature showcase, screenshots, featured image, OG tags, and CTA
@@ -131,7 +131,7 @@ static/
 ## Branding
 - **Name**: MTT Windows Infinite Optimizer
 - **Company**: Macro Tech Titan
-- **URL**: windows.macrotechtitan.com
+- **URL**: windowzen.macrotechtitan.com
 - **Logo**: static/images/mtt-logo.png
 - **Featured Image**: static/images/featured-image.png
 

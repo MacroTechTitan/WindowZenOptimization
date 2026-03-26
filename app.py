@@ -33,7 +33,7 @@ IS_WINDOWS = platform.system() == "Windows"
 SETTINGS_FILE = "settings.json"
 ANALYTICS_FILE = "analytics.json"
 REGISTRATIONS_FILE = "registrations.json"
-SITE_URL = os.environ.get("SITE_URL", "https://windows.macrotechtitan.com")
+SITE_URL = os.environ.get("SITE_URL", "https://windowzen.macrotechtitan.com")
 _analytics_lock = threading.Lock()
 _reg_lock = threading.Lock()
 activity_log = []
@@ -122,7 +122,7 @@ body{{font-family:Inter,Arial,sans-serif;background:#0a0e1a;color:#e2e8f0;margin
     If the button doesn't work, copy and paste this URL:</p>
     <div class="box">{verify_url}</div>
   </div>
-  <div class="foot">You received this because you requested a download at windows.macrotechtitan.com.<br>
+  <div class="foot">You received this because you requested a download at windowzen.macrotechtitan.com.<br>
   If you didn't request this, you can safely ignore this email.</div>
 </div></body></html>"""
     try:

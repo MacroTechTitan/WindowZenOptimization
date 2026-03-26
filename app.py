@@ -14,7 +14,12 @@ import psutil
 import subprocess
 import urllib.request
 import urllib.error
-import resend
+try:
+    import resend
+    _RESEND_AVAILABLE = True
+except ImportError:
+    resend = None
+    _RESEND_AVAILABLE = False
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -121,6 +126,9 @@ body{{font-family:Inter,Arial,sans-serif;background:#0a0e1a;color:#e2e8f0;margin
   If you didn't request this, you can safely ignore this email.</div>
 </div></body></html>"""
     try:
+        if not _RESEND_AVAILABLE:
+            log_activity("Resend not available (desktop mode) — skipping email send", "INFO")
+            return False
         resend.api_key = creds["api_key"]
         result = resend.Emails.send({
             "from": from_addr,

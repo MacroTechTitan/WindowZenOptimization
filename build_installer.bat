@@ -14,6 +14,7 @@ pyinstaller --noconfirm --onedir --windowed ^
     --add-data "templates;templates" ^
     --add-data "static;static" ^
     --add-data "settings.json;." ^
+    --add-data "splash.html;." ^
     --hidden-import "apscheduler.triggers.cron" ^
     --hidden-import "apscheduler.schedulers.background" ^
     --hidden-import "apscheduler.triggers.interval" ^

@@ -1,6 +1,7 @@
 import sys
 import os
 import threading
+import time
 import webbrowser
 
 def resource_path(relative_path):
@@ -13,39 +14,63 @@ os.chdir(resource_path("."))
 from app import app, scheduler, setup_scheduler
 
 PORT = 52140
+_flask_ready = threading.Event()
+
 
 def start_flask():
     scheduler.start()
     setup_scheduler()
+    _flask_ready.set()
     app.run(host="127.0.0.1", port=PORT, debug=False, use_reloader=False)
+
+
+def _wait_and_navigate(window):
+    _flask_ready.wait(timeout=15)
+    time.sleep(0.6)
+    window.load_url(f"http://127.0.0.1:{PORT}/app")
+
 
 def main():
     flask_thread = threading.Thread(target=start_flask, daemon=True)
     flask_thread.start()
 
-    import time
-    time.sleep(1)
-
     try:
         import webview
-        webview.create_window(
+
+        splash_path = resource_path("splash.html")
+        if os.path.exists(splash_path):
+            with open(splash_path, "r", encoding="utf-8") as f:
+                splash_html = f.read()
+        else:
+            splash_html = "<html><body style='background:#0a0f1e;display:flex;align-items:center;justify-content:center;height:100vh;'><h2 style='color:#06b6d4;font-family:sans-serif;'>Loading MTT Infinite Optimizer...</h2></body></html>"
+
+        window = webview.create_window(
             "MTT Windows Infinite Optimizer",
-            f"http://127.0.0.1:{PORT}",
+            html=splash_html,
             width=1280,
             height=800,
             min_size=(900, 600),
             resizable=True,
             text_select=True,
         )
+
+        nav_thread = threading.Thread(
+            target=_wait_and_navigate, args=(window,), daemon=True
+        )
+        nav_thread.start()
+
         webview.start()
+
     except ImportError:
         print("pywebview not found, opening in default browser...")
-        webbrowser.open(f"http://127.0.0.1:{PORT}")
+        _flask_ready.wait(timeout=15)
+        webbrowser.open(f"http://127.0.0.1:{PORT}/app")
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
             pass
+
 
 if __name__ == "__main__":
     main()

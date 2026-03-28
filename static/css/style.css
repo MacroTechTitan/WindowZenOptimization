@@ -32,6 +32,19 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── Global custom scrollbars (Webkit / pywebview) ─────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
+::-webkit-scrollbar-corner { background: transparent; }
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
 body {
     font-family: 'Inter', sans-serif;
     background: var(--bg-primary);
@@ -411,18 +424,6 @@ body::before {
     line-height: 1.8;
 }
 
-.terminal-body::-webkit-scrollbar {
-    width: 6px;
-}
-
-.terminal-body::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.terminal-body::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
-}
 
 .log-line {
     display: flex;

@@ -1,24 +1,12 @@
 {
   "version": "1.1.0",
-  "build": 110,
-  "release_date": "2026-03-16",
+  "build": 100,
+  "release_date": "2026-03-26",
   "channel": "stable",
   "changelog": [
-    "Speed Up page: Startup Manager (HKCU/HKLM/Startup folder), Power Mode helper, Visual Effects guide",
-    "Large Files Finder: scan Downloads/Desktop/Videos/Documents by custom size threshold, delete or archive",
-    "Fix Internet: one-click Winsock reset, DNS flush, IP release/renew, TCP/IP stack reset",
-    "File Organizer: Downloads Rules (archive old files, group by type, move screenshots), dry-run mode",
-    "Undo / Restore log: track and revert file moves and startup item changes",
-    "Focus Mode: Pomodoro timer (25min work / 5min break), Night Light link, notifications link",
-    "Wellness: brightness tips, Night Light schedule helper, Focus Mode panel",
-    "Dashboard: Top 5 Processes by CPU/RAM, Open Task Manager and Restart Recommended buttons",
-    "Admin panel: password-protected release manager, Version Manager, Quick Links, Update Manifest viewer",
-    "Site analytics: live visit counter and download counter on landing page and admin panel",
-    "Landing page: AI article editorial section, updated 13-module feature grid",
-    "Safety UX: dry-run toggle on cleaner and organizer, ADVANCED badge on registry fix",
-    "Notification system: info/warn/success/error colour-coded toast messages"
+    "Initial release"
   ],
-  "download_url": "https://windowzen.macrotechtitan.com/updates/latest.zip",
+  "download_url": "https://windowzen.macrotechtitan.com/static/downloads/latest.zip",
   "installer_url": "https://windowzen.macrotechtitan.com/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip",
   "min_supported_version": "1.0.0",
   "update_server": "https://windowzen.macrotechtitan.com/updates/version.json"

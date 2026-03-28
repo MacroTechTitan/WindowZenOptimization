@@ -489,43 +489,81 @@ https://windowzen.macrotechtitan.com/updates/latest.zip</div>
 
         <!-- ── Upload Installer ─────────────────────────────────── -->
         <div class="section" id="section-upload">
-            <h2>&#x2B06; Upload Installer</h2>
-            <p class="page-sub">Upload a new Windows installer to <code>static/downloads/</code>. The file will be served as the download link on the landing page.</p>
+            <h2>&#x1F680; Release a New Version</h2>
+            <p class="page-sub">Fill in the version details, drop your compiled .exe, and the server does everything else automatically — no FTP, no copy-paste.</p>
 
             <div class="panel">
-                <div class="panel-header"><span class="panel-title">&#x1F4E6; Current File in Downloads Folder</span></div>
+                <div class="panel-header"><span class="panel-title">&#x1F4E6; Current Files in Downloads Folder</span></div>
                 <div class="panel-body">
                     <div id="current-files-list" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);">Loading...</div>
                 </div>
             </div>
 
             <div class="panel">
-                <div class="panel-header"><span class="panel-title">&#x2B06; Upload New Installer (.exe or .zip)</span></div>
+                <div class="panel-header"><span class="panel-title">&#x1F527; Step 1 — Version Details</span></div>
                 <div class="panel-body">
-                    <div id="upload-drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:16px;"
-                         onclick="document.getElementById('upload-file-input').click()"
-                         ondragover="event.preventDefault();this.style.borderColor='var(--accent-cyan)'"
-                         ondragleave="this.style.borderColor='var(--border)'"
-                         ondrop="handleInstallerDrop(event)">
-                        <div style="font-size:36px;margin-bottom:10px;">&#x1F4E5;</div>
-                        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-cyan);">Drag &amp; drop your .exe or .zip here</div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">or click to browse — max 500 MB</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+                        <div>
+                            <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">VERSION NUMBER</label>
+                            <input id="rel-version" type="text" placeholder="e.g. 1.2.0" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">BUILD NUMBER</label>
+                            <input id="rel-build" type="number" placeholder="e.g. 102" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">CHANNEL</label>
+                            <select id="rel-channel" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                <option value="stable">stable</option>
+                                <option value="beta">beta</option>
+                            </select>
+                        </div>
                     </div>
-                    <input type="file" id="upload-file-input" accept=".exe,.zip" style="display:none" onchange="uploadInstaller(this.files[0])">
+                    <div>
+                        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">CHANGELOG (one line per item)</label>
+                        <textarea id="rel-changelog" rows="4" placeholder="Fixed: startup flash on Windows&#10;Added: custom folder duplicate scan&#10;Improved: global scrollbar styling" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);color:var(--text-primary);padding:8px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;resize:vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
 
-                    <div id="upload-progress-wrap" style="display:none;margin-bottom:12px;">
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x2B06; Step 2 — Drop Your .exe</span></div>
+                <div class="panel-body">
+                    <div id="upload-drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:40px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-bottom:16px;"
+                         onclick="document.getElementById('upload-file-input').click()"
+                         ondragover="event.preventDefault();this.style.borderColor='var(--accent-cyan)';this.style.background='rgba(6,182,212,0.05)'"
+                         ondragleave="this.style.borderColor='var(--border)';this.style.background=''"
+                         ondrop="handleInstallerDrop(event)">
+                        <div style="font-size:42px;margin-bottom:10px;">&#x1F4E5;</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-cyan);">Drag &amp; drop your compiled .exe here</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">or click to browse — max 500 MB</div>
+                        <div id="upload-selected-file" style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-green);display:none;"></div>
+                    </div>
+                    <input type="file" id="upload-file-input" accept=".exe,.zip" style="display:none" onchange="selectInstallerFile(this.files[0])">
+
+                    <button class="btn" id="btn-do-release" onclick="doRelease()" style="width:100%;padding:12px;font-size:14px;background:var(--accent-cyan);color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;">
+                        &#x1F680; Upload &amp; Release
+                    </button>
+
+                    <div id="upload-progress-wrap" style="display:none;margin-top:14px;">
                         <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);margin-bottom:6px;" id="upload-progress-label">Uploading...</div>
                         <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden;">
                             <div id="upload-progress-bar" style="height:100%;width:0%;background:var(--accent-cyan);transition:width 0.3s;border-radius:4px;"></div>
                         </div>
                     </div>
 
-                    <div id="upload-result" style="font-family:'JetBrains Mono',monospace;font-size:12px;display:none;padding:10px 14px;border-radius:6px;margin-top:8px;"></div>
+                    <div id="upload-result" style="font-family:'JetBrains Mono',monospace;font-size:12px;display:none;padding:14px;border-radius:8px;margin-top:12px;line-height:1.9;"></div>
+                </div>
+            </div>
 
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.8;">
-                        &#x2139; After uploading, update the <strong>Version Manager</strong> with the new filename in the Download URL field.<br>
-                        &#x2139; Files are saved to <code>static/downloads/</code> and served at <code>/static/downloads/&lt;filename&gt;</code>.
-                    </div>
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x2139; What happens automatically</span></div>
+                <div class="panel-body" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);line-height:2;">
+                    <div>&#x2705; Your .exe is saved to <code>static/downloads/&lt;filename&gt;</code></div>
+                    <div>&#x2705; A <code>latest.zip</code> is created wrapping your .exe — this is what the in-app updater downloads</div>
+                    <div>&#x2705; <code>version.json</code> is updated with your new version, build, changelog and the download URL</div>
+                    <div>&#x2705; Installed apps will see the update the next time they click <strong>Check for Updates</strong></div>
+                    <div style="margin-top:8px;color:var(--text-muted);">The download URL is set to: <code id="inferred-download-url">{{ site_url }}/static/downloads/latest.zip</code></div>
                 </div>
             </div>
         </div>
@@ -707,21 +745,42 @@ async function loadDownloadFiles() {
     }
 }
 
-function handleInstallerDrop(e) {
-    e.preventDefault();
-    document.getElementById('upload-drop-zone').style.borderColor = 'var(--border)';
-    const file = e.dataTransfer.files[0];
-    if (file) uploadInstaller(file);
+let _selectedInstallerFile = null;
+
+function selectInstallerFile(file) {
+    if (!file) return;
+    _selectedInstallerFile = file;
+    const label = document.getElementById('upload-selected-file');
+    label.style.display = 'block';
+    label.textContent = `📦 ${file.name} (${(file.size/1024/1024).toFixed(1)} MB) — ready to upload`;
 }
 
-async function uploadInstaller(file) {
-    if (!file) return;
-    const allowed = ['.exe', '.zip'];
-    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (!allowed.includes(ext)) {
-        showUploadResult(false, 'Only .exe and .zip files are allowed.');
+function handleInstallerDrop(e) {
+    e.preventDefault();
+    const dz = document.getElementById('upload-drop-zone');
+    dz.style.borderColor = 'var(--border)';
+    dz.style.background = '';
+    const file = e.dataTransfer.files[0];
+    if (file) selectInstallerFile(file);
+}
+
+async function doRelease() {
+    if (!_selectedInstallerFile) {
+        alert('Please select your compiled .exe file first (Step 2).');
         return;
     }
+    const version   = document.getElementById('rel-version').value.trim();
+    const build     = document.getElementById('rel-build').value.trim();
+    const channel   = document.getElementById('rel-channel').value;
+    const changelog = document.getElementById('rel-changelog').value.trim();
+
+    if (!version || !build) {
+        if (!confirm('Version number or build number is empty — upload anyway without updating version.json?')) return;
+    }
+
+    const btn = document.getElementById('btn-do-release');
+    btn.disabled = true;
+    btn.textContent = '⏳ Uploading...';
 
     const progressWrap = document.getElementById('upload-progress-wrap');
     const progressBar  = document.getElementById('upload-progress-bar');
@@ -731,31 +790,51 @@ async function uploadInstaller(file) {
     progressWrap.style.display = 'block';
     resultEl.style.display = 'none';
     progressBar.style.width = '0%';
-    progressLbl.textContent = `Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)...`;
+    progressLbl.textContent = `Uploading ${_selectedInstallerFile.name} (${(_selectedInstallerFile.size/1024/1024).toFixed(1)} MB)...`;
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', _selectedInstallerFile);
+    if (version)   formData.append('version', version);
+    if (build)     formData.append('build', build);
+    if (channel)   formData.append('channel', channel);
+    if (changelog) formData.append('changelog', changelog);
 
     return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/admin/api/upload-installer');
-        xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-                const pct = Math.round((e.loaded / e.total) * 100);
+        xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable) {
+                const pct = Math.round((ev.loaded / ev.total) * 100);
                 progressBar.style.width = pct + '%';
                 progressLbl.textContent = `Uploading... ${pct}%`;
             }
         };
         xhr.onload = () => {
             progressWrap.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '🚀 Upload & Release';
             try {
                 const data = JSON.parse(xhr.responseText);
-                showUploadResult(data.ok, data.ok ? `✅ Uploaded: ${data.filename} (${data.size})` : data.error);
-                if (data.ok) loadDownloadFiles();
+                if (data.ok) {
+                    showUploadResult(true,
+                        `✅ ${data.filename} (${data.size}) saved\n` +
+                        `✅ latest.zip created (${data.zip_size})\n` +
+                        (data.version_updated ? `✅ version.json updated — download URL: ${data.download_url}` : `⚠️ version.json not updated (no version/build entered)`)
+                    );
+                    loadDownloadFiles();
+                } else {
+                    showUploadResult(false, data.error || 'Upload failed');
+                }
             } catch(e) { showUploadResult(false, 'Upload failed — unexpected response.'); }
             resolve();
         };
-        xhr.onerror = () => { progressWrap.style.display = 'none'; showUploadResult(false, 'Network error during upload.'); resolve(); };
+        xhr.onerror = () => {
+            progressWrap.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '🚀 Upload & Release';
+            showUploadResult(false, 'Network error during upload.');
+            resolve();
+        };
         xhr.send(formData);
     });
 }
@@ -766,6 +845,7 @@ function showUploadResult(ok, msg) {
     el.style.background = ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
     el.style.border = `1px solid ${ok ? 'var(--accent-green)' : 'var(--accent-red)'}`;
     el.style.color = ok ? 'var(--accent-green)' : 'var(--accent-red)';
+    el.style.whiteSpace = 'pre-line';
     el.textContent = msg;
 }
 

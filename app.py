@@ -2522,7 +2522,7 @@ def _admin_required():
 
 @app.route("/admin")
 def admin_index():
-    return render_template("admin.html")
+    return render_template("admin.html", site_url=SITE_URL)
 
 
 @app.route("/admin/login", methods=["POST"])
@@ -2537,7 +2537,7 @@ def admin_login():
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin_logged_in", None)
-    return render_template("admin.html")
+    return render_template("admin.html", site_url=SITE_URL)
 
 
 @app.route("/admin/api/save-version", methods=["POST"])
@@ -2601,6 +2601,14 @@ def admin_upload_installer():
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in (".exe", ".zip"):
         return jsonify({"ok": False, "error": "Only .exe and .zip files are allowed"}), 400
+
+    # Optional metadata from form fields
+    new_version  = request.form.get("version", "").strip()
+    new_build    = request.form.get("build", "").strip()
+    new_channel  = request.form.get("channel", "stable").strip()
+    new_changelog_raw = request.form.get("changelog", "").strip()
+    new_changelog = [l.strip() for l in new_changelog_raw.splitlines() if l.strip()]
+
     safe_name = os.path.basename(f.filename)
     os.makedirs(DOWNLOADS_DIR, exist_ok=True)
     dest = os.path.join(DOWNLOADS_DIR, safe_name)
@@ -2610,8 +2618,52 @@ def admin_upload_installer():
         os.remove(dest)
         return jsonify({"ok": False, "error": f"File exceeds {_MAX_UPLOAD_MB} MB limit"}), 413
     size_fmt = f"{size/1024**2:.1f} MB"
-    log_activity(f"Admin uploaded installer: {safe_name} ({size_fmt})", "SUCCESS")
-    return jsonify({"ok": True, "filename": safe_name, "size": size_fmt})
+
+    # Always create/overwrite latest.zip wrapping the uploaded file
+    import zipfile as _zipfile
+    latest_zip_path = os.path.join(DOWNLOADS_DIR, "latest.zip")
+    try:
+        with _zipfile.ZipFile(latest_zip_path, "w", _zipfile.ZIP_DEFLATED) as zf:
+            zf.write(dest, arcname=safe_name)
+        zip_size = os.path.getsize(latest_zip_path)
+        zip_size_fmt = f"{zip_size/1024**2:.1f} MB"
+    except Exception as ze:
+        return jsonify({"ok": False, "error": f"Saved installer but failed to create latest.zip: {ze}"})
+
+    # Auto-update version.json if metadata was provided
+    version_updated = False
+    download_url = f"{SITE_URL}/static/downloads/latest.zip"
+    if new_version or new_build:
+        try:
+            existing = get_local_version()
+            if new_version:
+                existing["version"] = new_version
+            if new_build:
+                try:
+                    existing["build"] = int(new_build)
+                except ValueError:
+                    pass
+            existing["channel"] = new_channel or existing.get("channel", "stable")
+            existing["download_url"] = download_url
+            existing["release_date"] = datetime.now().strftime("%Y-%m-%d")
+            if new_changelog:
+                existing["changelog"] = new_changelog
+            with open(LOCAL_VERSION_FILE, "w") as vf:
+                json.dump(existing, vf, indent=2)
+            version_updated = True
+        except Exception as ve:
+            log_activity(f"version.json update failed: {ve}", "WARN")
+
+    log_activity(f"Admin released v{new_version or '?'} build {new_build or '?'}: {safe_name} ({size_fmt}) → latest.zip ({zip_size_fmt})", "SUCCESS")
+    return jsonify({
+        "ok": True,
+        "filename": safe_name,
+        "size": size_fmt,
+        "latest_zip": "latest.zip",
+        "zip_size": zip_size_fmt,
+        "download_url": download_url,
+        "version_updated": version_updated,
+    })
 
 
 @app.route("/admin/api/download-files/delete", methods=["POST"])

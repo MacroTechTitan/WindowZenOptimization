@@ -30,6 +30,7 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "mtt-optimizer-secret-2026-m
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 
 IS_WINDOWS = platform.system() == "Windows"
+_WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0
 SETTINGS_FILE = "settings.json"
 ANALYTICS_FILE = "analytics.json"
 REGISTRATIONS_FILE = "registrations.json"
@@ -505,7 +506,8 @@ def scan_target(key, target):
                     ["powershell", "-Command",
                      "(New-Object -ComObject Shell.Application).NameSpace(10).Items() | "
                      "Measure-Object -Property Size -Sum | Select-Object Count, Sum"],
-                    capture_output=True, text=True, timeout=10
+                    capture_output=True, text=True, timeout=10,
+                    creationflags=_WIN_NO_WINDOW
                 )
                 for line in result.stdout.splitlines():
                     parts = line.strip().split()
@@ -550,7 +552,8 @@ def clean_target(key, target):
                 subprocess.run(
                     ["powershell", "-Command",
                      "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"],
-                    capture_output=True, timeout=30
+                    capture_output=True, timeout=30,
+                    creationflags=_WIN_NO_WINDOW
                 )
                 log_activity("Recycle Bin emptied", "SUCCESS")
             except Exception as e:
@@ -686,7 +689,8 @@ def get_ram_details():
         try:
             result = subprocess.run(
                 ["wmic", "memorychip", "get", "Capacity,SMBIOSMemoryType,DeviceLocator"],
-                capture_output=True, text=True, timeout=10
+                capture_output=True, text=True, timeout=10,
+                creationflags=_WIN_NO_WINDOW
             )
             lines = [l.strip() for l in result.stdout.strip().splitlines() if l.strip()]
             if len(lines) > 1:
@@ -705,7 +709,8 @@ def get_ram_details():
                                 ram_info["ram_type"] = type_map[p]
             result2 = subprocess.run(
                 ["wmic", "memphysical", "get", "MaxCapacity,MemoryDevices"],
-                capture_output=True, text=True, timeout=10
+                capture_output=True, text=True, timeout=10,
+                creationflags=_WIN_NO_WINDOW
             )
             lines2 = [l.strip() for l in result2.stdout.strip().splitlines() if l.strip()]
             if len(lines2) > 1:
@@ -867,7 +872,8 @@ def get_motherboard_info():
         try:
             result = subprocess.run(
                 ["wmic", "baseboard", "get", "Manufacturer,Product,SerialNumber"],
-                capture_output=True, text=True, timeout=10
+                capture_output=True, text=True, timeout=10,
+                creationflags=_WIN_NO_WINDOW
             )
             lines = [l.strip() for l in result.stdout.strip().splitlines() if l.strip()]
             if len(lines) > 1:
@@ -1810,7 +1816,7 @@ def api_startup_toggle():
 def api_system_reboot():
     if IS_WINDOWS:
         try:
-            subprocess.Popen(["shutdown", "/r", "/t", "30"])
+            subprocess.Popen(["shutdown", "/r", "/t", "30"], creationflags=_WIN_NO_WINDOW)
             log_activity("System reboot initiated (30 second delay)", "WARN")
             return jsonify({"status": "ok", "message": "System will reboot in 30 seconds"})
         except Exception as e:
@@ -1914,7 +1920,8 @@ def api_network_fix():
         output_lines.append(f"> {cmd}")
         try:
             result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, timeout=30
+                cmd, shell=True, capture_output=True, text=True, timeout=30,
+                creationflags=_WIN_NO_WINDOW
             )
             stdout = result.stdout.strip()
             stderr = result.stderr.strip()
@@ -2927,7 +2934,7 @@ def api_apps_uninstall():
     if not IS_WINDOWS:
         return jsonify({"ok": True, "demo": True, "msg": f"[DEMO] Would run: {cmd}"})
     try:
-        subprocess.Popen(cmd, shell=True)
+        subprocess.Popen(cmd, shell=True, creationflags=_WIN_NO_WINDOW)
         return jsonify({"ok": True, "msg": f"Uninstaller launched for {name}. Follow the prompts."})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
@@ -2975,7 +2982,8 @@ def api_broken_shortcuts():
             result = subprocess.run(
                 ["powershell", "-NoProfile", "-Command",
                  f'$sh=New-Object -COM WScript.Shell; $sh.CreateShortcut("{lnk_path}").TargetPath'],
-                capture_output=True, text=True, timeout=5
+                capture_output=True, text=True, timeout=5,
+                creationflags=_WIN_NO_WINDOW
             )
             return result.stdout.strip()
         except Exception:

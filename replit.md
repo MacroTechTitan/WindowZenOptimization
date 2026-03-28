@@ -79,6 +79,9 @@ static/
 - `/admin/login` - Admin login endpoint
 - `/admin/logout` - Admin logout
 - `/admin/api/save-version` - Save version.json (admin only)
+- `/admin/api/download-files` - GET: list files in static/downloads/ (admin only)
+- `/admin/api/upload-installer` - POST: upload .exe or .zip to static/downloads/ (admin only, 500 MB max)
+- `/admin/api/download-files/delete` - POST: delete a file from static/downloads/ (admin only)
 - `/admin/api/check-remote-manifest` - Fetch remote update manifest (admin only)
 - `/updates/version.json` - Self-hosted update manifest (used as fallback update server)
 - `/api/updates/check` - Check windowzen.macrotechtitan.com for newer version

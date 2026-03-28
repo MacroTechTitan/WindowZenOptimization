@@ -171,6 +171,9 @@ async function adminLogin() {
         <div class="nav-item" onclick="showSection('version')" id="nav-version">
             <span class="icon">&#x1F4CB;</span> Version Manager
         </div>
+        <div class="nav-item" onclick="showSection('upload')" id="nav-upload">
+            <span class="icon">&#x2B06;</span> Upload Installer
+        </div>
         <div class="sidebar-label">Site</div>
         <div class="nav-item" onclick="showSection('analytics')" id="nav-analytics">
             <span class="icon">&#x1F4CA;</span> Analytics
@@ -484,6 +487,49 @@ https://windowzen.macrotechtitan.com/updates/latest.zip</div>
             </div>
         </div>
 
+        <!-- ── Upload Installer ─────────────────────────────────── -->
+        <div class="section" id="section-upload">
+            <h2>&#x2B06; Upload Installer</h2>
+            <p class="page-sub">Upload a new Windows installer to <code>static/downloads/</code>. The file will be served as the download link on the landing page.</p>
+
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x1F4E6; Current File in Downloads Folder</span></div>
+                <div class="panel-body">
+                    <div id="current-files-list" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);">Loading...</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title">&#x2B06; Upload New Installer (.exe or .zip)</span></div>
+                <div class="panel-body">
+                    <div id="upload-drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:16px;"
+                         onclick="document.getElementById('upload-file-input').click()"
+                         ondragover="event.preventDefault();this.style.borderColor='var(--accent-cyan)'"
+                         ondragleave="this.style.borderColor='var(--border)'"
+                         ondrop="handleInstallerDrop(event)">
+                        <div style="font-size:36px;margin-bottom:10px;">&#x1F4E5;</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-cyan);">Drag &amp; drop your .exe or .zip here</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">or click to browse — max 500 MB</div>
+                    </div>
+                    <input type="file" id="upload-file-input" accept=".exe,.zip" style="display:none" onchange="uploadInstaller(this.files[0])">
+
+                    <div id="upload-progress-wrap" style="display:none;margin-bottom:12px;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);margin-bottom:6px;" id="upload-progress-label">Uploading...</div>
+                        <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden;">
+                            <div id="upload-progress-bar" style="height:100%;width:0%;background:var(--accent-cyan);transition:width 0.3s;border-radius:4px;"></div>
+                        </div>
+                    </div>
+
+                    <div id="upload-result" style="font-family:'JetBrains Mono',monospace;font-size:12px;display:none;padding:10px 14px;border-radius:6px;margin-top:8px;"></div>
+
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.8;">
+                        &#x2139; After uploading, update the <strong>Version Manager</strong> with the new filename in the Download URL field.<br>
+                        &#x2139; Files are saved to <code>static/downloads/</code> and served at <code>/static/downloads/&lt;filename&gt;</code>.
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div><!-- /main -->
 </div><!-- /layout -->
 
@@ -497,6 +543,7 @@ function showSection(name) {
     if (name === 'manifest')      { loadManifest('local'); }
     if (name === 'analytics')     { loadAdminCounters(); }
     if (name === 'registrations') { loadRegistrations(); }
+    if (name === 'upload')        { loadDownloadFiles(); }
 }
 
 function copyCode(btn) {
@@ -635,6 +682,105 @@ async function resetCounter(key) {
     } catch(e) {
         alert('Reset failed: ' + e.message);
     }
+}
+
+/* ── Upload Installer ── */
+async function loadDownloadFiles() {
+    const el = document.getElementById('current-files-list');
+    try {
+        const res = await fetch('/admin/api/download-files');
+        const data = await res.json();
+        if (!data.files || data.files.length === 0) {
+            el.innerHTML = '<span style="color:var(--text-muted);">No files found in static/downloads/</span>';
+            return;
+        }
+        el.innerHTML = data.files.map(f => `
+            <div style="display:flex;align-items:center;gap:16px;padding:8px 0;border-bottom:1px solid var(--border);">
+                <span style="flex:1;color:var(--accent-cyan);">&#x1F4E6; ${f.name}</span>
+                <span style="color:var(--text-muted);font-size:11px;">${f.size}</span>
+                <span style="color:var(--text-muted);font-size:11px;">${f.modified}</span>
+                <a href="/static/downloads/${f.name}" style="color:var(--accent-green);font-size:11px;" download>&#x2B07; Download</a>
+                <button class="btn btn-sm" onclick="deleteDownloadFile('${f.name}')" style="border-color:var(--accent-red);color:var(--accent-red);padding:2px 8px;font-size:10px;">&#x1F5D1; Delete</button>
+            </div>`).join('');
+    } catch(e) {
+        el.innerHTML = '<span style="color:var(--accent-red);">Failed to load files</span>';
+    }
+}
+
+function handleInstallerDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-drop-zone').style.borderColor = 'var(--border)';
+    const file = e.dataTransfer.files[0];
+    if (file) uploadInstaller(file);
+}
+
+async function uploadInstaller(file) {
+    if (!file) return;
+    const allowed = ['.exe', '.zip'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowed.includes(ext)) {
+        showUploadResult(false, 'Only .exe and .zip files are allowed.');
+        return;
+    }
+
+    const progressWrap = document.getElementById('upload-progress-wrap');
+    const progressBar  = document.getElementById('upload-progress-bar');
+    const progressLbl  = document.getElementById('upload-progress-label');
+    const resultEl     = document.getElementById('upload-result');
+
+    progressWrap.style.display = 'block';
+    resultEl.style.display = 'none';
+    progressBar.style.width = '0%';
+    progressLbl.textContent = `Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)...`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/admin/api/upload-installer');
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressLbl.textContent = `Uploading... ${pct}%`;
+            }
+        };
+        xhr.onload = () => {
+            progressWrap.style.display = 'none';
+            try {
+                const data = JSON.parse(xhr.responseText);
+                showUploadResult(data.ok, data.ok ? `✅ Uploaded: ${data.filename} (${data.size})` : data.error);
+                if (data.ok) loadDownloadFiles();
+            } catch(e) { showUploadResult(false, 'Upload failed — unexpected response.'); }
+            resolve();
+        };
+        xhr.onerror = () => { progressWrap.style.display = 'none'; showUploadResult(false, 'Network error during upload.'); resolve(); };
+        xhr.send(formData);
+    });
+}
+
+function showUploadResult(ok, msg) {
+    const el = document.getElementById('upload-result');
+    el.style.display = 'block';
+    el.style.background = ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+    el.style.border = `1px solid ${ok ? 'var(--accent-green)' : 'var(--accent-red)'}`;
+    el.style.color = ok ? 'var(--accent-green)' : 'var(--accent-red)';
+    el.textContent = msg;
+}
+
+async function deleteDownloadFile(filename) {
+    if (!confirm(`Delete ${filename} from the downloads folder?`)) return;
+    try {
+        const res = await fetch('/admin/api/download-files/delete', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({filename})
+        });
+        const data = await res.json();
+        if (data.ok) loadDownloadFiles();
+        else alert('Delete failed: ' + data.error);
+    } catch(e) { alert('Delete failed'); }
 }
 
 </script>

@@ -27,6 +27,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "mtt-optimizer-secret-2026-macro-tech-titan")
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB upload limit
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 
 IS_WINDOWS = platform.system() == "Windows"
@@ -2560,6 +2561,73 @@ def admin_save_version():
         return jsonify({"ok": True, "version": existing})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+DOWNLOADS_DIR = os.path.join(os.path.dirname(__file__), "static", "downloads")
+_MAX_UPLOAD_MB = 500
+
+
+@app.route("/admin/api/download-files")
+def admin_list_download_files():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+    files = []
+    for fname in sorted(os.listdir(DOWNLOADS_DIR)):
+        fpath = os.path.join(DOWNLOADS_DIR, fname)
+        if not os.path.isfile(fpath):
+            continue
+        size = os.path.getsize(fpath)
+        mtime = datetime.fromtimestamp(os.path.getmtime(fpath)).strftime("%Y-%m-%d %H:%M")
+        if size >= 1024 ** 3:
+            size_fmt = f"{size/1024**3:.1f} GB"
+        elif size >= 1024 ** 2:
+            size_fmt = f"{size/1024**2:.1f} MB"
+        else:
+            size_fmt = f"{size/1024:.1f} KB"
+        files.append({"name": fname, "size": size_fmt, "modified": mtime})
+    return jsonify({"files": files})
+
+
+@app.route("/admin/api/upload-installer", methods=["POST"])
+def admin_upload_installer():
+    if not _admin_required():
+        return jsonify({"ok": False, "error": "Not authenticated"}), 401
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file provided"}), 400
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"ok": False, "error": "Empty filename"}), 400
+    ext = os.path.splitext(f.filename)[1].lower()
+    if ext not in (".exe", ".zip"):
+        return jsonify({"ok": False, "error": "Only .exe and .zip files are allowed"}), 400
+    safe_name = os.path.basename(f.filename)
+    os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+    dest = os.path.join(DOWNLOADS_DIR, safe_name)
+    f.save(dest)
+    size = os.path.getsize(dest)
+    if size > _MAX_UPLOAD_MB * 1024 * 1024:
+        os.remove(dest)
+        return jsonify({"ok": False, "error": f"File exceeds {_MAX_UPLOAD_MB} MB limit"}), 413
+    size_fmt = f"{size/1024**2:.1f} MB"
+    log_activity(f"Admin uploaded installer: {safe_name} ({size_fmt})", "SUCCESS")
+    return jsonify({"ok": True, "filename": safe_name, "size": size_fmt})
+
+
+@app.route("/admin/api/download-files/delete", methods=["POST"])
+def admin_delete_download_file():
+    if not _admin_required():
+        return jsonify({"ok": False, "error": "Not authenticated"}), 401
+    data = request.get_json() or {}
+    filename = os.path.basename(data.get("filename", ""))
+    if not filename:
+        return jsonify({"ok": False, "error": "No filename provided"}), 400
+    fpath = os.path.join(DOWNLOADS_DIR, filename)
+    if not os.path.isfile(fpath):
+        return jsonify({"ok": False, "error": "File not found"}), 404
+    os.remove(fpath)
+    log_activity(f"Admin deleted installer: {filename}", "WARN")
+    return jsonify({"ok": True})
 
 
 @app.route("/admin/api/check-remote-manifest")

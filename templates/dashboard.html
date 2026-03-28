@@ -886,20 +886,30 @@
                     <div class="panel">
                         <div class="panel-header">
                             <span class="panel-title">&#x1F319; Night Light</span>
+                            <button class="btn btn-primary" onclick="App.openWindowsSetting('nightlight')">&#x1F319; Open Settings</button>
                         </div>
                         <div class="panel-body">
                             <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
-                                <p>Night Light reduces blue light emission to help you sleep better.</p>
-                                <div style="margin: 12px 0; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                                    <div style="color: var(--accent-cyan); margin-bottom: 8px; font-weight: 600;">Schedule Presets:</div>
-                                    <div>&#x2022; <strong>Sunset to Sunrise</strong> - Automatic based on location</div>
-                                    <div>&#x2022; <strong>Custom Schedule</strong> - Set your own hours (e.g. 8PM - 7AM)</div>
-                                    <div>&#x2022; <strong>Always On</strong> - Continuous blue light reduction</div>
+                                <p style="margin-bottom:12px;">Night Light reduces blue light to help you sleep better. Choose a schedule preset below, then click <strong style="color:var(--accent-cyan);">Open Settings</strong> to apply it in Windows.</p>
+                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+                                    <button onclick="App.selectNightLightPreset('sunset')" id="nl-preset-sunset" class="btn" style="padding:12px 8px;text-align:center;flex-direction:column;display:flex;align-items:center;gap:6px;font-size:11px;">
+                                        <span style="font-size:18px;">&#x1F307;</span>
+                                        <span style="font-weight:600;">Sunset to Sunrise</span>
+                                        <span style="color:var(--text-muted);font-size:9px;">Auto based on location</span>
+                                    </button>
+                                    <button onclick="App.selectNightLightPreset('evening')" id="nl-preset-evening" class="btn" style="padding:12px 8px;text-align:center;flex-direction:column;display:flex;align-items:center;gap:6px;font-size:11px;">
+                                        <span style="font-size:18px;">&#x1F319;</span>
+                                        <span style="font-weight:600;">Evening (9PM–7AM)</span>
+                                        <span style="color:var(--text-muted);font-size:9px;">Custom schedule</span>
+                                    </button>
+                                    <button onclick="App.selectNightLightPreset('always')" id="nl-preset-always" class="btn" style="padding:12px 8px;text-align:center;flex-direction:column;display:flex;align-items:center;gap:6px;font-size:11px;">
+                                        <span style="font-size:18px;">&#x1F534;</span>
+                                        <span style="font-weight:600;">Always On</span>
+                                        <span style="color:var(--text-muted);font-size:9px;">Continuous reduction</span>
+                                    </button>
                                 </div>
-                                <div style="text-align: center; margin-top: 16px;">
-                                    <button class="btn btn-primary" onclick="App.openWindowsSetting('nightlight')">&#x1F319; Open Night Light Settings</button>
-                                </div>
-                                <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted); text-align: center;">Opens: ms-settings:nightlight</div>
+                                <div id="nl-preset-info" style="display:none;padding:10px 14px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.3);border-radius:8px;font-size:11px;color:var(--accent-cyan);line-height:1.7;"></div>
+                                <div style="margin-top:10px;font-size:10px;color:var(--text-muted);text-align:center;">Opens: ms-settings:nightlight</div>
                             </div>
                         </div>
                     </div>
@@ -1389,6 +1399,11 @@
                         <button class="btn btn-primary" onclick="App.deleteAllInCategory('duplicates')">&#x1F5D1; Delete All in Category</button>
                     </div>
                     <div class="panel-body">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.2);border-radius:8px;">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);white-space:nowrap;">Scan folder:</span>
+                            <input type="text" id="dup-folder-path" placeholder="Leave blank for Documents + Downloads" style="flex:1;background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);padding:5px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;">
+                            <button class="btn btn-primary" onclick="App.scanDuplicatesCustomFolder()" style="white-space:nowrap;font-size:11px;">&#x1F50D; Scan Folder</button>
+                        </div>
                         <div style="margin-bottom: 12px; padding: 12px; background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 8px;">
                             <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-yellow);">
                                 &#x26A0; Be careful - make sure to keep at least one copy!

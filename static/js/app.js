@@ -778,48 +778,85 @@ const App = {
             const res = await fetch('/api/startup-items');
             const data = await res.json();
             const items = Array.isArray(data) ? data : (data.items || []);
-            const renderTo = (containerId, enhanced) => {
-                const container = document.getElementById(containerId);
-                if (!container) return;
-                if (items.length > 0) {
-                    container.innerHTML = items.map(item => {
-                        const impact = item.impact || (item.hive === 'HKLM' ? 'Medium' : 'Low');
-                        const impactColor = impact === 'High' ? 'var(--accent-red)' : impact === 'Medium' ? 'var(--accent-yellow)' : 'var(--accent-green)';
-                        const cat = item.category || 'review';
-                        const catLabel = { safe_to_disable:'✔ Safe to disable', review:'Review', system_related:'⚠ System/caution' }[cat] || cat;
-                        const catColor = { safe_to_disable:'var(--accent-green)', review:'var(--accent-yellow)', system_related:'var(--accent-red)' }[cat] || 'var(--text-muted)';
-                        const rec = item.recommendation || '';
-                        if (enhanced) {
-                            return `<div class="process-item" style="flex-wrap:wrap;gap:4px;" title="${rec}">
-                                <span class="name">${item.name}</span>
-                                <span class="cpu" style="font-size:10px;color:var(--text-muted);">${item.hive}</span>
-                                <span class="mem" style="font-size:10px;">
-                                    <span style="color:${impactColor};font-weight:600;">${impact}</span>
-                                    &nbsp;<span style="color:${catColor};font-size:9px;padding:1px 5px;border:1px solid ${catColor};border-radius:3px;">${catLabel}</span>
-                                </span>
-                                <label class="toggle">
-                                    <input type="checkbox" ${item.enabled ? 'checked' : ''}
-                                        onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked, '${item.path?.replace(/'/g,"\\'")||''}')">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>`;
-                        }
-                        return `<div class="process-item">
-                            <span class="name">${item.name}</span>
-                            <span class="cpu" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.path || 'N/A'}</span>
-                            <label class="toggle">
-                                <input type="checkbox" ${item.enabled ? 'checked' : ''}
-                                    onchange="App.toggleStartupItem('${item.name.replace(/'/g, "\\'")}', '${item.hive || 'HKCU'}', this.checked, '${item.path?.replace(/'/g,"\\'")||''}')">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>`;
-                    }).join('');
-                } else {
-                    container.innerHTML = '<div class="info-row"><span class="info-label">No startup items found</span></div>';
+
+            const makeRow = (item, enhanced) => {
+                const impact = item.impact || (item.hive === 'HKLM' ? 'Medium' : 'Low');
+                const impactColor = impact === 'High' ? 'var(--accent-red)' : impact === 'Medium' ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                const cat = item.category || 'review';
+                const catLabel = { safe_to_disable:'✔ Safe', review:'Review', system_related:'⚠ Caution' }[cat] || cat;
+                const catColor = { safe_to_disable:'var(--accent-green)', review:'var(--accent-yellow)', system_related:'var(--accent-red)' }[cat] || 'var(--text-muted)';
+                const rec = (item.recommendation || '').replace(/'/g, '&#39;');
+                const nameSafe = item.name.replace(/'/g, "\\'");
+                const pathSafe = (item.path || '').replace(/'/g, "\\'");
+                const hiveSafe = (item.hive || 'HKCU');
+                if (enhanced) {
+                    return `<div class="process-item" style="flex-wrap:wrap;gap:4px;" title="${rec}">
+                        <span class="name">${item.name}</span>
+                        <span class="cpu" style="font-size:10px;color:var(--text-muted);">${hiveSafe}</span>
+                        <span class="mem" style="font-size:10px;">
+                            <span style="color:${impactColor};font-weight:600;">${impact}</span>
+                            &nbsp;<span style="color:${catColor};font-size:9px;padding:1px 5px;border:1px solid ${catColor};border-radius:3px;">${catLabel}</span>
+                        </span>
+                        <label class="toggle">
+                            <input type="checkbox" ${item.enabled ? 'checked' : ''}
+                                onchange="App.toggleStartupItem('${nameSafe}', '${hiveSafe}', this.checked, '${pathSafe}')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>`;
                 }
+                return `<div class="process-item">
+                    <span class="name">${item.name}</span>
+                    <span class="cpu" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.path || 'N/A'}</span>
+                    <label class="toggle">
+                        <input type="checkbox" ${item.enabled ? 'checked' : ''}
+                            onchange="App.toggleStartupItem('${nameSafe}', '${hiveSafe}', this.checked, '${pathSafe}')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>`;
             };
-            renderTo('startup-items-list', false);
-            renderTo('speedup-startup-list', true);
+
+            const simpleContainer = document.getElementById('startup-items-list');
+            if (simpleContainer) {
+                if (items.length === 0) {
+                    simpleContainer.innerHTML = '<div class="info-row"><span class="info-label">No startup items found</span></div>';
+                } else {
+                    simpleContainer.innerHTML = items.map(item => makeRow(item, false)).join('');
+                }
+            }
+
+            const speedupContainer = document.getElementById('speedup-startup-list');
+            if (speedupContainer) {
+                if (items.length === 0) {
+                    speedupContainer.innerHTML = '<div class="info-row"><span class="info-label">No startup items found</span></div>';
+                } else {
+                    const sourceLabels = {
+                        'HKCU': '🔵 HKCU — Current User (HKEY_CURRENT_USER\\...\\Run)',
+                        'HKLM': '🔴 HKLM — All Users (HKEY_LOCAL_MACHINE\\...\\Run)',
+                        'Startup': '📁 Startup Folder — Shell:Startup',
+                    };
+                    const groups = {};
+                    items.forEach(item => {
+                        const key = item.hive || 'HKCU';
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(item);
+                    });
+                    const order = ['HKLM', 'HKCU', 'Startup'];
+                    let html = '';
+                    order.forEach(key => {
+                        if (!groups[key] || groups[key].length === 0) return;
+                        const label = sourceLabels[key] || key;
+                        html += `<div style="padding:6px 0 4px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--accent-cyan); letter-spacing:1px; border-bottom:1px solid var(--border);">${label}</div>`;
+                        html += groups[key].map(item => makeRow(item, true)).join('');
+                    });
+                    Object.keys(groups).forEach(key => {
+                        if (!order.includes(key)) {
+                            html += `<div style="padding:6px 0 4px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--accent-cyan); letter-spacing:1px; border-bottom:1px solid var(--border);">${key}</div>`;
+                            html += groups[key].map(item => makeRow(item, true)).join('');
+                        }
+                    });
+                    speedupContainer.innerHTML = html;
+                }
+            }
         } catch(e) {}
     },
 
@@ -912,11 +949,15 @@ const App = {
         container.innerHTML = html;
     },
 
-    async scanFiles() {
+    async scanFiles(customFolder) {
         const btn = document.getElementById('btn-scan-files');
         if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanning...'; }
         try {
-            await fetch('/api/file-organizer/scan', { method: 'POST' });
+            await fetch('/api/file-organizer/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ custom_folder: customFolder || '' }),
+            });
             const poll = setInterval(async () => {
                 try {
                     const res = await fetch('/api/file-organizer/results');
@@ -933,6 +974,48 @@ const App = {
         }
     },
 
+    async scanDuplicatesCustomFolder() {
+        const folderInput = document.getElementById('dup-folder-path');
+        const folderPath = folderInput ? folderInput.value.trim() : '';
+        if (!folderPath) {
+            this.showNotification('Enter a folder path to scan, or use Scan Files for defaults', 'info');
+            return;
+        }
+        const listEl = document.getElementById('duplicates-list');
+        if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--accent-cyan);font-family:\'JetBrains Mono\',monospace;font-size:12px;">Scanning for duplicates...</div>';
+        const panel = document.getElementById('duplicates-panel');
+        if (panel) panel.hidden = false;
+        try {
+            await fetch('/api/file-organizer/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ custom_folder: folderPath }),
+            });
+            const poll = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/file-organizer/results');
+                    const data = await res.json();
+                    if (data.status === 'complete') {
+                        clearInterval(poll);
+                        const dups = data.duplicates || [];
+                        if (listEl) {
+                            if (dups.length === 0) {
+                                listEl.innerHTML = '<div style="text-align:center;color:var(--accent-green);padding:16px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">No duplicate files found in this folder.</div>';
+                            } else {
+                                listEl.innerHTML = dups.map(f => `<div class="process-item" style="font-size:11px;">
+                                    <input type="checkbox" class="file-check-duplicates" data-path="${f.path||''}" style="margin-right:8px;">
+                                    <span class="name" style="flex:1;">${f.name}</span>
+                                    <span class="mem" style="color:var(--text-muted);font-size:10px;">${f.size_fmt||''}</span>
+                                </div>`).join('');
+                            }
+                        }
+                        this.showNotification(`Found ${dups.length} duplicate file(s) in ${folderPath}`, dups.length ? 'warn' : 'success');
+                    }
+                } catch(e) {}
+            }, 1500);
+        } catch(e) { this.showNotification('Scan failed', 'error'); }
+    },
+
     async refreshFileOrganizer() {
         try {
             const res = await fetch('/api/file-organizer/results');
@@ -944,70 +1027,77 @@ const App = {
     },
 
     renderFileOrganizerResults(data) {
-        const container = document.getElementById('file-organizer-results');
-        if (!container) return;
-
         const results = data.results || data;
-        let html = '';
 
-        const categories = [
-            { key: 'zero_length_files', label: 'Zero-Length Files', icon: '&#x1F4C4;' },
-            { key: 'duplicates', label: 'Duplicate Files', icon: '&#x1F4CB;' },
-            { key: 'installers', label: 'Installer Files', icon: '&#x1F4E6;' }
-        ];
+        const summaryEl = document.getElementById('file-organizer-results');
+        const zeroFiles = results.zero_length || results.zero_length_files || [];
+        const dupFiles  = results.duplicates || [];
+        const instFiles = results.installers || [];
+        const lastScan  = results.last_scan || '';
+        const total = zeroFiles.length + dupFiles.length + instFiles.length;
 
-        categories.forEach(cat => {
-            const files = results[cat.key] || [];
-            const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
-            html += `
-                <div class="file-category" style="margin-bottom: 16px;">
-                    <div class="info-row" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
-                        <span class="info-label" style="font-weight: bold; color: var(--accent-cyan);">
-                            ${cat.icon} ${cat.label} (${files.length} files, ${this.formatBytes(totalSize)})
-                        </span>
-                        <span class="info-value">
-                            <button class="btn btn-sm" onclick="App.toggleSelectAll('${cat.key}')" style="margin-right: 8px; padding: 4px 8px; font-size: 11px;">Select All</button>
-                            <button class="btn btn-sm" onclick="App.deleteSelected('${cat.key}')" style="margin-right: 8px; padding: 4px 8px; font-size: 11px;">Delete Selected</button>
-                            <button class="btn btn-sm btn-danger" onclick="App.deleteAllInCategory('${cat.key}')" style="padding: 4px 8px; font-size: 11px;">Delete All</button>
-                        </span>
-                    </div>
-                    <div id="file-list-${cat.key}">
-            `;
-            files.forEach((f, idx) => {
-                html += `
-                    <div class="process-item" style="font-size: 11px;">
-                        <input type="checkbox" class="file-check-${cat.key}" data-path="${f.path || f.name || ''}" style="margin-right: 8px;">
-                        <span class="name" style="flex: 1;">${f.path || f.name || 'Unknown'}</span>
-                        <span class="mem">${this.formatBytes(f.size || 0)}</span>
-                    </div>
-                `;
-            });
-            html += `</div></div>`;
-        });
+        if (summaryEl) {
+            summaryEl.innerHTML = `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);line-height:1.8;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                    <span>&#x1F4C4; Zero-length: <strong style="color:var(--accent-cyan);">${zeroFiles.length}</strong></span>
+                    <span>&#x1F4CB; Duplicates: <strong style="color:${dupFiles.length>0?'var(--accent-yellow)':'var(--accent-cyan)'};">${dupFiles.length}</strong></span>
+                    <span>&#x1F4E6; Installers: <strong style="color:var(--accent-cyan);">${instFiles.length}</strong></span>
+                </div>
+                ${lastScan ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Last scan: ${lastScan}</div>` : ''}
+                ${total === 0 ? '<div style="color:var(--accent-green);margin-top:8px;">&#x2705; No issues found — your files are clean!</div>' : ''}
+            </div>`;
+        }
 
-        container.innerHTML = html;
+        const renderPanel = (panelId, listId, cbClass, files, emptyMsg) => {
+            const panel = document.getElementById(panelId);
+            const listEl = document.getElementById(listId);
+            if (!panel || !listEl) return;
+            if (files.length > 0) {
+                panel.hidden = false;
+                listEl.innerHTML = files.map(f => `
+                    <div class="process-item" style="font-size:11px;">
+                        <input type="checkbox" class="${cbClass}" data-path="${f.path||f.name||''}" style="margin-right:8px;">
+                        <span class="name" style="flex:1;" title="${f.path||''}">${f.name||f.path||'Unknown'}</span>
+                        <span class="mem" style="color:var(--text-muted);">${this.formatBytes(f.size||0)}</span>
+                        ${f.duplicate_of ? `<span style="font-size:9px;color:var(--accent-yellow);margin-left:8px;">dup of: ${f.duplicate_of.split(/[\\/]/).pop()}</span>` : ''}
+                    </div>`).join('');
+            } else {
+                panel.hidden = true;
+            }
+        };
+        renderPanel('zero-length-panel', 'zero-length-list', 'file-check-zero_length', zeroFiles, 'No zero-length files found');
+        renderPanel('duplicates-panel', 'duplicates-list', 'file-check-duplicates', dupFiles, 'No duplicate files found');
+        renderPanel('installers-panel', 'installers-list', 'file-check-installers', instFiles, 'No installer files found');
+    },
+
+    _cbClass(category) {
+        const map = { 'zero-length': 'zero_length', 'zero_length_files': 'zero_length' };
+        return `file-check-${map[category] || category}`;
     },
 
     toggleSelectAll(category) {
-        const checkboxes = document.querySelectorAll(`.file-check-${category}`);
+        const cls = this._cbClass(category);
+        const checkboxes = document.querySelectorAll(`.${cls}`);
         const allChecked = Array.from(checkboxes).every(cb => cb.checked);
         checkboxes.forEach(cb => cb.checked = !allChecked);
     },
 
     async deleteSelected(category) {
-        const checkboxes = document.querySelectorAll(`.file-check-${category}:checked`);
+        const cls = this._cbClass(category);
+        const checkboxes = document.querySelectorAll(`.${cls}:checked`);
         const paths = Array.from(checkboxes).map(cb => cb.dataset.path).filter(p => p);
         if (paths.length === 0) {
             this.showNotification('No files selected', 'error');
             return;
         }
+        if (!confirm(`Delete ${paths.length} file(s)? This cannot be undone.`)) return;
         try {
             await fetch('/api/file-organizer/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ files: paths, category })
             });
-            this.showNotification(`${paths.length} files deleted`);
+            this.showNotification(`${paths.length} file(s) deleted`);
             this.refreshFileOrganizer();
         } catch(e) {
             this.showNotification('Failed to delete files', 'error');
@@ -1015,7 +1105,8 @@ const App = {
     },
 
     async deleteAllInCategory(category) {
-        const checkboxes = document.querySelectorAll(`.file-check-${category}`);
+        const cls = this._cbClass(category);
+        const checkboxes = document.querySelectorAll(`.${cls}`);
         checkboxes.forEach(cb => cb.checked = true);
         await this.deleteSelected(category);
     },
@@ -1574,6 +1665,37 @@ const App = {
                 `).join('');
             });
         } catch(e) {}
+    },
+
+    selectNightLightPreset(preset) {
+        const presets = {
+            sunset: {
+                label: '🌇 Sunset to Sunrise',
+                info: 'In Night Light settings → Schedule: select "Sunset to sunrise". Windows will automatically turn on Night Light at sunset and off at sunrise based on your location.',
+            },
+            evening: {
+                label: '🌙 Evening (9PM – 7AM)',
+                info: 'In Night Light settings → Schedule: select "Set hours" → Turn on at 9:00 PM, Turn off at 7:00 AM. Adjust Color temperature slider to your preference (warmer = more blue-light reduction).',
+            },
+            always: {
+                label: '🔴 Always On',
+                info: 'To keep Night Light always on: toggle "Night light" to ON and do not enable a schedule. The setting stays active indefinitely until you manually toggle it off.',
+            },
+        };
+        const chosen = presets[preset];
+        if (!chosen) return;
+        ['sunset','evening','always'].forEach(p => {
+            const btn = document.getElementById(`nl-preset-${p}`);
+            if (btn) btn.style.borderColor = '';
+        });
+        const activeBtn = document.getElementById(`nl-preset-${preset}`);
+        if (activeBtn) activeBtn.style.borderColor = 'var(--accent-cyan)';
+        const infoEl = document.getElementById('nl-preset-info');
+        if (infoEl) {
+            infoEl.innerHTML = `<strong>${chosen.label}</strong><br>${chosen.info}`;
+            infoEl.style.display = 'block';
+        }
+        this.showNotification(`Preset selected: ${chosen.label} — Click "Open Settings" to apply`, 'info');
     },
 
     focusModeActive: false,

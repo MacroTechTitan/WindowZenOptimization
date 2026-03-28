@@ -252,6 +252,7 @@ registry_data = {
 }
 
 file_organizer_results = {
+    "status": "idle",
     "zero_length": [],
     "duplicates": [],
     "installers": [],
@@ -1222,14 +1223,19 @@ def run_deep_analysis():
     log_activity(f"Deep analysis complete. {file_count} files scanned, {software_count} software packages found.", "SUCCESS")
 
 
-def run_file_organizer_scan():
+def run_file_organizer_scan(custom_folder=""):
+    file_organizer_results["status"] = "scanning"
     log_activity("Starting file organizer scan...", "TASK")
     home = os.path.expanduser("~")
-    scan_dirs = [
-        os.path.join(home, "Documents"),
-        os.path.join(home, "Downloads"),
-        os.path.join(home, "Desktop"),
-    ]
+    if custom_folder and os.path.isdir(custom_folder):
+        scan_dirs = [custom_folder]
+        log_activity(f"Scanning custom folder: {custom_folder}")
+    else:
+        scan_dirs = [
+            os.path.join(home, "Documents"),
+            os.path.join(home, "Downloads"),
+            os.path.join(home, "Desktop"),
+        ]
 
     zero_length = []
     for scan_dir in scan_dirs:
@@ -1251,7 +1257,7 @@ def run_file_organizer_scan():
 
     hash_map = {}
     duplicates = []
-    dup_dirs = [
+    dup_dirs = scan_dirs if custom_folder else [
         os.path.join(home, "Documents"),
         os.path.join(home, "Downloads"),
     ]
@@ -1313,6 +1319,7 @@ def run_file_organizer_scan():
             pass
     file_organizer_results["installers"] = installers[:100]
     file_organizer_results["last_scan"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    file_organizer_results["status"] = "complete"
     log_activity(f"Found {len(installers)} software installers.", "SUCCESS")
     log_activity("File organizer scan complete.", "SUCCESS")
 
@@ -1816,7 +1823,9 @@ def api_system_reboot():
 
 @app.route("/api/file-organizer/scan", methods=["POST"])
 def api_file_organizer_scan():
-    thread = threading.Thread(target=run_file_organizer_scan, daemon=True)
+    data = request.get_json() or {}
+    custom_folder = data.get("custom_folder", "")
+    thread = threading.Thread(target=run_file_organizer_scan, args=(custom_folder,), daemon=True)
     thread.start()
     return jsonify({"status": "scanning"})
 

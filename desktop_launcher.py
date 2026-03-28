@@ -5,10 +5,12 @@ import time
 import socket
 import webbrowser
 
+
 def resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
+
 
 os.chdir(resource_path("."))
 
@@ -26,47 +28,34 @@ def start_flask():
 
 
 def _wait_for_server(timeout=15):
-    """Poll until Flask is actually accepting connections."""
+    """Block until Flask is actually accepting TCP connections."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
-            s = socket.create_connection(("127.0.0.1", PORT), timeout=0.5)
+            s = socket.create_connection(("127.0.0.1", PORT), timeout=0.3)
             s.close()
             return True
         except OSError:
-            time.sleep(0.2)
+            time.sleep(0.15)
     return False
-
-
-def _wait_and_navigate(window):
-    _flask_ready.wait(timeout=15)
-    _wait_for_server(timeout=10)
-    time.sleep(0.4)
-    window.load_url(f"http://127.0.0.1:{PORT}/app?mode=desktop")
 
 
 def main():
     flask_thread = threading.Thread(target=start_flask, daemon=True)
     flask_thread.start()
 
+    # Block here until Flask is fully ready — window is created only once,
+    # pointing straight at the Flask /loading route.  No load_url() call
+    # means no mid-session navigation and therefore no white flash.
+    _flask_ready.wait(timeout=15)
+    _wait_for_server(timeout=10)
+
     try:
         import webview
 
-        splash_path = resource_path("splash.html")
-        if os.path.exists(splash_path):
-            with open(splash_path, "r", encoding="utf-8") as f:
-                splash_html = f.read()
-        else:
-            splash_html = (
-                "<html><body style='background:#0a0f1e;display:flex;"
-                "align-items:center;justify-content:center;height:100vh;'>"
-                "<h2 style='color:#06b6d4;font-family:sans-serif;'>"
-                "Loading MTT Infinite Optimizer...</h2></body></html>"
-            )
-
-        window = webview.create_window(
+        webview.create_window(
             "MTT Windows Infinite Optimizer",
-            html=splash_html,
+            url=f"http://127.0.0.1:{PORT}/loading",
             width=1280,
             height=800,
             min_size=(900, 600),
@@ -75,17 +64,10 @@ def main():
             background_color="#0a0f1e",
         )
 
-        nav_thread = threading.Thread(
-            target=_wait_and_navigate, args=(window,), daemon=True
-        )
-        nav_thread.start()
-
         webview.start()
 
     except ImportError:
         print("pywebview not found, opening in default browser...")
-        _flask_ready.wait(timeout=15)
-        _wait_for_server(timeout=10)
         webbrowser.open(f"http://127.0.0.1:{PORT}/app?mode=desktop")
         try:
             while True:

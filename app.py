@@ -1393,6 +1393,12 @@ def eula_page():
     return render_template("eula.html")
 
 
+@app.route("/loading")
+def loading_page():
+    """Desktop splash screen — served by Flask so there is only one navigation."""
+    return render_template("splash_loading.html")
+
+
 # ── Update system ────────────────────────────────────────────────
 UPDATE_SERVER = "https://windowzen.macrotechtitan.com/updates/version.json"
 LOCAL_VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "version.json")

@@ -85,6 +85,7 @@ const App = {
         if (pageName === 'recommendations') this.refreshRecs();
         if (pageName === 'profiles') this.refreshProfiles();
         if (pageName === 'maintenance') { this.refreshMaintenance(); this.refreshMaintenanceHistory(); }
+        if (pageName === 'debug-logs') this.refreshDebugLogs();
     },
 
     startClock() {
@@ -2448,6 +2449,83 @@ const App = {
     },
 
     exportMaintenanceHistory() { window.location.href = '/api/maintenance/history/export'; },
+
+    _debugLogs: [],
+    _debugAutoRefreshInterval: null,
+
+    async refreshDebugLogs() {
+        const level = document.getElementById('debug-log-level')?.value || 'ALL';
+        try {
+            const res = await fetch(`/api/debug-logs?level=${level}`);
+            const data = await res.json();
+            this._debugLogs = data.logs || [];
+            this._renderDebugLogs(this._debugLogs);
+            this._renderDebugSummary(data.counts || {});
+        } catch(e) {
+            const t = document.getElementById('debug-log-terminal');
+            if (t) t.innerHTML = '<span style="color:var(--accent-red);">Failed to load logs.</span>';
+        }
+    },
+
+    _renderDebugLogs(logs) {
+        const terminal = document.getElementById('debug-log-terminal');
+        const countEl = document.getElementById('debug-log-count');
+        if (!terminal) return;
+        if (!logs || logs.length === 0) {
+            terminal.innerHTML = '<span style="color:var(--text-muted);">No log entries found.</span>';
+            if (countEl) countEl.textContent = '0 entries';
+            return;
+        }
+        const colorMap = {
+            SUCCESS: '#22c55e',
+            INFO:    '#06b6d4',
+            WARN:    '#f59e0b',
+            ERROR:   '#ef4444',
+        };
+        terminal.innerHTML = logs.map(e => {
+            const col = colorMap[e.level] || '#94a3b8';
+            const lvl = (e.level || 'INFO').padEnd(7);
+            return `<span style="color:#475569;">${e.time || '--:--:--'}</span>  <span style="color:${col};font-weight:600;">${lvl}</span>  <span style="color:#e2e8f0;">${this._escHtml(e.message || '')}</span>`;
+        }).join('\n');
+        if (countEl) countEl.textContent = `${logs.length} entries`;
+        const badge = document.getElementById('debug-error-badge');
+        if (badge) {
+            const errCount = logs.filter(e => e.level === 'ERROR').length;
+            if (errCount > 0) { badge.textContent = errCount; badge.style.display = 'inline-block'; }
+            else { badge.style.display = 'none'; }
+        }
+    },
+
+    _renderDebugSummary(counts) {
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '0'; };
+        set('debug-count-success', counts.SUCCESS);
+        set('debug-count-info',    counts.INFO);
+        set('debug-count-warn',    counts.WARN);
+        set('debug-count-error',   counts.ERROR);
+    },
+
+    filterDebugLogs() { this.refreshDebugLogs(); },
+
+    async clearDebugLogs() {
+        if (!confirm('Clear all debug logs? This cannot be undone.')) return;
+        await fetch('/api/debug-logs/clear', { method: 'POST' });
+        this.showNotification('Debug logs cleared', 'success');
+        this.refreshDebugLogs();
+    },
+
+    toggleDebugAutoRefresh(enabled) {
+        if (this._debugAutoRefreshInterval) {
+            clearInterval(this._debugAutoRefreshInterval);
+            this._debugAutoRefreshInterval = null;
+        }
+        if (enabled) {
+            this._debugAutoRefreshInterval = setInterval(() => this.refreshDebugLogs(), 3000);
+        }
+    },
+
+    _escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    },
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());

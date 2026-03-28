@@ -1526,6 +1526,36 @@ def api_logs():
     return jsonify(activity_log[-50:])
 
 
+@app.route("/api/debug-logs")
+def api_debug_logs():
+    level = request.args.get("level", "ALL").upper()
+    order = request.args.get("order", "desc")
+    logs = list(activity_log)
+    if level == "ERROR":
+        logs = [e for e in logs if e.get("level") == "ERROR"]
+    elif level == "WARN":
+        logs = [e for e in logs if e.get("level") in ("WARN", "ERROR")]
+    elif level == "INFO":
+        logs = [e for e in logs if e.get("level") in ("INFO", "WARN", "ERROR", "SUCCESS")]
+    if order == "desc":
+        logs = list(reversed(logs))
+    counts = {
+        "SUCCESS": sum(1 for e in activity_log if e.get("level") == "SUCCESS"),
+        "INFO":    sum(1 for e in activity_log if e.get("level") == "INFO"),
+        "WARN":    sum(1 for e in activity_log if e.get("level") == "WARN"),
+        "ERROR":   sum(1 for e in activity_log if e.get("level") == "ERROR"),
+        "total":   len(activity_log),
+    }
+    return jsonify({"logs": logs, "counts": counts})
+
+
+@app.route("/api/debug-logs/clear", methods=["POST"])
+def api_debug_logs_clear():
+    activity_log.clear()
+    log_activity("Debug log cleared by user", "INFO")
+    return jsonify({"ok": True})
+
+
 @app.route("/api/scan", methods=["POST"])
 def api_scan():
     thread = threading.Thread(target=run_system_scan, daemon=True)

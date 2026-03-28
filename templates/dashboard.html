@@ -110,6 +110,11 @@
                 <span class="icon">&#x1F4C5;</span>
                 <span>Maintenance</span>
             </div>
+            <div class="nav-item" data-page="debug-logs">
+                <span class="icon">&#x1F50D;</span>
+                <span>Debug Logs</span>
+                <span class="nav-badge" id="debug-error-badge" style="display:none;background:var(--accent-red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:auto;font-family:'JetBrains Mono',monospace;"></span>
+            </div>
 
             <div class="sidebar-section">
                 <div class="sidebar-label">Configure</div>
@@ -207,7 +212,7 @@
                         </div>
                     </div>
                     <div class="panel-body">
-                        <div class="process-list">
+                        <div class="process-list" style="max-height:none;overflow:hidden;">
                             <div class="process-item process-header">
                                 <span class="pid">#</span>
                                 <span class="name">Process</span>
@@ -2580,6 +2585,63 @@ Website: <a href="https://legal.macrotechtitan.com" style="color: var(--accent-c
                         <div style="display:flex;gap:10px;margin-top:20px;">
                             <button class="btn btn-primary" onclick="App.saveNewTask()" style="flex:1;">Save Task</button>
                             <button class="btn btn-outline" onclick="App.closeTaskDialog()" style="flex:1;">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DEBUG LOGS PAGE -->
+            <div class="page" id="page-debug-logs">
+                <div class="panel" style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                        <h2 style="font-size:18px;font-weight:700;">&#x1F50D; Debug Logs</h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                            <select id="debug-log-level" onchange="App.filterDebugLogs()" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);padding:6px 10px;border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+                                <option value="ALL">All Levels</option>
+                                <option value="ERROR">Errors Only</option>
+                                <option value="WARN">Warnings+</option>
+                                <option value="INFO">Info+</option>
+                            </select>
+                            <button class="btn btn-outline" onclick="App.refreshDebugLogs()" style="font-size:12px;padding:6px 14px;">&#x21BB; Refresh</button>
+                            <button class="btn btn-outline" onclick="App.clearDebugLogs()" style="font-size:12px;padding:6px 14px;">&#x1F5D1; Clear</button>
+                            <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;cursor:pointer;">
+                                <input type="checkbox" id="debug-auto-refresh" onchange="App.toggleDebugAutoRefresh(this.checked)" style="cursor:pointer;"> Auto-refresh
+                            </label>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+                        Live output from the MTT Infinite Optimizer engine — last 200 entries
+                    </div>
+                </div>
+
+                <div class="panel" style="padding:0;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg-dark);">
+                        <span style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:1px;">SYSTEM LOG — live output</span>
+                        <span id="debug-log-count" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;"></span>
+                    </div>
+                    <div id="debug-log-terminal" style="background:#060a14;padding:16px;min-height:420px;max-height:600px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;white-space:pre-wrap;word-break:break-all;">
+                        <span style="color:var(--text-muted);">Loading logs...</span>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">&#x1F4CA; Log Summary</h3>
+                    <div id="debug-log-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+                        <div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--accent-green);" id="debug-count-success">—</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">SUCCESS</div>
+                        </div>
+                        <div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--accent-cyan);" id="debug-count-info">—</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">INFO</div>
+                        </div>
+                        <div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--accent-yellow);" id="debug-count-warn">—</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">WARN</div>
+                        </div>
+                        <div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--accent-red);" id="debug-count-error">—</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">ERROR</div>
                         </div>
                     </div>
                 </div>

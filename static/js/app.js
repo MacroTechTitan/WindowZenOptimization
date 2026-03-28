@@ -1180,7 +1180,6 @@ const App = {
                 <span class="name">${p.name || 'Unknown'}</span>
                 <span class="cpu" style="color: ${cpu > 50 ? 'var(--accent-red)' : cpu > 20 ? 'var(--accent-yellow)' : 'var(--accent-green)'};">${cpu.toFixed(1)}%</span>
                 <span class="mem" style="color: ${mem > 50 ? 'var(--accent-red)' : mem > 20 ? 'var(--accent-yellow)' : 'var(--accent-cyan)'};">${mem.toFixed(1)}%</span>
-                <span class="mem" style="color: var(--text-muted);">--</span>
             </div>`;
         }).join('');
     },

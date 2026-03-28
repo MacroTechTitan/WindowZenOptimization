@@ -951,6 +951,189 @@
         .modal-success h3 { font-size:20px; font-weight:800; margin-bottom:8px; }
         .modal-success p { font-size:13px; color:var(--text-secondary); line-height:1.7; }
 
+        /* ── Feature Spotlight (detailed rows) ── */
+        .spotlight-section {
+            padding: 80px 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .spotlight-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            margin-bottom: 72px;
+            padding-bottom: 72px;
+            border-bottom: 1px solid var(--border);
+        }
+        .spotlight-row:last-child { border-bottom: none; margin-bottom: 0; }
+        .spotlight-row.reverse { direction: rtl; }
+        .spotlight-row.reverse > * { direction: ltr; }
+        @media (max-width: 700px) {
+            .spotlight-row { grid-template-columns: 1fr; direction: ltr; gap: 32px; margin-bottom: 48px; padding-bottom: 48px; }
+            .spotlight-row.reverse { direction: ltr; }
+        }
+        .spotlight-badge {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+            border: 1px solid;
+        }
+        .spotlight-icon { font-size: 48px; margin-bottom: 16px; }
+        .spotlight-title {
+            font-size: clamp(20px, 3vw, 28px);
+            font-weight: 800;
+            margin-bottom: 16px;
+            line-height: 1.25;
+        }
+        .spotlight-body {
+            color: var(--text-secondary);
+            line-height: 1.85;
+            font-size: 15px;
+            margin-bottom: 20px;
+        }
+        .spotlight-body strong { color: var(--text-primary); }
+        .spotlight-bullets {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .spotlight-bullets li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .spotlight-bullets li::before {
+            content: '▸';
+            color: var(--accent-cyan);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .spotlight-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .spotlight-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+        }
+        .spotlight-panel-metric {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .spotlight-panel-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+        .spotlight-panel-unit {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .spotlight-panel-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+        .spotlight-terminal {
+            background: #0a0f1a;
+            border: 1px solid rgba(6,182,212,0.2);
+            border-radius: 10px;
+            padding: 20px 18px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+        }
+        .spotlight-terminal .t-green { color: #10b981; }
+        .spotlight-terminal .t-cyan  { color: #06b6d4; }
+        .spotlight-terminal .t-yellow{ color: #f59e0b; }
+        .spotlight-terminal .t-red   { color: #ef4444; }
+        .spotlight-terminal .t-muted { color: #4b5563; }
+        .spotlight-stat-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .spotlight-stat {
+            background: rgba(6,182,212,0.07);
+            border: 1px solid rgba(6,182,212,0.2);
+            border-radius: 10px;
+            padding: 14px 18px;
+            text-align: center;
+            flex: 1;
+            min-width: 80px;
+        }
+        .spotlight-stat-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+        .spotlight-stat-lbl {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        /* ── Promo Image Banner ── */
+        .promo-banner {
+            padding: 80px 20px;
+            background: linear-gradient(180deg, rgba(6,182,212,0.04) 0%, rgba(59,130,246,0.04) 100%);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+        .promo-banner-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent-cyan);
+            margin-bottom: 14px;
+        }
+        .promo-banner-title {
+            font-size: clamp(24px, 4vw, 40px);
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+        .promo-banner-desc {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+        .promo-banner-img {
+            width: 100%;
+            max-width: 900px;
+            border-radius: 18px;
+            border: 1px solid rgba(6,182,212,0.25);
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 60px rgba(6,182,212,0.12);
+            display: block;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
@@ -1253,6 +1436,260 @@
             </div>
         </div>
     </section>
+
+    <!-- ── Feature Spotlight (detailed deep-dive rows) ─────────── -->
+    <div style="border-top: 1px solid var(--border); padding: 24px 0 0;">
+        <div class="section-header" style="padding-top: 64px;">
+            <div class="section-tag">Feature Deep Dive</div>
+            <h2 class="section-title">What's Under the Hood</h2>
+            <p class="section-desc">A closer look at the most powerful tools inside MTT Windows Infinite Optimizer — built for real-world performance problems, not just flashy dashboards.</p>
+        </div>
+    </div>
+    <div class="spotlight-section">
+
+        <!-- Row 1: System Cleaner -->
+        <div class="spotlight-row">
+            <div class="spotlight-text">
+                <div class="spotlight-badge" style="color:var(--accent-cyan);border-color:rgba(6,182,212,0.3);background:rgba(6,182,212,0.08);">Module 01 &mdash; Cleaner</div>
+                <div class="spotlight-icon">🧹</div>
+                <h3 class="spotlight-title">System Cleaner:<br>13+ Junk Categories, Zero Guesswork</h3>
+                <p class="spotlight-body">Windows silently accumulates gigabytes of clutter — temp files, browser caches, Windows Update residue, error dump files, thumbnail databases, and more. The System Cleaner targets all of it with <strong>surgical precision</strong>.</p>
+                <ul class="spotlight-bullets">
+                    <li>Cleans <strong>%TEMP%</strong>, Windows Temp, Prefetch, and Recent files folders</li>
+                    <li>Removes leftover <strong>Windows Update</strong> packages from SoftwareDistribution</li>
+                    <li>Purges browser caches for Chrome, Edge, Firefox, and Brave</li>
+                    <li>Wipes thumbnail caches, Recycle Bin contents, and crash dump logs</li>
+                    <li><strong>Dry-run mode</strong>: preview exactly what will be deleted before committing</li>
+                    <li>Per-category toggles in Settings so you never touch what you want to keep</li>
+                </ul>
+            </div>
+            <div class="spotlight-panel" style="border-color:rgba(6,182,212,0.2);">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-blue));border-radius:16px 16px 0 0;"></div>
+                <div class="spotlight-terminal">
+                    <div><span class="t-muted">[SCAN]</span> <span class="t-cyan">Analyzing 13 categories...</span></div>
+                    <div style="margin-top:8px;"><span class="t-green">✓</span> %TEMP% files &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-yellow">2.1 GB</span></div>
+                    <div><span class="t-green">✓</span> Windows Update cache &nbsp;<span class="t-yellow">4.8 GB</span></div>
+                    <div><span class="t-green">✓</span> Browser caches &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-yellow">1.3 GB</span></div>
+                    <div><span class="t-green">✓</span> Thumbnails DB &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-yellow">340 MB</span></div>
+                    <div><span class="t-green">✓</span> Crash dumps &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-yellow">890 MB</span></div>
+                    <div><span class="t-green">✓</span> Prefetch &amp; recent &nbsp;&nbsp;&nbsp;<span class="t-yellow">220 MB</span></div>
+                    <div style="margin-top:10px; border-top:1px solid #1f2937; padding-top:10px;"><span class="t-cyan">Total recoverable: </span><span style="color:#fff;font-weight:700;">9.6 GB</span></div>
+                    <div><span class="t-muted">[DRY RUN] No files deleted yet &mdash; confirm to clean</span></div>
+                </div>
+                <div class="spotlight-stat-row">
+                    <div class="spotlight-stat"><div class="spotlight-stat-num">13+</div><div class="spotlight-stat-lbl">Categories</div></div>
+                    <div class="spotlight-stat"><div class="spotlight-stat-num">9.6</div><div class="spotlight-stat-lbl">Avg GB saved</div></div>
+                    <div class="spotlight-stat"><div class="spotlight-stat-num">100%</div><div class="spotlight-stat-lbl">Safe dry run</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Speed Up / Startup Manager -->
+        <div class="spotlight-row reverse">
+            <div class="spotlight-text">
+                <div class="spotlight-badge" style="color:var(--accent-yellow);border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);">Module 02 &mdash; Speed Up</div>
+                <div class="spotlight-icon">🚀</div>
+                <h3 class="spotlight-title">Startup Manager:<br>Impact-Scored Boot Optimization</h3>
+                <p class="spotlight-body">Most Windows PCs slow down over time because every app you install adds itself to your startup. The Startup Manager gives you <strong>full visibility and control</strong> — with an intelligence layer that tells you what's safe to disable.</p>
+                <ul class="spotlight-bullets">
+                    <li>Reads all three startup sources: <strong>HKLM</strong>, <strong>HKCU</strong>, and the Startup folder</li>
+                    <li>Each entry rated <span style="color:var(--accent-red);font-weight:600;">High</span> / <span style="color:var(--accent-yellow);font-weight:600;">Medium</span> / <span style="color:var(--accent-green);font-weight:600;">Low</span> boot impact</li>
+                    <li>Badges: <strong>Safe to Disable</strong>, <strong>System</strong>, or <strong>Caution</strong> — no guessing required</li>
+                    <li>One-click enable/disable with registry write — instant effect on next boot</li>
+                    <li>All changes tracked in the <strong>Undo / Restore Log</strong> — revert anytime</li>
+                    <li>Reboot prompt after changes so nothing is left in an inconsistent state</li>
+                </ul>
+            </div>
+            <div class="spotlight-panel" style="border-color:rgba(245,158,11,0.2);">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-yellow),var(--accent-green));border-radius:16px 16px 0 0;"></div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Startup Items &mdash; Impact Analysis</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;">
+                        <span style="font-size:13px;">OneDrive.exe</span>
+                        <span style="font-size:11px;font-weight:700;color:var(--accent-red);">HIGH &bull; SAFE</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px 14px;">
+                        <span style="font-size:13px;">Spotify.exe</span>
+                        <span style="font-size:11px;font-weight:700;color:var(--accent-yellow);">MED &bull; SAFE</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px 14px;">
+                        <span style="font-size:13px;">SecurityHealth.exe</span>
+                        <span style="font-size:11px;font-weight:700;color:var(--accent-green);">LOW &bull; SYSTEM</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;">
+                        <span style="font-size:13px;">Discord.exe</span>
+                        <span style="font-size:11px;font-weight:700;color:var(--accent-red);">HIGH &bull; SAFE</span>
+                    </div>
+                </div>
+                <div class="spotlight-stat-row" style="margin-top:16px;">
+                    <div class="spotlight-stat" style="background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,0.2);"><div class="spotlight-stat-num" style="color:var(--accent-yellow);">3</div><div class="spotlight-stat-lbl">Sources Read</div></div>
+                    <div class="spotlight-stat" style="background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,0.2);"><div class="spotlight-stat-num" style="color:var(--accent-yellow);">↺</div><div class="spotlight-stat-lbl">Undo Log</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Cybersecurity -->
+        <div class="spotlight-row">
+            <div class="spotlight-text">
+                <div class="spotlight-badge" style="color:var(--accent-blue);border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.08);">Module 03 &mdash; Security</div>
+                <div class="spotlight-icon">🛡️</div>
+                <h3 class="spotlight-title">Cybersecurity Scanner:<br>Know What's Exposed</h3>
+                <p class="spotlight-body">Most people have no idea what ports their PC is broadcasting to the internet, or which processes are maintaining active outbound connections. The Cybersecurity Scanner makes the invisible <strong>completely visible</strong>.</p>
+                <ul class="spotlight-bullets">
+                    <li>Scans <strong>11 common vulnerability ports</strong> (FTP, SSH, Telnet, HTTP, SMB, RDP, and more)</li>
+                    <li>Lists every <strong>active network connection</strong> with remote IP, port, and process name</li>
+                    <li>Displays your current <strong>public IP address</strong> with one-click lookup</li>
+                    <li>Flags open ports with a risk rating and explains the potential threat</li>
+                    <li><strong>Fix Internet</strong> tool resets Winsock, flushes DNS, and renews your IP in one click</li>
+                    <li>Streaming terminal output so you watch the fix happen in real time</li>
+                </ul>
+            </div>
+            <div class="spotlight-panel" style="border-color:rgba(59,130,246,0.2);">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-blue),var(--accent-purple));border-radius:16px 16px 0 0;"></div>
+                <div class="spotlight-terminal">
+                    <div><span class="t-cyan">[PORT SCAN]</span> Scanning 11 common ports...</div>
+                    <div style="margin-top:8px;"><span class="t-green">CLOSED</span> &nbsp;Port 21 &nbsp;&nbsp;(FTP)</div>
+                    <div><span class="t-green">CLOSED</span> &nbsp;Port 22 &nbsp;&nbsp;(SSH)</div>
+                    <div><span class="t-green">CLOSED</span> &nbsp;Port 23 &nbsp;&nbsp;(Telnet)</div>
+                    <div><span class="t-red">OPEN &nbsp;</span> &nbsp;Port 445 &nbsp;(SMB) &nbsp;<span class="t-yellow">⚠ Risk: HIGH</span></div>
+                    <div><span class="t-green">CLOSED</span> &nbsp;Port 3389 (RDP)</div>
+                    <div style="margin-top:10px;border-top:1px solid #1f2937;padding-top:10px;">
+                        <span class="t-yellow">⚠ 1 open port detected. SMB exposure can allow</span>
+                    </div>
+                    <div><span class="t-yellow">&nbsp;&nbsp;ransomware propagation on local network.</span></div>
+                    <div style="margin-top:6px;"><span class="t-cyan">Public IP:</span> <span style="color:#fff;">203.x.x.x</span> &nbsp;<span class="t-muted">(click to lookup)</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: File Organizer + Downloads Rules -->
+        <div class="spotlight-row reverse">
+            <div class="spotlight-text">
+                <div class="spotlight-badge" style="color:var(--accent-green);border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.08);">Module 04 &mdash; File Organizer</div>
+                <div class="spotlight-icon">📁</div>
+                <h3 class="spotlight-title">File Organizer:<br>Smart Cleanup for Every Corner</h3>
+                <p class="spotlight-body">Downloads folders balloon. Duplicates silently eat disk space. Old installers pile up. The File Organizer handles all of it — with <strong>MD5-based duplicate detection</strong>, smart Downloads rules, and a safety net undo log for every action it takes.</p>
+                <ul class="spotlight-bullets">
+                    <li><strong>MD5 duplicate finder</strong>: identical files detected even with different names</li>
+                    <li>Zero-length file scanner — removes ghost files that waste directory entries</li>
+                    <li>Leftover installer cleanup (.exe, .msi, .msix in common folders)</li>
+                    <li><strong>Downloads Rules</strong>: auto-group by type (Images, Docs, Videos, Code), archive old files by age threshold, move screenshots to a dedicated folder</li>
+                    <li>Full <strong>dry-run preview</strong> before any file is moved or deleted</li>
+                    <li><strong>Undo / Restore Log</strong>: every move is logged and reversible with one click</li>
+                </ul>
+            </div>
+            <div class="spotlight-panel" style="border-color:rgba(16,185,129,0.2);">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan));border-radius:16px 16px 0 0;"></div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Downloads Rules &mdash; Preview</div>
+                <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:7px;">
+                        <span>📸 Screenshots moved</span><span style="color:var(--accent-green);font-weight:600;">23 files</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:7px;">
+                        <span>🎬 Videos grouped</span><span style="color:var(--accent-green);font-weight:600;">11 files</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:7px;">
+                        <span>📄 Docs grouped</span><span style="color:var(--accent-green);font-weight:600;">38 files</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:7px;">
+                        <span>🗃️ Archived (90+ days old)</span><span style="color:var(--accent-yellow);font-weight:600;">54 files</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:7px;">
+                        <span>🔁 Duplicates found</span><span style="color:var(--accent-red);font-weight:600;">1.4 GB</span>
+                    </div>
+                </div>
+                <div style="margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">[DRY RUN MODE] &mdash; No changes applied yet</div>
+            </div>
+        </div>
+
+        <!-- Row 5: Recommendations Engine -->
+        <div class="spotlight-row">
+            <div class="spotlight-text">
+                <div class="spotlight-badge" style="color:var(--accent-purple);border-color:rgba(139,92,246,0.3);background:rgba(139,92,246,0.08);">Module 05 &mdash; Insights</div>
+                <div class="spotlight-icon">💡</div>
+                <h3 class="spotlight-title">Recommendations Engine:<br>Your AI System Advisor</h3>
+                <p class="spotlight-body">Instead of making you dig through menus, the Recommendations Engine continuously evaluates your system and <strong>tells you exactly what to do and why</strong>. No technical knowledge required — just follow the priority list.</p>
+                <ul class="spotlight-bullets">
+                    <li>Scores CPU load, RAM pressure, disk usage, uptime, and background habits</li>
+                    <li>Surfaces <span style="color:var(--accent-red);font-weight:600;">Critical</span>, <span style="color:var(--accent-yellow);font-weight:600;">High</span>, and <span style="color:var(--accent-green);font-weight:600;">Normal</span> priority tips with plain-English explanations</li>
+                    <li>Filter by category: <strong>Performance, Security, Storage, Wellness</strong></li>
+                    <li>Dismiss permanently or <strong>snooze for 1–24 hours</strong> and revisit later</li>
+                    <li>Every action tracked in history with timestamps — <strong>export to JSON</strong></li>
+                    <li>Paired with <strong>Profiles &amp; Presets</strong>: one-click apply the recommended optimization mode</li>
+                </ul>
+            </div>
+            <div class="spotlight-panel" style="border-color:rgba(139,92,246,0.2);">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-purple),var(--accent-cyan));border-radius:16px 16px 0 0;"></div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Active Recommendations</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="border-left:3px solid var(--accent-red);background:rgba(239,68,68,0.06);border-radius:0 8px 8px 0;padding:12px 14px;">
+                        <div style="font-size:11px;color:var(--accent-red);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Critical &bull; Performance</div>
+                        <div style="font-size:13px;font-weight:600;">CPU sustained above 85% for 20+ minutes</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Check Process Monitor for runaway tasks</div>
+                    </div>
+                    <div style="border-left:3px solid var(--accent-yellow);background:rgba(245,158,11,0.06);border-radius:0 8px 8px 0;padding:12px 14px;">
+                        <div style="font-size:11px;color:var(--accent-yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">High &bull; Storage</div>
+                        <div style="font-size:13px;font-weight:600;">Disk at 91% capacity — clean up now</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Run System Cleaner to recover 9+ GB</div>
+                    </div>
+                    <div style="border-left:3px solid var(--accent-green);background:rgba(16,185,129,0.06);border-radius:0 8px 8px 0;padding:12px 14px;">
+                        <div style="font-size:11px;color:var(--accent-green);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Normal &bull; Wellness</div>
+                        <div style="font-size:13px;font-weight:600;">No break taken in 3 hours</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Enable Focus Mode for structured Pomodoro sessions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 6: Wellness + Pomodoro -->
+        <div class="spotlight-row reverse">
+            <div class="spotlight-text">
+                <div class="spotlight-badge" style="color:var(--accent-green);border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.08);">Module 06 &mdash; Wellness</div>
+                <div class="spotlight-icon">💚</div>
+                <h3 class="spotlight-title">Wellness Monitor:<br>Because Your Health Matters Too</h3>
+                <p class="spotlight-body">System optimization shouldn't come at the cost of your own wellbeing. The Wellness Monitor tracks your <strong>screen time, eye strain, and focus habits</strong> — and nudges you toward healthier computing with tools that actually work on Windows.</p>
+                <ul class="spotlight-bullets">
+                    <li><strong>Break Timer</strong>: 40-minute reminders with a gentle audio alert and countdown display</li>
+                    <li><strong>Pomodoro Focus Mode</strong>: 25-minute work sprints / 5-minute recovery cycles — auto-cycles until you stop</li>
+                    <li><strong>Night Light scheduling</strong>: set warm tone hours directly, synced with Windows built-in settings</li>
+                    <li>Screen brightness guidance with quick preset links for day, evening, and late-night</li>
+                    <li>Display settings deep link — no hunting through Control Panel</li>
+                    <li>All wellness settings persist across sessions — configured once, always running</li>
+                </ul>
+            </div>
+            <div class="spotlight-panel" style="border-color:rgba(16,185,129,0.2);">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent-green),var(--accent-blue));border-radius:16px 16px 0 0;"></div>
+                <div style="text-align:center;padding:20px 0;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-green);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;">Focus Mode &mdash; Pomodoro Active</div>
+                    <div style="position:relative;width:140px;height:140px;margin:0 auto 20px;">
+                        <svg viewBox="0 0 140 140" style="position:absolute;top:0;left:0;width:100%;height:100%;">
+                            <circle cx="70" cy="70" r="60" fill="none" stroke="rgba(16,185,129,0.15)" stroke-width="10"/>
+                            <circle cx="70" cy="70" r="60" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="377" stroke-dashoffset="94" stroke-linecap="round" transform="rotate(-90 70 70)"/>
+                        </svg>
+                        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--accent-green);">18:32</div>
+                            <div style="font-size:11px;color:var(--text-muted);">WORK SESSION</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;justify-content:center;gap:20px;font-size:13px;color:var(--text-secondary);">
+                        <div><span style="color:var(--accent-green);font-weight:700;">3</span> sessions done</div>
+                        <div><span style="color:var(--accent-cyan);font-weight:700;">5min</span> break next</div>
+                    </div>
+                </div>
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:120px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:12px;color:var(--text-muted);">Night Light</div>
+                        <div style="font-size:13px;color:var(--accent-green);font-weight:600;margin-top:4px;">9 PM → 7 AM</div>
+                    </div>
+                    <div style="flex:1;min-width:120px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:12px;color:var(--text-muted);">Break interval</div>
+                        <div style="font-size:13px;color:var(--accent-cyan);font-weight:600;margin-top:4px;">Every 40 min</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 
     <!-- ── What's New ───────────────────────────────────────────── -->
     <div style="background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(59,130,246,0.06) 100%); border-top: 1px solid rgba(16,185,129,0.15); border-bottom: 1px solid rgba(59,130,246,0.15); padding: 64px 20px;">
@@ -1622,6 +2059,14 @@
             </div>
         </div>
     </section>
+
+    <!-- ── Promo Image Banner ─────────────────────────────────── -->
+    <div class="promo-banner">
+        <div class="promo-banner-tag">&#x26A1; Powered by Macro Tech Titan</div>
+        <h2 class="promo-banner-title">One Dashboard. Total Control.</h2>
+        <p class="promo-banner-desc">Everything you need to keep your Windows PC fast, clean, and secure — from one powerful terminal-style interface, built by engineers who actually use Windows.</p>
+        <img src="/static/images/windowzen-promo.png" alt="MTT WindowZen — windowzen.macrotechtitan.com" class="promo-banner-img">
+    </div>
 
     <section class="cta-section">
         <h2 class="cta-title">Ready to Optimize?</h2>

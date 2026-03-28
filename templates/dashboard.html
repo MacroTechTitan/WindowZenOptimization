@@ -5,8 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MTT Windows Infinite Optimizer</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        html, body { background: #0a0f1e !important; }
+        #_entry_overlay {
+            position: fixed; inset: 0;
+            background: #0a0f1e;
+            z-index: 2147483647;
+            transition: opacity 0.35s ease;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
+    <div id="_entry_overlay"></div>
+    <script>
+        (function() {
+            var o = document.getElementById('_entry_overlay');
+            function fadeOut() {
+                if (!o) return;
+                o.style.opacity = '0';
+                setTimeout(function() { if (o && o.parentNode) o.parentNode.removeChild(o); }, 400);
+            }
+            if (document.readyState === 'complete') {
+                setTimeout(fadeOut, 80);
+            } else {
+                window.addEventListener('load', function() { setTimeout(fadeOut, 80); });
+            }
+        })();
+    </script>
     {% if not desktop_mode %}
     <div class="demo-banner" style="background: linear-gradient(90deg, #f59e0b, #ef4444); color: #000; text-align: center; padding: 10px 20px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; position: fixed; top: 0; left: 0; right: 0; z-index: 10000;">
         This is for display purposes only. To use this software you must download the Windows installer.

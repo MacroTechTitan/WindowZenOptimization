@@ -1506,7 +1506,8 @@ del "%~f0"
 @app.route("/app")
 @app.route("/app/<page>")
 def dashboard(page=None):
-    return render_template("dashboard.html", initial_page=page or "dashboard")
+    desktop_mode = request.args.get("mode") == "desktop"
+    return render_template("dashboard.html", initial_page=page or "dashboard", desktop_mode=desktop_mode)
 
 
 @app.route("/api/metrics")

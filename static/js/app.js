@@ -2605,8 +2605,8 @@ const App = {
         };
         terminal.innerHTML = logs.map(e => {
             const col = colorMap[e.level] || '#94a3b8';
-            const lvl = (e.level || 'INFO').padEnd(7);
-            return `<span style="color:#475569;">${e.time || '--:--:--'}</span>  <span style="color:${col};font-weight:600;">${lvl}</span>  <span style="color:#e2e8f0;">${this._escHtml(e.message || '')}</span>`;
+            const lvl = this._escHtml((e.level || 'INFO').padEnd(7));
+            return `<span style="color:#475569;">${this._escHtml(e.time || '--:--:--')}</span>  <span style="color:${col};font-weight:600;">${lvl}</span>  <span style="color:#e2e8f0;">${this._escHtml(e.message || '')}</span>`;
         }).join('\n');
         if (countEl) countEl.textContent = `${logs.length} entries`;
         const badge = document.getElementById('debug-error-badge');

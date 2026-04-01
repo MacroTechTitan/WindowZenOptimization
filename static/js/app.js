@@ -1,3 +1,7 @@
+function escapeHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
 const App = {
     currentPage: 'dashboard',
     refreshInterval: null,
@@ -2352,14 +2356,14 @@ const App = {
             return `<div style="background:var(--bg-card);border:1px solid ${isActive ? accent : 'var(--border)'};border-radius:12px;padding:20px;position:relative;overflow:hidden;transition:border-color 0.2s;">
                 <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${accent};"></div>
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                    <span style="font-size:28px;">${p.icon}</span>
+                    <span style="font-size:28px;">${escapeHtml(p.icon)}</span>
                     <div>
-                        <div style="font-size:14px;font-weight:700;">${p.name}</div>
+                        <div style="font-size:14px;font-weight:700;">${escapeHtml(p.name)}</div>
                         <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${p.builtin ? 'var(--text-muted)' : accent};text-transform:uppercase;">${p.builtin ? 'Built-in' : 'Custom'}</div>
                     </div>
                     ${isActive ? `<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;background:${accent};color:#000;border-radius:4px;">ACTIVE</span>` : ''}
                 </div>
-                <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;">${p.description}</div>
+                <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;">${escapeHtml(p.description)}</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'}" style="font-size:11px;padding:5px 14px;flex:1;" onclick="App.applyProfile('${p.id}')">${isActive ? '✓ Active' : '▶ Apply'}</button>
                     ${allowDelete ? `<button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:var(--accent-red);" onclick="App.deleteProfile('${p.id}')">✕</button>` : ''}
@@ -2379,7 +2383,7 @@ const App = {
         if (!el) return;
         if (!history.length) { el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);">No profile changes recorded yet</div>'; return; }
         el.innerHTML = history.map(h =>
-            `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">[${(h.applied_at||'').slice(0,16).replace('T',' ')}] Applied: <span style="color:var(--accent-cyan);">${h.profile_name}</span></div>`
+            `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">[${escapeHtml((h.applied_at||'').slice(0,16).replace('T',' '))}] Applied: <span style="color:var(--accent-cyan);">${escapeHtml(h.profile_name)}</span></div>`
         ).join('');
     },
 

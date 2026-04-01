@@ -19,5 +19,19 @@
     "registered_at": "2026-04-01T14:39:24.732064",
     "verified_at": null,
     "ip": "127.0.0.1"
+  },
+  "testuser_abc123@example.com": {
+    "token": "d2c19063-a9da-4b75-b347-8d84b39b5d3c",
+    "verified": false,
+    "registered_at": "2026-04-01T21:20:24.874186",
+    "verified_at": null,
+    "ip": "127.0.0.1"
+  },
+  "testuser_xyz999@example.com": {
+    "token": "5333f9f5-338d-4f3f-ad71-e78037ba82a3",
+    "verified": false,
+    "registered_at": "2026-04-01T21:21:56.145223",
+    "verified_at": null,
+    "ip": "127.0.0.1"
   }
 }

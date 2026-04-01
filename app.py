@@ -144,7 +144,7 @@ body{{font-family:Inter,Arial,sans-serif;background:#0a0e1a;color:#e2e8f0;margin
             "subject": "⚡ Your MTT Infinite Optimizer Download Link",
             "html": html_body,
         })
-        log_activity(f"Verification email sent → {to_email} (id:{result.get('id', '?')})", "SUCCESS")
+        log_activity(f"Verification email sent → {to_email} (id:{getattr(result, 'id', '?')})", "SUCCESS")
         return True
     except Exception as e:
         log_activity(f"Failed to send email to {to_email}: {e}", "ERROR")

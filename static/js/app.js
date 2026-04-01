@@ -2365,8 +2365,8 @@ const App = {
                 </div>
                 <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;">${escapeHtml(p.description)}</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'}" style="font-size:11px;padding:5px 14px;flex:1;" onclick="App.applyProfile('${p.id}')">${isActive ? '✓ Active' : '▶ Apply'}</button>
-                    ${allowDelete ? `<button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:var(--accent-red);" onclick="App.deleteProfile('${p.id}')">✕</button>` : ''}
+                    <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'}" style="font-size:11px;padding:5px 14px;flex:1;" onclick="App.applyProfile('${escapeHtml(p.id)}')">${isActive ? '✓ Active' : '▶ Apply'}</button>
+                    ${allowDelete ? `<button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:var(--accent-red);" onclick="App.deleteProfile('${escapeHtml(p.id)}')">✕</button>` : ''}
                 </div>
             </div>`;
         };

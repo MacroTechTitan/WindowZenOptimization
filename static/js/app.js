@@ -2607,11 +2607,28 @@ const App = {
             WARN:    '#f59e0b',
             ERROR:   '#ef4444',
         };
-        terminal.innerHTML = logs.map(e => {
+        terminal.textContent = '';
+        const fragment = document.createDocumentFragment();
+        logs.forEach((e, i) => {
             const col = colorMap[e.level] || '#94a3b8';
-            const lvl = this._escHtml((e.level || 'INFO').padEnd(7));
-            return `<span style="color:#475569;">${this._escHtml(e.time || '--:--:--')}</span>  <span style="color:${col};font-weight:600;">${lvl}</span>  <span style="color:#e2e8f0;">${this._escHtml(e.message || '')}</span>`;
-        }).join('\n');
+            if (i > 0) fragment.appendChild(document.createTextNode('\n'));
+            const timeSpan = document.createElement('span');
+            timeSpan.style.color = '#475569';
+            timeSpan.textContent = e.time || '--:--:--';
+            const lvlSpan = document.createElement('span');
+            lvlSpan.style.color = col;
+            lvlSpan.style.fontWeight = '600';
+            lvlSpan.textContent = (e.level || 'INFO').padEnd(7);
+            const msgSpan = document.createElement('span');
+            msgSpan.style.color = '#e2e8f0';
+            msgSpan.textContent = e.message || '';
+            fragment.appendChild(timeSpan);
+            fragment.appendChild(document.createTextNode('  '));
+            fragment.appendChild(lvlSpan);
+            fragment.appendChild(document.createTextNode('  '));
+            fragment.appendChild(msgSpan);
+        });
+        terminal.appendChild(fragment);
         if (countEl) countEl.textContent = `${logs.length} entries`;
         const badge = document.getElementById('debug-error-badge');
         if (badge) {

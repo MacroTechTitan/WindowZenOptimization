@@ -63,6 +63,12 @@ def save_registrations(data):
 
 
 def get_resend_credentials():
+    direct_key = os.environ.get("RESEND_API_KEY")
+    if direct_key:
+        return {
+            "api_key": direct_key,
+            "from_email": os.environ.get("RESEND_FROM_EMAIL", "noreply@macrotechtitan.com"),
+        }
     hostname = os.environ.get("REPLIT_CONNECTORS_HOSTNAME")
     repl_identity = os.environ.get("REPL_IDENTITY")
     web_repl_renewal = os.environ.get("WEB_REPL_RENEWAL")

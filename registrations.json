@@ -12,5 +12,12 @@
     "registered_at": "2026-03-17T03:16:42.543903",
     "verified_at": "2026-03-17T03:16:56.555315",
     "ip": "127.0.0.1"
+  },
+  "test2@example.com": {
+    "token": "40179933-ad63-4795-9daa-3cfcbcfe8cd4",
+    "verified": false,
+    "registered_at": "2026-04-01T14:39:24.732064",
+    "verified_at": null,
+    "ip": "127.0.0.1"
   }
 }

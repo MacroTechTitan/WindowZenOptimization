@@ -742,6 +742,149 @@
             box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
         }
 
+        /* ── SuperDev CTA ─────────────────────────────────── */
+        .superdev-cta {
+            position: relative;
+            padding: 100px 20px;
+            overflow: hidden;
+            background: linear-gradient(180deg, transparent 0%, rgba(6,182,212,0.03) 50%, transparent 100%);
+            border-top: 1px solid var(--border);
+        }
+        .superdev-cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 70% 50%, rgba(139,92,246,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 40% at 20% 60%, rgba(6,182,212,0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .superdev-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        .superdev-eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+        .superdev-heading {
+            font-size: clamp(34px, 5vw, 52px);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 18px;
+            color: var(--text-primary);
+        }
+        .superdev-accent {
+            background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .superdev-sub {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 28px;
+            max-width: 440px;
+        }
+        .superdev-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 32px;
+        }
+        .sd-chip {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 100px;
+            padding: 5px 13px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.3px;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .sd-chip:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .superdev-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+            color: #fff;
+            font-weight: 700;
+            font-size: 15px;
+            padding: 15px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            letter-spacing: 0.3px;
+            transition: opacity 0.2s, transform 0.15s;
+            box-shadow: 0 8px 32px rgba(6,182,212,0.25);
+        }
+        .superdev-btn:hover { opacity: 0.88; transform: translateY(-2px); }
+        .superdev-url {
+            margin-top: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        /* 3-D visual side */
+        .superdev-visual {
+            perspective: 900px;
+        }
+        .superdev-3d-frame {
+            position: relative;
+            transform: rotateY(-12deg) rotateX(5deg);
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+            border-radius: 18px;
+        }
+        .superdev-3d-frame:hover {
+            transform: rotateY(-4deg) rotateX(2deg);
+        }
+        .superdev-glow {
+            position: absolute;
+            inset: -2px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #06b6d4, #8b5cf6, #10b981);
+            z-index: 0;
+            filter: blur(0px);
+            opacity: 0.7;
+        }
+        .superdev-img {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            border-radius: 16px;
+            display: block;
+            box-shadow:
+                0 30px 60px rgba(0,0,0,0.5),
+                0 0 0 1px rgba(255,255,255,0.06) inset;
+        }
+        .superdev-shelf {
+            position: absolute;
+            bottom: -18px;
+            left: 10%;
+            right: 10%;
+            height: 18px;
+            background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+            border-radius: 0 0 10px 10px;
+            transform: translateZ(-12px);
+            filter: blur(1px);
+            opacity: 0.5;
+            z-index: 0;
+        }
+        @media (max-width: 768px) {
+            .superdev-inner { grid-template-columns: 1fr; gap: 40px; }
+            .superdev-3d-frame { transform: rotateY(0) rotateX(3deg); }
+        }
+
         footer {
             padding: 40px 20px;
             text-align: center;
@@ -2256,6 +2399,44 @@
             </a>
         </div>
         <p id="cta-counter-text" style="margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);"></p>
+    </section>
+
+    <!-- ── SuperDev CTA Section ── -->
+    <section class="superdev-cta">
+        <div class="superdev-inner">
+            <div class="superdev-text">
+                <div class="superdev-eyebrow">🛠 Also from Macro Tech Titan</div>
+                <h2 class="superdev-heading">MTT <span class="superdev-accent">Super Dev</span></h2>
+                <p class="superdev-sub">Free browser-based tools for I.T., DevOps, SEO &amp; AI — no installs, no signups, instant results.</p>
+                <div class="superdev-chips">
+                    <span class="sd-chip">🌐 Network Info</span>
+                    <span class="sd-chip">📡 Ping Tool</span>
+                    <span class="sd-chip">🔍 DNS Lookup</span>
+                    <span class="sd-chip">🔒 SSL Checker</span>
+                    <span class="sd-chip">🚪 Port Scanner</span>
+                    <span class="sd-chip">🛡 Blacklist Check</span>
+                    <span class="sd-chip">📋 WHOIS Lookup</span>
+                    <span class="sd-chip">🔑 JWT Tools</span>
+                    <span class="sd-chip">🔗 URL Shortener</span>
+                    <span class="sd-chip">📦 QR Generator</span>
+                    <span class="sd-chip">🎨 Color Picker</span>
+                    <span class="sd-chip">🆔 UUID Generator</span>
+                </div>
+                <a href="https://superdev.macrotechtitan.com" target="_blank" rel="noopener" class="superdev-btn">
+                    Launch Super Dev &rarr;
+                </a>
+                <p class="superdev-url">superdev.macrotechtitan.com</p>
+            </div>
+            <div class="superdev-visual">
+                <div class="superdev-3d-frame">
+                    <div class="superdev-glow"></div>
+                    <img src="https://superdev.macrotechtitan.com/static/superdev-featured.png"
+                         alt="MTT Super Dev — Developer Tools"
+                         class="superdev-img">
+                    <div class="superdev-shelf"></div>
+                </div>
+            </div>
+        </div>
     </section>
 
     <footer>

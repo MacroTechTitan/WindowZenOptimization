@@ -2468,33 +2468,34 @@ const App = {
         const el = document.getElementById('maintenance-task-list');
         if (!el) return;
         if (!tasks.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:30px;">No tasks configured</div>'; return; }
+        const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         const typeColors = { scan:'var(--accent-cyan)', reminder:'var(--accent-yellow)' };
         const scheduleLabel = t => {
-            if (t.schedule === 'daily') return `Daily at ${t.time}`;
-            if (t.schedule === 'weekly') return `Weekly (${t.day_of_week?.toUpperCase()}) at ${t.time}`;
-            if (t.schedule === 'monthly') return `Monthly (day ${t.day_of_month||'?'}) at ${t.time}`;
-            return t.schedule;
+            if (t.schedule === 'daily') return `Daily at ${esc(t.time)}`;
+            if (t.schedule === 'weekly') return `Weekly (${esc(t.day_of_week?.toUpperCase())}) at ${esc(t.time)}`;
+            if (t.schedule === 'monthly') return `Monthly (day ${esc(t.day_of_month||'?')}) at ${esc(t.time)}`;
+            return esc(t.schedule);
         };
         el.innerHTML = tasks.map((t, i) => {
             const tc = typeColors[t.type] || 'var(--text-muted)';
             return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < tasks.length-1 ? 'border-bottom:1px solid rgba(255,255,255,0.05)' : ''};flex-wrap:wrap;">
                 <label class="toggle" title="${t.enabled ? 'Enabled' : 'Disabled'}">
-                    <input type="checkbox" ${t.enabled ? 'checked' : ''} onchange="App.toggleMaintenanceTask('${t.id}', this.checked)">
+                    <input type="checkbox" ${t.enabled ? 'checked' : ''} onchange="App.toggleMaintenanceTask('${esc(t.id)}', this.checked)">
                     <span class="toggle-slider"></span>
                 </label>
                 <div style="flex:1;min-width:180px;">
-                    <div style="font-size:13px;font-weight:600;margin-bottom:2px;">${t.name}</div>
-                    <div style="font-size:11px;color:var(--text-secondary);">${t.description}</div>
+                    <div style="font-size:13px;font-weight:600;margin-bottom:2px;">${esc(t.name)}</div>
+                    <div style="font-size:11px;color:var(--text-secondary);">${esc(t.description)}</div>
                     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
-                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border:1px solid ${tc};color:${tc};border-radius:4px;text-transform:uppercase;">${t.type}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border:1px solid ${tc};color:${tc};border-radius:4px;text-transform:uppercase;">${esc(t.type)}</span>
                         <span style="font-size:11px;color:var(--text-muted);">${scheduleLabel(t)}</span>
-                        ${t.last_run ? `<span style="font-size:10px;color:var(--text-muted);">Last run: ${t.last_run.slice(0,10)}</span>` : ''}
-                        ${t.run_count ? `<span style="font-size:10px;color:var(--text-muted);">(${t.run_count} runs)</span>` : ''}
+                        ${t.last_run ? `<span style="font-size:10px;color:var(--text-muted);">Last run: ${esc(t.last_run.slice(0,10))}</span>` : ''}
+                        ${t.run_count ? `<span style="font-size:10px;color:var(--text-muted);">(${esc(t.run_count)} runs)</span>` : ''}
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;">
-                    <button class="btn btn-primary" style="font-size:11px;padding:4px 12px;" onclick="App.runMaintenanceTask('${t.id}', '${t.name}')">▶ Run Now</button>
-                    ${!t.builtin ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 8px;color:var(--accent-red);" onclick="App.deleteMaintenanceTask('${t.id}')">✕</button>` : ''}
+                    <button class="btn btn-primary" style="font-size:11px;padding:4px 12px;" onclick="App.runMaintenanceTask('${esc(t.id)}', '${esc(t.name)}')">▶ Run Now</button>
+                    ${!t.builtin ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 8px;color:var(--accent-red);" onclick="App.deleteMaintenanceTask('${esc(t.id)}')">✕</button>` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -2504,15 +2505,16 @@ const App = {
         const el = document.getElementById('maintenance-history-list');
         if (!el) return;
         if (!history.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:12px;">No history yet — run a task to start logging.</div>'; return; }
+        const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         const statusColors = { ok:'var(--accent-green)', error:'var(--accent-red)' };
         el.innerHTML = history.map(h => {
             const sc = statusColors[h.status] || 'var(--text-muted)';
-            const findings = h.findings ? Object.entries(h.findings).map(([k,v]) => `${k}: ${v}`).join(' • ') : '';
+            const findings = h.findings ? Object.entries(h.findings).map(([k,v]) => `${esc(k)}: ${esc(v)}`).join(' • ') : '';
             return `<div style="background:rgba(255,255,255,0.02);border-radius:6px;padding:10px 12px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-                    <span style="font-size:12px;font-weight:600;">${h.task_name || h.task_id}</span>
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 7px;border:1px solid ${sc};color:${sc};border-radius:4px;text-transform:uppercase;">${h.status}</span>
-                    <span style="font-size:10px;color:var(--text-muted);margin-left:auto;">${(h.completed_at||'').slice(0,16).replace('T',' ')}</span>
+                    <span style="font-size:12px;font-weight:600;">${esc(h.task_name || h.task_id)}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 7px;border:1px solid ${sc};color:${sc};border-radius:4px;text-transform:uppercase;">${esc(h.status)}</span>
+                    <span style="font-size:10px;color:var(--text-muted);margin-left:auto;">${esc((h.completed_at||'').slice(0,16).replace('T',' '))}</span>
                 </div>
                 ${findings ? `<div style="font-size:11px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;">${findings}</div>` : ''}
             </div>`;

@@ -2351,7 +2351,7 @@
                 if (data.ok) {
                     document.getElementById('modal-form-state').style.display = 'none';
                     document.getElementById('modal-success-email').textContent = email;
-                    document.getElementById('modal-success-state').style.display = '';
+                    document.getElementById('modal-success-state').style.display = 'block';
                 } else {
                     errEl.textContent = '❌ ' + (data.error || 'Something went wrong. Try again.');
                     errEl.style.display = 'block';

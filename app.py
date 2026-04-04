@@ -107,32 +107,113 @@ def send_verification_email(to_email, token):
         return False
     verify_url = f"{SITE_URL}/verify-email/{token}"
     from_addr = f"MTT Infinite Optimizer <{creds['from_email']}>"
-    html_body = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verify Your Email — MTT Infinite Optimizer</title>
 <style>
-body{{font-family:Inter,Arial,sans-serif;background:#0a0e1a;color:#e2e8f0;margin:0;padding:0}}
-.wrap{{max-width:520px;margin:40px auto;background:#111827;border:1px solid #1e293b;border-radius:16px;overflow:hidden}}
-.hdr{{background:linear-gradient(135deg,#06b6d4,#8b5cf6);padding:32px;text-align:center}}
-.hdr h1{{color:#fff;font-size:20px;margin:0;letter-spacing:1px}}
-.hdr p{{color:rgba(255,255,255,.75);font-size:12px;margin:6px 0 0}}
-.body{{padding:36px 32px}}
-.body p{{color:#94a3b8;font-size:15px;line-height:1.7;margin:0 0 20px}}
-.btn{{display:block;background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;text-decoration:none;text-align:center;padding:16px 32px;border-radius:10px;font-size:16px;font-weight:700;margin:24px 0}}
-.box{{background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;font-family:monospace;font-size:12px;color:#64748b;word-break:break-all}}
-.foot{{padding:20px 32px;border-top:1px solid #1e293b;font-size:12px;color:#475569;text-align:center}}
-</style></head><body>
-<div class="wrap">
-  <div class="hdr"><h1>⚡ MTT Infinite Optimizer</h1><p>by Macro Tech Titan</p></div>
-  <div class="body">
-    <p>Thanks for your interest in <strong style="color:#e2e8f0">MTT Windows Infinite Optimizer v1.1.0</strong>!
-    Click the button below to verify your email and unlock your free download link.</p>
-    <a href="{verify_url}" class="btn">✅ Verify Email &amp; Get Download Link</a>
-    <p style="font-size:13px">This link expires in <strong style="color:#e2e8f0">24 hours</strong>.
-    If the button doesn't work, copy and paste this URL:</p>
-    <div class="box">{verify_url}</div>
+  body{{margin:0;padding:0;background:#f4f6f9;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased}}
+  .outer{{padding:40px 16px}}
+  .card{{max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)}}
+  .banner{{background:linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%);padding:36px 32px;text-align:center}}
+  .banner-logo{{display:inline-block;background:rgba(255,255,255,0.15);border-radius:50px;padding:8px 20px;margin-bottom:16px}}
+  .banner-logo span{{color:#fff;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}}
+  .banner h1{{margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.3px}}
+  .banner p{{margin:6px 0 0;color:rgba(255,255,255,0.78);font-size:13px}}
+  .body{{padding:40px 36px}}
+  .body p{{color:#374151;font-size:15px;line-height:1.75;margin:0 0 20px}}
+  .body p.muted{{color:#6b7280;font-size:13px}}
+  .divider{{height:1px;background:#e5e7eb;margin:24px 0}}
+  .btn-wrap{{text-align:center;margin:28px 0}}
+  .btn{{display:inline-block;background:linear-gradient(135deg,#10b981,#06b6d4);color:#ffffff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.3px}}
+  .url-box{{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:13px 16px;font-family:monospace;font-size:12px;color:#6b7280;word-break:break-all;margin-top:8px}}
+  .features{{display:table;width:100%;border-collapse:separate;border-spacing:0}}
+  .feat-row{{display:table-row}}
+  .feat-cell{{display:table-cell;width:50%;vertical-align:top;padding:10px 8px}}
+  .feat-item{{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px}}
+  .feat-item .icon{{font-size:20px;margin-bottom:6px}}
+  .feat-item .label{{font-size:12px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:0.5px}}
+  .feat-item .desc{{font-size:12px;color:#6b7280;margin-top:2px}}
+  .footer{{background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 36px;text-align:center}}
+  .footer p{{margin:0;font-size:12px;color:#9ca3af;line-height:1.6}}
+  .footer a{{color:#06b6d4;text-decoration:none}}
+</style>
+</head>
+<body>
+<div class="outer">
+  <div class="card">
+
+    <div class="banner">
+      <div class="banner-logo"><span>⚡ Macro Tech Titan</span></div>
+      <h1>MTT Infinite Optimizer</h1>
+      <p>Windows System Utility v1.1.0</p>
+    </div>
+
+    <div class="body">
+      <p>Hi there,</p>
+      <p>Thanks for requesting a download of <strong>MTT Windows Infinite Optimizer v1.1.0</strong>. Click the button below to verify your email and unlock your free download link.</p>
+
+      <div class="btn-wrap">
+        <a href="{verify_url}" class="btn">✅ &nbsp;Verify Email &amp; Get Download</a>
+      </div>
+
+      <div class="divider"></div>
+
+      <p class="muted"><strong>What you're getting:</strong></p>
+
+      <table class="features" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="width:50%;padding:6px 6px 6px 0;vertical-align:top">
+            <div class="feat-item">
+              <div class="icon">📊</div>
+              <div class="label">Health Score</div>
+              <div class="desc">Real-time PC diagnostics</div>
+            </div>
+          </td>
+          <td style="width:50%;padding:6px 0 6px 6px;vertical-align:top">
+            <div class="feat-item">
+              <div class="icon">🧹</div>
+              <div class="label">Smart Cleaner</div>
+              <div class="desc">Junk file removal</div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:6px 6px 0 0;vertical-align:top">
+            <div class="feat-item">
+              <div class="icon">🛡</div>
+              <div class="label">Security Scan</div>
+              <div class="desc">Cybersecurity checks</div>
+            </div>
+          </td>
+          <td style="padding:6px 0 0 6px;vertical-align:top">
+            <div class="feat-item">
+              <div class="icon">⚡</div>
+              <div class="label">Startup Boost</div>
+              <div class="desc">Optimize boot speed</div>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <div class="divider"></div>
+
+      <p class="muted">This link expires in <strong>7 days</strong>. If the button above doesn't work, copy and paste this URL into your browser:</p>
+      <div class="url-box">{verify_url}</div>
+    </div>
+
+    <div class="footer">
+      <p>You received this because you requested a download at<br>
+      <a href="https://windowzen.macrotechtitan.com">windowzen.macrotechtitan.com</a><br><br>
+      If you didn't request this, you can safely ignore this email.</p>
+    </div>
+
   </div>
-  <div class="foot">You received this because you requested a download at windowzen.macrotechtitan.com.<br>
-  If you didn't request this, you can safely ignore this email.</div>
-</div></body></html>"""
+</div>
+</body>
+</html>"""
     try:
         if not _RESEND_AVAILABLE:
             log_activity("Resend not available (desktop mode) — skipping email send", "INFO")
@@ -2457,6 +2538,8 @@ def register_download():
             return jsonify({"ok": True, "resent": True, "message": "Already verified! Resent your download link."})
         if existing and not existing.get("verified"):
             token = existing["token"]
+            registrations[email]["registered_at"] = datetime.utcnow().isoformat()
+            save_registrations(registrations)
         else:
             token = str(uuid.uuid4())
             registrations[email] = {
@@ -2473,12 +2556,20 @@ def register_download():
     return jsonify({"ok": True, "message": "Verification email sent! Check your inbox."})
 
 
+TOKEN_EXPIRY_DAYS = 7
+
 @app.route("/verify-email/<token>")
 def verify_email(token):
     registrations = load_registrations()
     for email, info in registrations.items():
         if info.get("token") == token:
             if not info.get("verified"):
+                try:
+                    registered_at = datetime.fromisoformat(info.get("registered_at", ""))
+                    if datetime.utcnow() - registered_at > timedelta(days=TOKEN_EXPIRY_DAYS):
+                        return render_template("download.html", error="This link has expired (links are valid for 7 days). Please request a new one.", token=None, email=None)
+                except Exception:
+                    pass
                 with _reg_lock:
                     registrations[email]["verified"] = True
                     registrations[email]["verified_at"] = datetime.utcnow().isoformat()

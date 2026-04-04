@@ -43,3 +43,4 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "app:app"]
 
 [userenv.shared]
 SITE_URL = "https://windowzen.macrotechtitan.com"
+SENDGRID_LIST_ID = "1fd9b188-b87e-4583-bc37-304f1ac142cc"

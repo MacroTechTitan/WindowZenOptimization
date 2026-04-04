@@ -232,6 +232,32 @@ def send_verification_email(to_email, token):
         return False
 
 
+def add_to_sendgrid_list(email):
+    api_key = os.environ.get("SENDGRID_API_KEY")
+    list_id = os.environ.get("SENDGRID_LIST_ID")
+    if not api_key:
+        log_activity("SendGrid sync skipped — no API key", "WARN")
+        return
+    payload = {"contacts": [{"email": email}]}
+    if list_id:
+        payload["list_ids"] = [list_id]
+    try:
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.sendgrid.com/v3/marketing/contacts",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="PUT",
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            log_activity(f"SendGrid contact added: {email} (status {resp.status})", "SUCCESS")
+    except Exception as e:
+        log_activity(f"SendGrid sync failed for {email}: {e}", "WARN")
+
+
 # ─── Analytics helpers ─────────────────────────────────────────
 def load_analytics():
     if os.path.exists(ANALYTICS_FILE):
@@ -2553,6 +2579,7 @@ def register_download():
     ok = send_verification_email(email, token)
     if not ok:
         return jsonify({"error": "Failed to send email. Please try again later."}), 500
+    add_to_sendgrid_list(email)
     return jsonify({"ok": True, "message": "Verification email sent! Check your inbox."})
 
 

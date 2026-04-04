@@ -145,3 +145,6 @@ static/
 - No keylogger functionality
 - Windows desktop app (pywebview + PyInstaller + NSIS)
 - Landing page at root for publishing
+
+## Pending Integrations / TODOs
+- **SendGrid list sync**: User wants emails captured via the download gate to be added to a SendGrid contact list automatically. The SendGrid Replit integration was not connected (dismissed). To implement: either connect the SendGrid integration via Replit's integration panel, OR store SENDGRID_API_KEY and SENDGRID_LIST_ID as secrets and wire up a `add_to_sendgrid_list(email)` call inside `register_download()` in app.py (after saving to registrations.json). Use SendGrid's Marketing Contacts API: PUT https://api.sendgrid.com/v3/marketing/contacts.

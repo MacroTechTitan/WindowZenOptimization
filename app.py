@@ -155,9 +155,17 @@ def send_verification_email(to_email, token):
       <p>Hi there,</p>
       <p>Thanks for requesting a download of <strong>MTT Windows Infinite Optimizer v1.1.0</strong>. Click the button below to verify your email and unlock your free download link.</p>
 
-      <div class="btn-wrap">
-        <a href="{verify_url}" class="btn">✅ &nbsp;Verify Email &amp; Get Download</a>
-      </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px auto;">
+        <tr>
+          <td style="border-radius:10px;background:#10b981;text-align:center;">
+            <a href="{verify_url}"
+               target="_blank"
+               style="display:inline-block;padding:16px 40px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;font-family:Helvetica,Arial,sans-serif;letter-spacing:0.3px;">
+              ✅ &nbsp;Verify Email &amp; Get Download
+            </a>
+          </td>
+        </tr>
+      </table>
 
       <div class="divider"></div>
 

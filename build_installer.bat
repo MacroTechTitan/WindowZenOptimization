@@ -5,7 +5,7 @@ echo ============================================
 echo.
 
 echo [1/5] Installing Python dependencies...
-pip install flask psutil apscheduler pywebview pyinstaller resend httpx anyio
+pip install flask psutil apscheduler pywebview pyinstaller
 echo.
 
 echo [2/5] Building executable with PyInstaller...
@@ -19,12 +19,10 @@ pyinstaller --noconfirm --onedir --windowed ^
     --hidden-import "apscheduler.triggers.interval" ^
     --hidden-import "apscheduler.triggers.date" ^
     --hidden-import "webview" ^
-    --hidden-import "resend" ^
-    --hidden-import "resend.emails" ^
-    --hidden-import "httpx" ^
-    --hidden-import "anyio" ^
     --hidden-import "pkg_resources" ^
-    --collect-all "resend" ^
+    --exclude-module "resend" ^
+    --exclude-module "httpx" ^
+    --exclude-module "anyio" ^
     desktop_launcher.py
 echo.
 

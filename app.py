@@ -1508,6 +1508,8 @@ log_activity("Ready for operations", "SUCCESS")
 
 @app.route("/")
 def landing():
+    if session.get('desktop_mode'):
+        return redirect('/app')
     increment_analytics("visits")
     return render_template("landing.html")
 
@@ -1531,6 +1533,7 @@ def eula_page():
 @app.route("/loading")
 def loading_page():
     """Desktop splash screen — served by Flask so there is only one navigation."""
+    session['desktop_mode'] = True
     return render_template("splash_loading.html")
 
 
@@ -1647,7 +1650,9 @@ del "%~f0"
 @app.route("/app")
 @app.route("/app/<page>")
 def dashboard(page=None):
-    desktop_mode = request.args.get("mode") == "desktop"
+    desktop_mode = request.args.get("mode") == "desktop" or bool(session.get('desktop_mode'))
+    if desktop_mode:
+        session['desktop_mode'] = True
     return render_template("dashboard.html", initial_page=page or "dashboard", desktop_mode=desktop_mode)
 
 

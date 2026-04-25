@@ -158,7 +158,11 @@
       setTimeout(nextStep, 420);
     } else {
       setTimeout(function() {
-        window.location.replace('/app?mode=desktop');
+        document.body.style.transition = 'opacity 0.25s ease';
+        document.body.style.opacity = '0';
+        setTimeout(function() {
+          window.location.replace('/app?mode=desktop');
+        }, 260);
       }, 300);
     }
   }

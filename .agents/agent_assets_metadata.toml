@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "bd9A-hSoI_KtsCfHnWcaS"
+uri = "file://mtt_fresh_build.zip"
+type = "unspecified"
+title = "MTT Infinite Optimizer — Full Source (Fresh Build)"

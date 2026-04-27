@@ -6,3 +6,9 @@ id = "bd9A-hSoI_KtsCfHnWcaS"
 uri = "file://mtt_fresh_build.zip"
 type = "unspecified"
 title = "MTT Infinite Optimizer — Full Source (Fresh Build)"
+
+[[outputs]]
+id = "7tgx3cubnr1JTQueeVFIv"
+uri = "file://mtt_source_only.zip"
+type = "unspecified"
+title = "MTT Infinite Optimizer — Source Files Only (4.7 MB)"

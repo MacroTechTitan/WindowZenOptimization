@@ -12,3 +12,9 @@ id = "7tgx3cubnr1JTQueeVFIv"
 uri = "file://mtt_source_only.zip"
 type = "unspecified"
 title = "MTT Infinite Optimizer — Source Files Only (4.7 MB)"
+
+[[outputs]]
+id = "yxyhbYlxYOJKJz1Sf7Vdx"
+uri = "file://mtt_project.zip"
+type = "unspecified"
+title = "MTT Infinite Optimizer — Full Project (4.7 MB)"

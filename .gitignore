@@ -8,3 +8,7 @@ build/
 *.spec
 .venv/
 registrations.json
+
+.config/
+.local/
+.replit

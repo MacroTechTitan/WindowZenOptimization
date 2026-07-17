@@ -1538,7 +1538,9 @@ def loading_page():
 
 
 # ── Update system ────────────────────────────────────────────────
-UPDATE_SERVER = "https://windowzen.macrotechtitan.com/updates/version.json"
+# The app never modifies itself. It only checks GitHub Releases and points the
+# user at the release page; the NSIS installer handles upgrade-in-place.
+GITHUB_RELEASES_API = "https://api.github.com/repos/MacroTechTitan/WindowZenOptimization/releases/latest"
 LOCAL_VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "version.json")
 
 
@@ -1559,92 +1561,49 @@ def serve_version_json():
     return resp
 
 
+def _ver_tuple(v):
+    parts = []
+    for x in str(v).lstrip("vV").split("."):
+        try:
+            parts.append(int(x))
+        except Exception:
+            parts.append(0)
+    return tuple(parts)
+
+
 @app.route("/api/updates/check")
 def api_updates_check():
-    """Check the remote update server for a newer version."""
-    import urllib.request, urllib.error
+    """Check GitHub Releases for a newer version. The app never self-updates."""
+    import urllib.request
     local = get_local_version()
+    local_version = str(local.get("version", "1.0.0"))
+
     try:
-        req = urllib.request.urlopen(UPDATE_SERVER, timeout=10)
-        remote = json.loads(req.read().decode())
-    except urllib.error.URLError as e:
-        # Fallback: check our own endpoint for demo purposes
-        remote = local
-        remote["_note"] = f"Could not reach update server: {e.reason}"
-
-    def ver_tuple(v):
-        try:
-            return tuple(int(x) for x in str(v).split("."))
-        except Exception:
-            return (0,)
-
-    local_build  = local.get("build", 0)
-    remote_build = remote.get("build", 0)
-    update_available = remote_build > local_build
-
-    return jsonify({
-        "local_version":  local.get("version"),
-        "local_build":    local_build,
-        "remote_version": remote.get("version"),
-        "remote_build":   remote_build,
-        "update_available": update_available,
-        "changelog":      remote.get("changelog", []),
-        "download_url":   remote.get("download_url", ""),
-        "release_date":   remote.get("release_date", ""),
-        "note":           remote.get("_note", ""),
-    })
-
-
-@app.route("/api/updates/apply", methods=["POST"])
-def api_updates_apply():
-    """Download the update zip and apply it (Windows only)."""
-    import urllib.request, zipfile, tempfile, shutil
-
-    data = request.json or {}
-    download_url = data.get("download_url", "")
-
-    if not IS_WINDOWS:
+        req = urllib.request.Request(
+            GITHUB_RELEASES_API,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "WindowZenOptimizer"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            release = json.loads(resp.read().decode())
+    except Exception as e:
         return jsonify({
-            "status": "demo",
-            "message": "Update download simulated (demo mode). On Windows, the app would download the update, replace files, and restart automatically."
+            "update_available": False,
+            "latest": local_version,
+            "current": local_version,
+            "url": "",
+            "error": f"Could not reach the update server: {e}",
         })
 
-    if not download_url:
-        return jsonify({"status": "error", "message": "No download URL provided."}), 400
+    tag = str(release.get("tag_name", "")).lstrip("vV")
+    html_url = release.get("html_url", "")
+    update_available = bool(tag) and _ver_tuple(tag) > _ver_tuple(local_version)
 
-    try:
-        install_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        tmp_zip     = os.path.join(tempfile.gettempdir(), "mtt_update.zip")
-        tmp_extract = os.path.join(tempfile.gettempdir(), "mtt_update_extracted")
-
-        # Download
-        urllib.request.urlretrieve(download_url, tmp_zip)
-
-        # Extract
-        if os.path.exists(tmp_extract):
-            shutil.rmtree(tmp_extract)
-        with zipfile.ZipFile(tmp_zip, "r") as z:
-            z.extractall(tmp_extract)
-
-        # Write a bat script that waits 2s, copies files over, then relaunches
-        exe_name = os.path.basename(sys.argv[0])
-        bat_path  = os.path.join(tempfile.gettempdir(), "mtt_updater.bat")
-        bat_content = f"""@echo off
-timeout /t 2 /nobreak >nul
-xcopy /E /Y /I "{tmp_extract}\\*" "{install_dir}\\"
-start "" "{os.path.join(install_dir, exe_name)}"
-del "%~f0"
-"""
-        with open(bat_path, "w") as f:
-            f.write(bat_content)
-
-        # Launch updater and exit
-        subprocess.Popen(["cmd", "/c", bat_path], creationflags=0x08000000)
-
-        return jsonify({"status": "ok", "message": "Update downloaded. Applying and restarting..."})
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({
+        "update_available": update_available,
+        "latest": tag or local_version,
+        "current": local_version,
+        "url": html_url,
+    })
 
 
 @app.route("/app")

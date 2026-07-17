@@ -580,23 +580,25 @@ const App = {
             const res = await fetch('/api/updates/check');
             const data = await res.json();
 
-            if (localVerEl) localVerEl.textContent = `${data.local_version} (build ${data.local_build})`;
+            if (localVerEl) localVerEl.textContent = `v${data.current}`;
 
             let out = `Update Check Results\n${'='.repeat(40)}\n`;
-            out += `Installed : v${data.local_version} (build ${data.local_build})\n`;
-            out += `Available : v${data.remote_version} (build ${data.remote_build})\n`;
-            out += `Released  : ${data.release_date || 'N/A'}\n`;
-            if (data.note) out += `\nNote: ${data.note}\n`;
+            out += `Installed : v${data.current}\n`;
+            out += `Latest    : v${data.latest}\n`;
+            if (data.error) out += `\nNote: ${data.error}\n`;
 
             if (data.update_available) {
-                out += `\n✅ UPDATE AVAILABLE!\n\nWhat's new:\n`;
-                (data.changelog || []).forEach(c => { out += `  • ${c}\n`; });
-                if (statusEl) { statusEl.textContent = `Update available: v${data.remote_version}`; statusEl.style.color = 'var(--accent-green)'; }
-                if (dlBtn) { dlBtn.style.display = 'inline-flex'; }
-                this._pendingUpdateUrl = data.download_url;
+                out += `\n✅ UPDATE AVAILABLE — v${data.latest}\n\nDownload the new installer from the release page and run it to upgrade.\n`;
+                if (statusEl) { statusEl.textContent = `Update available: v${data.latest}`; statusEl.style.color = 'var(--accent-green)'; }
+                if (dlBtn) {
+                    dlBtn.style.display = 'inline-flex';
+                    dlBtn.textContent = '⬇ Download';
+                }
+                this._pendingUpdateUrl = data.url || '';
             } else {
-                out += `\n✅ You are up to date.\n`;
-                if (statusEl) { statusEl.textContent = 'Up to date'; statusEl.style.color = 'var(--accent-green)'; }
+                out += data.error ? `\n⚠ Could not confirm the latest version.\n` : `\n✅ You are up to date.\n`;
+                if (statusEl) { statusEl.textContent = data.error ? 'Check failed' : 'Up to date'; statusEl.style.color = data.error ? 'var(--accent-red)' : 'var(--accent-green)'; }
+                if (dlBtn) dlBtn.style.display = 'none';
             }
 
             if (outputEl) outputEl.textContent = out;
@@ -608,44 +610,14 @@ const App = {
         }
     },
 
-    async downloadUpdate() {
-        const dlBtn = document.getElementById('update-download-btn');
-        const outputEl = document.getElementById('update-output');
-
+    downloadUpdate() {
+        // The app never modifies itself — just open the GitHub release page so the
+        // user can download and run the signed installer.
         if (!this._pendingUpdateUrl) {
-            this.showNotification('No update URL available. Check for updates first.', 'error');
+            this.showNotification('No release page available. Check for updates first.', 'error');
             return;
         }
-        if (!confirm(`Download and install the update now?\n\nThe app will restart automatically after the update is applied.`)) return;
-
-        if (dlBtn) { dlBtn.disabled = true; dlBtn.textContent = 'Downloading...'; }
-        if (outputEl) { outputEl.style.display = 'block'; outputEl.textContent += '\n\nDownloading update...\n'; }
-
-        try {
-            const res = await fetch('/api/updates/apply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ download_url: this._pendingUpdateUrl })
-            });
-            const data = await res.json();
-
-            if (data.status === 'ok') {
-                if (outputEl) outputEl.textContent += `✅ ${data.message}\nThe app will close and restart. Please wait...\n`;
-                this.showNotification('Update applied! Restarting...', 'success');
-            } else if (data.status === 'demo') {
-                if (outputEl) outputEl.textContent += `ℹ️ DEMO MODE:\n${data.message}\n`;
-                this.showNotification('Demo mode: update simulated', 'info');
-                if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = '⬇ Download & Install Update'; }
-            } else {
-                if (outputEl) outputEl.textContent += `❌ Error: ${data.message}\n`;
-                this.showNotification('Update failed: ' + data.message, 'error');
-                if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = '⬇ Download & Install Update'; }
-            }
-        } catch(e) {
-            if (outputEl) outputEl.textContent += '\n[ERROR] Failed to apply update.\n';
-            this.showNotification('Update failed', 'error');
-            if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = '⬇ Download & Install Update'; }
-        }
+        window.open(this._pendingUpdateUrl, '_blank', 'noopener');
     },
 
     async saveSettings() {

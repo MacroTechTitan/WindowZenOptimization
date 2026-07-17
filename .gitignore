@@ -12,3 +12,8 @@ registrations.json
 .config/
 .local/
 .replit
+
+dist/
+build/
+.venv/
+*.spec

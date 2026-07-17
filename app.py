@@ -3180,6 +3180,43 @@ def api_apps_export():
                                headers={"Content-Disposition": "attachment;filename=installed_apps.csv"})
 
 
+_UNINSTALL_REG_PATHS = [
+    ("HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+    ("HKLM", r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+    ("HKCU", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+]
+
+
+def _build_uninstall_invocation(cmd):
+    """Turn a registry UninstallString into (exe, args) suitable for ShellExecuteW.
+
+    MSI uninstall strings (MsiExec.exe /X{GUID} or /I{GUID}) are normalised to a
+    quiet-with-basic-UI msiexec call. Everything else is split into a program path
+    and its arguments, honouring a leading quoted path.
+    """
+    import re
+    s = (cmd or "").strip()
+
+    guid_match = re.search(r"\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}", s)
+    if guid_match and re.search(r"msiexec", s, re.IGNORECASE) and re.search(r"/[xi]\s*\{", s, re.IGNORECASE):
+        return "msiexec.exe", f"/x {guid_match.group(0)} /qb"
+
+    if s.startswith('"'):
+        end = s.find('"', 1)
+        if end != -1:
+            return s[1:end], s[end + 1:].strip()
+        return s.strip('"'), ""
+
+    # Unquoted path that may itself contain spaces: cut at the first ".exe".
+    low = s.lower()
+    idx = low.find(".exe")
+    if idx != -1:
+        return s[:idx + 4], s[idx + 4:].strip()
+
+    parts = s.split(None, 1)
+    return parts[0], (parts[1] if len(parts) > 1 else "")
+
+
 @app.route("/api/apps/uninstall", methods=["POST"])
 def api_apps_uninstall():
     data = request.get_json() or {}
@@ -3190,11 +3227,90 @@ def api_apps_uninstall():
     log_activity(f"App Manager: launching uninstaller for '{name}'", "WARN")
     if not IS_WINDOWS:
         return jsonify({"ok": True, "demo": True, "msg": f"[DEMO] Would run: {cmd}"})
+
+    import ctypes
     try:
-        subprocess.Popen(cmd, shell=True, creationflags=_WIN_NO_WINDOW)
-        return jsonify({"ok": True, "msg": f"Uninstaller launched for {name}. Follow the prompts."})
+        exe, args = _build_uninstall_invocation(cmd)
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+        return jsonify({"ok": False, "error": f"Could not parse the uninstall command: {e}"})
+
+    working_dir = None
+    try:
+        exe_dir = os.path.dirname(exe)
+        if exe_dir and os.path.isdir(exe_dir):
+            working_dir = exe_dir
+    except Exception:
+        working_dir = None
+
+    # ShellExecuteW with the "runas" verb triggers a UAC elevation prompt, and
+    # SW_SHOWNORMAL (1) keeps the uninstaller's own UI visible.
+    try:
+        ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, args or None, working_dir, 1)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to launch the uninstaller: {e}"})
+
+    if isinstance(ret, int) and ret <= 32:
+        errors = {
+            2:  "The uninstaller could not be found. The app may already be removed.",
+            3:  "The uninstaller path is invalid.",
+            5:  "Access denied — the UAC elevation prompt was declined.",
+            31: "No application is associated with this uninstaller.",
+        }
+        msg = errors.get(ret, f"Could not launch the uninstaller (ShellExecute code {ret}).")
+        log_activity(f"App Manager: uninstaller for '{name}' failed (code {ret})", "ERROR")
+        return jsonify({"ok": False, "error": msg})
+
+    return jsonify({"ok": True, "msg": f"Uninstaller launched for {name}. Follow the prompts, then click Verify."})
+
+
+def _registry_has_display_name(display_name):
+    """Return True if any Uninstall key still lists this exact DisplayName."""
+    import winreg
+    hive_map = {"HKLM": winreg.HKEY_LOCAL_MACHINE, "HKCU": winreg.HKEY_CURRENT_USER}
+    target = (display_name or "").strip().lower()
+    if not target:
+        return False
+    for hive_name, path in _UNINSTALL_REG_PATHS:
+        try:
+            key = winreg.OpenKey(hive_map[hive_name], path)
+        except OSError:
+            continue
+        try:
+            count = winreg.QueryInfoKey(key)[0]
+            for i in range(count):
+                try:
+                    sub = winreg.OpenKey(key, winreg.EnumKey(key, i))
+                except OSError:
+                    continue
+                try:
+                    dn = winreg.QueryValueEx(sub, "DisplayName")[0]
+                    if dn and str(dn).strip().lower() == target:
+                        return True
+                except OSError:
+                    pass
+                finally:
+                    winreg.CloseKey(sub)
+        finally:
+            winreg.CloseKey(key)
+    return False
+
+
+@app.route("/api/apps/verify-uninstall", methods=["POST"])
+def api_apps_verify_uninstall():
+    """Re-read the registry to confirm whether an app is still installed."""
+    data = request.get_json() or {}
+    name = data.get("name", "")
+    if not name:
+        return jsonify({"ok": False, "error": "No app name provided."})
+    if not IS_WINDOWS:
+        return jsonify({"ok": True, "demo": True, "still_present": False})
+    try:
+        present = _registry_has_display_name(name)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Could not read the registry: {e}"})
+    if not present:
+        log_activity(f"App Manager: confirmed '{name}' removed", "SUCCESS")
+    return jsonify({"ok": True, "still_present": present})
 
 
 @app.route("/api/apps/open-folder", methods=["POST"])

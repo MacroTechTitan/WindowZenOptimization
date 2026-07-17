@@ -1926,11 +1926,38 @@ const App = {
             }).then(r => r.json());
             if (res.ok) {
                 this.showNotification(res.msg || `Uninstaller launched for ${name}`, 'success');
+                // Let the user complete the uninstaller wizard, then confirm removal.
+                setTimeout(() => {
+                    if (confirm(`When you've finished uninstalling "${name}", click OK to verify it was removed.`)) {
+                        this.verifyUninstall(name);
+                    }
+                }, 1500);
             } else {
                 this.showNotification(res.error || 'Failed to launch uninstaller', 'error');
             }
         } catch(e) {
             this.showNotification('Network error launching uninstaller', 'error');
+        }
+    },
+
+    async verifyUninstall(name) {
+        try {
+            const res = await fetch('/api/apps/verify-uninstall', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({name})
+            }).then(r => r.json());
+            if (!res.ok) {
+                this.showNotification(res.error || 'Could not verify removal', 'error');
+                return;
+            }
+            if (res.still_present) {
+                this.showNotification(`"${name}" is still installed — the uninstall may not have completed.`, 'warn');
+            } else {
+                this.showNotification(`"${name}" was removed successfully.`, 'success');
+                this.refreshApps();
+            }
+        } catch(e) {
+            this.showNotification('Could not verify removal', 'error');
         }
     },
 

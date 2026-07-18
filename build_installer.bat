@@ -10,6 +10,7 @@ echo.
 
 echo [2/5] Building executable with PyInstaller...
 pyinstaller --noconfirm --onedir --windowed ^
+    --uac-admin ^
     --name "MTT Windows Infinite Optimizer" ^
     --add-data "templates;templates" ^
     --add-data "static;static" ^
@@ -19,7 +20,6 @@ pyinstaller --noconfirm --onedir --windowed ^
     --hidden-import "apscheduler.triggers.interval" ^
     --hidden-import "apscheduler.triggers.date" ^
     --hidden-import "webview" ^
-    --hidden-import "pkg_resources" ^
     --exclude-module "resend" ^
     --exclude-module "httpx" ^
     --exclude-module "anyio" ^

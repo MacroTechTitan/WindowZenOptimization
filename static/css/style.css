@@ -700,6 +700,27 @@ body::before {
     text-align: right;
 }
 
+/* Enhanced startup table: name | source | risk badge | toggle, each in its own
+   column so the risk badge never overlaps the toggle switch. */
+.process-item.startup-enhanced {
+    grid-template-columns: minmax(0, 1fr) 60px auto 64px;
+    gap: 12px;
+    align-items: center;
+}
+
+.process-item.startup-enhanced .cpu,
+.process-item.startup-enhanced .mem {
+    text-align: left;
+}
+
+.process-item.startup-enhanced .mem {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
 .process-header {
     font-weight: 700;
     color: var(--text-muted) !important;

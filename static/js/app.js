@@ -774,12 +774,12 @@ const App = {
                 const pathSafe = (item.path || '').replace(/'/g, "\\'");
                 const hiveSafe = (item.hive || 'HKCU');
                 if (enhanced) {
-                    return `<div class="process-item" style="flex-wrap:wrap;gap:4px;" title="${rec}">
+                    return `<div class="process-item startup-enhanced" title="${rec}">
                         <span class="name">${item.name}</span>
                         <span class="cpu" style="font-size:10px;color:var(--text-muted);">${hiveSafe}</span>
                         <span class="mem" style="font-size:10px;">
                             <span style="color:${impactColor};font-weight:600;">${impact}</span>
-                            &nbsp;<span style="color:${catColor};font-size:9px;padding:1px 5px;border:1px solid ${catColor};border-radius:3px;">${catLabel}</span>
+                            <span style="color:${catColor};font-size:9px;padding:1px 5px;border:1px solid ${catColor};border-radius:3px;">${catLabel}</span>
                         </span>
                         <label class="toggle">
                             <input type="checkbox" ${item.enabled ? 'checked' : ''}

@@ -1808,37 +1808,39 @@ def api_startup():
     if IS_WINDOWS:
         try:
             import winreg
-            for hive, hive_name, path in [
-                (winreg.HKEY_CURRENT_USER, "HKCU", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
-                (winreg.HKEY_LOCAL_MACHINE, "HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
-            ]:
-                try:
-                    key = winreg.OpenKey(hive, path)
-                    i = 0
-                    while True:
-                        try:
-                            name, value, _ = winreg.EnumValue(key, i)
-                            items.append({
-                                "name": name,
-                                "path": value,
-                                "hive": hive_name,
-                                "enabled": True,
-                            })
-                            i += 1
-                        except OSError:
-                            break
-                    winreg.CloseKey(key)
-                except OSError:
-                    pass
-        except ImportError:
-            items = _get_demo_startup_items()
+        except ImportError as e:
+            # On Windows this is a real failure — report it, don't fabricate data.
+            log_activity(f"Startup scan failed: {e}", "ERROR")
+            return jsonify({"ok": False, "error": f"Registry access is unavailable: {e}"}), 500
+        for hive, hive_name, path in [
+            (winreg.HKEY_CURRENT_USER, "HKCU", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+            (winreg.HKEY_LOCAL_MACHINE, "HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+        ]:
+            try:
+                key = winreg.OpenKey(hive, path)
+                i = 0
+                while True:
+                    try:
+                        name, value, _ = winreg.EnumValue(key, i)
+                        items.append({
+                            "name": name,
+                            "path": value,
+                            "hive": hive_name,
+                            "enabled": True,
+                        })
+                        i += 1
+                    except OSError:
+                        break
+                winreg.CloseKey(key)
+            except OSError:
+                pass
     else:
         items = _get_demo_startup_items()
     items.sort(key=lambda x: x["name"])
     for item in items:
         scoring = _score_startup_item(item)
         item.update(scoring)
-    return jsonify(items)
+    return jsonify({"ok": True, "items": items, "demo": not IS_WINDOWS})
 
 
 def _get_demo_startup_items():
@@ -3077,8 +3079,10 @@ def _scan_apps_from_registry():
                 winreg.CloseKey(key)
             except Exception:
                 pass
-    except ImportError:
-        return _get_demo_apps()
+    except ImportError as e:
+        # winreg is unavailable — on Windows this is a real failure, not a cue to
+        # fabricate a demo app list.
+        raise RuntimeError(f"Registry access is unavailable: {e}")
 
     apps.sort(key=lambda x: x["name"].lower())
     return apps
@@ -3121,13 +3125,20 @@ def _get_demo_apps():
 
 @app.route("/api/apps/list")
 def api_apps_list():
-    apps = _scan_apps_from_registry()
-    return jsonify(apps)
+    try:
+        apps = _scan_apps_from_registry()
+    except Exception as e:
+        log_activity(f"App Manager: registry scan failed: {e}", "ERROR")
+        return jsonify({"ok": False, "error": f"Could not read installed apps from the registry: {e}"}), 500
+    return jsonify({"ok": True, "apps": apps, "demo": not IS_WINDOWS})
 
 
 @app.route("/api/apps/export", methods=["POST"])
 def api_apps_export():
-    apps = _scan_apps_from_registry()
+    try:
+        apps = _scan_apps_from_registry()
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Could not read installed apps: {e}"}), 500
     import csv
     import io
     buf = io.StringIO()

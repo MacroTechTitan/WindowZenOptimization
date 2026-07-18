@@ -753,6 +753,14 @@ const App = {
         try {
             const res = await fetch('/api/startup-items');
             const data = await res.json();
+            if (data && data.ok === false) {
+                const errHtml = `<div class="info-row"><span class="info-label" style="color:var(--accent-red);">${data.error || 'Could not read startup items.'}</span></div>`;
+                ['startup-items-list', 'speedup-startup-list'].forEach(id => {
+                    const c = document.getElementById(id);
+                    if (c) c.innerHTML = errHtml;
+                });
+                return;
+            }
             const items = Array.isArray(data) ? data : (data.items || []);
 
             const makeRow = (item, enhanced) => {
@@ -1801,8 +1809,15 @@ const App = {
         const countEl = document.getElementById('apps-count');
         if (listEl) listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:32px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">Scanning registry for installed apps…</div>';
         try {
-            this._appsData = await fetch('/api/apps/list').then(r => r.json());
-            if (countEl) countEl.textContent = `${this._appsData.length} apps found`;
+            const data = await fetch('/api/apps/list').then(r => r.json());
+            if (data && data.ok === false) {
+                this._appsData = [];
+                if (countEl) countEl.textContent = '';
+                if (listEl) listEl.innerHTML = `<div style="text-align:center;color:var(--accent-red);padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;">${data.error || 'Failed to load app list.'}</div>`;
+                return;
+            }
+            this._appsData = Array.isArray(data) ? data : (data.apps || []);
+            this._appsDemo = !!(data && data.demo);
             this.renderApps();
             this._renderBloatPanel();
         } catch(e) {
@@ -1839,7 +1854,7 @@ const App = {
         else if (sortBy === 'publisher') apps.sort((a,b) => (a.publisher||'').localeCompare(b.publisher||''));
         else apps.sort((a,b) => a.name.localeCompare(b.name));
 
-        if (countEl) countEl.textContent = `${apps.length} apps`;
+        if (countEl) countEl.textContent = `${apps.length} apps${this._appsDemo ? ' (demo data)' : ''}`;
         if (!listEl) return;
         if (apps.length === 0) {
             listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;font-family:\'JetBrains Mono\',monospace;font-size:12px;">No apps match the current filter.</div>';

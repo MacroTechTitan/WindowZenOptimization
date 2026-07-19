@@ -1878,11 +1878,12 @@ const App = {
                 <span class="mem" style="color:var(--text-muted);font-size:10px;">${a.install_date || '—'}</span>
                 <span class="cpu">${tl ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border:1px solid ${tc};border-radius:3px;color:${tc};">${tl}</span>` : ''}</span>
                 <span class="cpu" style="display:flex;gap:4px;">
-                    ${hasUninstall ? `<button class="btn" style="padding:2px 8px;font-size:10px;" onclick="App.launchUninstall(${JSON.stringify(a.name)}, ${JSON.stringify(a.uninstall_cmd)})">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">—</span>'}
+                    ${hasUninstall ? `<button class="btn uninstall-btn" style="padding:2px 8px;font-size:10px;" data-app-name="${encodeURIComponent(a.name)}" data-uninstall-cmd="${encodeURIComponent(a.uninstall_cmd)}">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">—</span>'}
                     ${hasFolder ? `<button class="btn" style="padding:2px 8px;font-size:10px;" onclick="App.openAppFolder(${JSON.stringify(a.install_location)})">&#x1F4C2;</button>` : ''}
                 </span>
             </div>`;
         }).join('');
+        this._ensureUninstallDelegation();
     },
 
     _renderBloatPanel() {
@@ -1900,8 +1901,24 @@ const App = {
                     <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-yellow);font-weight:600;">${a.name}</div>
                     <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${a.publisher || 'Unknown publisher'}${a.size_mb ? ' · ' + a.size_mb + ' MB' : ''}</div>
                 </div>
-                ${a.uninstall_cmd ? `<button class="btn" style="padding:3px 10px;font-size:10px;border-color:var(--accent-red);color:var(--accent-red);" onclick="App.launchUninstall(${JSON.stringify(a.name)}, ${JSON.stringify(a.uninstall_cmd)})">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">No uninstaller</span>'}
+                ${a.uninstall_cmd ? `<button class="btn uninstall-btn" style="padding:3px 10px;font-size:10px;border-color:var(--accent-red);color:var(--accent-red);" data-app-name="${encodeURIComponent(a.name)}" data-uninstall-cmd="${encodeURIComponent(a.uninstall_cmd)}">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">No uninstaller</span>'}
             </div>`).join('');
+        this._ensureUninstallDelegation();
+    },
+
+    // One document-level delegated handler for every .uninstall-btn, attached once.
+    // Values ride in data attributes (encodeURIComponent) because UninstallString
+    // routinely contains quotes and backslashes that break an inline onclick.
+    _ensureUninstallDelegation() {
+        if (this._uninstallDelegationAttached) return;
+        this._uninstallDelegationAttached = true;
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.uninstall-btn');
+            if (!btn) return;
+            const name = decodeURIComponent(btn.dataset.appName || '');
+            const cmd = decodeURIComponent(btn.dataset.uninstallCmd || '');
+            App.launchUninstall(name, cmd);
+        });
     },
 
     async launchUninstall(name, cmd) {

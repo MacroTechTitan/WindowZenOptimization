@@ -1879,11 +1879,11 @@ const App = {
                 <span class="cpu">${tl ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border:1px solid ${tc};border-radius:3px;color:${tc};">${tl}</span>` : ''}</span>
                 <span class="cpu" style="display:flex;gap:4px;">
                     ${hasUninstall ? `<button class="btn uninstall-btn" style="padding:2px 8px;font-size:10px;" data-app-name="${encodeURIComponent(a.name)}" data-uninstall-cmd="${encodeURIComponent(a.uninstall_cmd)}">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">—</span>'}
-                    ${hasFolder ? `<button class="btn" style="padding:2px 8px;font-size:10px;" onclick="App.openAppFolder(${JSON.stringify(a.install_location)})">&#x1F4C2;</button>` : ''}
+                    ${hasFolder ? `<button class="btn open-folder-btn" style="padding:2px 8px;font-size:10px;" data-install-location="${encodeURIComponent(a.install_location)}">&#x1F4C2;</button>` : ''}
                 </span>
             </div>`;
         }).join('');
-        this._ensureUninstallDelegation();
+        this._ensureAppRowDelegation();
     },
 
     _renderBloatPanel() {
@@ -1903,21 +1903,28 @@ const App = {
                 </div>
                 ${a.uninstall_cmd ? `<button class="btn uninstall-btn" style="padding:3px 10px;font-size:10px;border-color:var(--accent-red);color:var(--accent-red);" data-app-name="${encodeURIComponent(a.name)}" data-uninstall-cmd="${encodeURIComponent(a.uninstall_cmd)}">Uninstall</button>` : '<span style="font-size:10px;color:var(--text-muted);">No uninstaller</span>'}
             </div>`).join('');
-        this._ensureUninstallDelegation();
+        this._ensureAppRowDelegation();
     },
 
-    // One document-level delegated handler for every .uninstall-btn, attached once.
+    // One document-level delegated handler for the app-row buttons, attached once.
     // Values ride in data attributes (encodeURIComponent) because UninstallString
-    // routinely contains quotes and backslashes that break an inline onclick.
-    _ensureUninstallDelegation() {
-        if (this._uninstallDelegationAttached) return;
-        this._uninstallDelegationAttached = true;
+    // and install paths routinely contain quotes and backslashes that break an
+    // inline onclick.
+    _ensureAppRowDelegation() {
+        if (this._appRowDelegationAttached) return;
+        this._appRowDelegationAttached = true;
         document.addEventListener('click', (e) => {
-            const btn = e.target.closest('.uninstall-btn');
-            if (!btn) return;
-            const name = decodeURIComponent(btn.dataset.appName || '');
-            const cmd = decodeURIComponent(btn.dataset.uninstallCmd || '');
-            App.launchUninstall(name, cmd);
+            const uninstallBtn = e.target.closest('.uninstall-btn');
+            if (uninstallBtn) {
+                const name = decodeURIComponent(uninstallBtn.dataset.appName || '');
+                const cmd = decodeURIComponent(uninstallBtn.dataset.uninstallCmd || '');
+                App.launchUninstall(name, cmd);
+                return;
+            }
+            const folderBtn = e.target.closest('.open-folder-btn');
+            if (folderBtn) {
+                App.openAppFolder(decodeURIComponent(folderBtn.dataset.installLocation || ''));
+            }
         });
     },
 

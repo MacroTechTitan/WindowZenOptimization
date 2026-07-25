@@ -33,17 +33,17 @@ from core.state import (
     NETWORK_FIX_STEPS, _net_fix_lock, network_fix_state,
 )
 from core.util import log_activity, format_bytes, get_dir_size, get_windows_username
+from core.config import (
+    settings, save_settings, load_analytics, save_analytics, increment_analytics,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "mtt-optimizer-secret-2026-macro-tech-titan")
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB upload limit
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 
-SETTINGS_FILE = "settings.json"
-ANALYTICS_FILE = "analytics.json"
 REGISTRATIONS_FILE = "registrations.json"
 SITE_URL = os.environ.get("SITE_URL", "https://windowzen.macrotechtitan.com")
-_analytics_lock = threading.Lock()
 _reg_lock = threading.Lock()
 scheduler = BackgroundScheduler()
 
@@ -271,78 +271,6 @@ def add_to_sendgrid_list(email):
         log_activity(f"SendGrid sync failed for {email}: {e}", "WARN")
 
 
-# ─── Analytics helpers ─────────────────────────────────────────
-def load_analytics():
-    if os.path.exists(ANALYTICS_FILE):
-        try:
-            with open(ANALYTICS_FILE, "r") as f:
-                data = json.load(f)
-                data.setdefault("visits", 0)
-                data.setdefault("downloads", 0)
-                return data
-        except Exception:
-            pass
-    return {"visits": 0, "downloads": 0}
-
-
-def save_analytics(data):
-    try:
-        with open(ANALYTICS_FILE, "w") as f:
-            json.dump(data, f)
-    except Exception:
-        pass
-
-
-def increment_analytics(key):
-    with _analytics_lock:
-        data = load_analytics()
-        data[key] = data.get(key, 0) + 1
-        save_analytics(data)
-        return data
-
-DEFAULT_SETTINGS = {
-    "auto_clean_enabled": True,
-    "auto_clean_time": "17:00",
-    "clean_temp_files": True,
-    "clean_user_temp": True,
-    "clean_browser_cache": True,
-    "clean_recycle_bin": False,
-    "clean_thumbnails": True,
-    "clean_downloaded_program_files": True,
-    "clean_directx_shader_cache": True,
-    "clean_error_reports": True,
-    "clean_delivery_optimization": True,
-    "clean_defender_temp": True,
-    "clean_windows_update": False,
-    "clean_windows_old": False,
-    "clean_old_logs": True,
-    "activity_tracking": True,
-    "break_reminder_minutes": 40,
-    "dark_mode": True,
-}
-
-
-def load_settings():
-    if os.path.exists(SETTINGS_FILE):
-        try:
-            with open(SETTINGS_FILE, "r") as f:
-                saved = json.load(f)
-                merged = {**DEFAULT_SETTINGS, **saved}
-                return merged
-        except (json.JSONDecodeError, IOError):
-            pass
-    return dict(DEFAULT_SETTINGS)
-
-
-def save_settings():
-    try:
-        with open(SETTINGS_FILE, "w") as f:
-            json.dump(settings, f, indent=2)
-    except IOError:
-        pass
-
-
-settings = load_settings()
 
 
 

@@ -36,35 +36,15 @@ from core.util import log_activity, format_bytes, get_dir_size, get_windows_user
 from core.config import (
     settings, save_settings, load_analytics, save_analytics, increment_analytics,
 )
+from core.registrations import load_registrations, save_registrations, _reg_lock
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "mtt-optimizer-secret-2026-macro-tech-titan")
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB upload limit
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 
-REGISTRATIONS_FILE = "registrations.json"
 SITE_URL = os.environ.get("SITE_URL", "https://windowzen.macrotechtitan.com")
-_reg_lock = threading.Lock()
 scheduler = BackgroundScheduler()
-
-
-# ─── Registration helpers ──────────────────────────────────────
-def load_registrations():
-    if os.path.exists(REGISTRATIONS_FILE):
-        try:
-            with open(REGISTRATIONS_FILE, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
-
-
-def save_registrations(data):
-    try:
-        with open(REGISTRATIONS_FILE, "w") as f:
-            json.dump(data, f, indent=2)
-    except Exception:
-        pass
 
 
 def get_resend_credentials():

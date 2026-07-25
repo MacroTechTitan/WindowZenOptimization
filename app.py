@@ -25,6 +25,9 @@ from flask import Flask, render_template, jsonify, request, session, redirect, u
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from core.state import activity_log, LOG_MAX
+from core.util import log_activity, format_bytes, get_dir_size, get_windows_username
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "mtt-optimizer-secret-2026-macro-tech-titan")
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB upload limit
@@ -38,8 +41,6 @@ REGISTRATIONS_FILE = "registrations.json"
 SITE_URL = os.environ.get("SITE_URL", "https://windowzen.macrotechtitan.com")
 _analytics_lock = threading.Lock()
 _reg_lock = threading.Lock()
-activity_log = []
-LOG_MAX = 200
 scheduler = BackgroundScheduler()
 
 
@@ -402,44 +403,6 @@ deep_analysis_data = {
     "event_log_paths": [],
     "last_scan": None,
 }
-
-
-def log_activity(message, level="INFO"):
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    entry = {"time": timestamp, "message": message, "level": level}
-    activity_log.append(entry)
-    if len(activity_log) > LOG_MAX:
-        activity_log.pop(0)
-
-
-def format_bytes(size):
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if size < 1024:
-            return f"{size:.1f} {unit}"
-        size /= 1024
-    return f"{size:.1f} PB"
-
-
-def get_dir_size(path):
-    total_size = 0
-    total_count = 0
-    try:
-        for dirpath, dirnames, filenames in os.walk(path):
-            for f in filenames:
-                try:
-                    fp = os.path.join(dirpath, f)
-                    if os.path.isfile(fp):
-                        total_size += os.path.getsize(fp)
-                        total_count += 1
-                except (OSError, PermissionError):
-                    pass
-    except (OSError, PermissionError):
-        pass
-    return total_count, total_size
-
-
-def get_windows_username():
-    return os.environ.get("USERNAME", os.environ.get("USER", "User"))
 
 
 CLEAN_TARGETS = {

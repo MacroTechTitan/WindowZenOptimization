@@ -25,7 +25,13 @@ from flask import Flask, render_template, jsonify, request, session, redirect, u
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from core.state import activity_log, LOG_MAX
+from core.state import (
+    activity_log, LOG_MAX, IS_WINDOWS, _WIN_NO_WINDOW,
+    scan_results, cleaning_status, activity_data, registry_data,
+    file_organizer_results, security_data, deep_analysis_data,
+    undo_log, UNDO_LOG_MAX, large_files_results, organize_preview_results,
+    NETWORK_FIX_STEPS, _net_fix_lock, network_fix_state,
+)
 from core.util import log_activity, format_bytes, get_dir_size, get_windows_username
 
 app = Flask(__name__)
@@ -33,8 +39,6 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "mtt-optimizer-secret-2026-m
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB upload limit
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
 
-IS_WINDOWS = platform.system() == "Windows"
-_WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0
 SETTINGS_FILE = "settings.json"
 ANALYTICS_FILE = "analytics.json"
 REGISTRATIONS_FILE = "registrations.json"
@@ -340,69 +344,6 @@ def save_settings():
 
 settings = load_settings()
 
-scan_results = {
-    "last_scan": None,
-    "categories": {},
-    "total_files": 0,
-    "total_size": 0,
-    "registry_issues": 0,
-}
-
-cleaning_status = {
-    "is_running": False,
-    "current_task": "",
-    "progress": 0,
-    "items_cleaned": 0,
-    "space_freed": 0,
-}
-
-activity_data = {
-    "session_start": datetime.now().isoformat(),
-    "active_minutes": 0,
-    "idle_minutes": 0,
-    "break_count": 0,
-    "last_activity": datetime.now().isoformat(),
-    "wellness_score": 85,
-    "last_break_time": datetime.now().isoformat(),
-}
-
-registry_data = {
-    "orphaned_keys": 0,
-    "invalid_paths": 0,
-    "startup_items": 0,
-    "issues_found": 0,
-    "last_scan": None,
-    "entries": [],
-}
-
-file_organizer_results = {
-    "status": "idle",
-    "zero_length": [],
-    "duplicates": [],
-    "installers": [],
-    "last_scan": None,
-}
-
-security_data = {
-    "open_ports": [],
-    "active_connections": [],
-    "public_ip": None,
-    "last_scan": None,
-}
-
-deep_analysis_data = {
-    "status": "idle",
-    "total_files": 0,
-    "categories": {
-        "video": {"extensions": [".mp4", ".avi", ".mkv", ".mov"], "count": 0, "size": 0},
-        "images": {"extensions": [".jpg", ".png", ".gif", ".bmp", ".svg"], "count": 0, "size": 0},
-        "documents": {"extensions": [".doc", ".docx", ".pdf", ".txt", ".xlsx", ".pptx"], "count": 0, "size": 0},
-        "audio": {"extensions": [".mp3", ".wav", ".flac", ".aac"], "count": 0, "size": 0},
-    },
-    "installed_software": 0,
-    "event_log_paths": [],
-    "last_scan": None,
-}
 
 
 CLEAN_TARGETS = {
@@ -2011,41 +1952,6 @@ def api_deep_analysis():
     return jsonify(deep_analysis_data)
 
 
-undo_log = []
-UNDO_LOG_MAX = 100
-
-large_files_results = {
-    "files": [],
-    "total_size": 0,
-    "threshold_mb": 100,
-    "last_scan": None,
-    "status": "idle",
-}
-
-organize_preview_results = {
-    "actions": [],
-    "last_preview": None,
-}
-
-NETWORK_FIX_STEPS = [
-    ("ipconfig /flushdns",  "Flush DNS Cache",       "Clears the DNS resolver cache so stale entries are removed"),
-    ("netsh winsock reset", "Reset Winsock Catalog", "Resets the Winsock catalog to its clean default state"),
-    ("netsh int ip reset",  "Reset TCP/IP Stack",    "Reinitialises the TCP/IP stack (reboot required after)"),
-    ("ipconfig /release",   "Release IP Address",    "Releases the current DHCP IP lease"),
-    ("ipconfig /renew",     "Renew IP Address",      "Requests a fresh IP address from the DHCP server"),
-]
-
-_net_fix_lock = threading.Lock()
-network_fix_state = {
-    "status": "idle",
-    "steps": [],
-    "current_step": -1,
-    "needs_reboot": False,
-    "started_at": None,
-    "completed_at": None,
-    "admin": False,
-    "platform": platform.system(),
-}
 
 
 def _make_step_state():

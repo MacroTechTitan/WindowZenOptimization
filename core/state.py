@@ -16,6 +16,9 @@ from datetime import datetime
 # top-level app.py (which lived at the repo root).
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Public site URL (used for email verification links and admin/download pages).
+SITE_URL = os.environ.get("SITE_URL", "https://windowzen.macrotechtitan.com")
+
 # ─── Platform constants ────────────────────────────────────────
 IS_WINDOWS = platform.system() == "Windows"
 _WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0

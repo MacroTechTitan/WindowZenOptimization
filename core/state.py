@@ -11,6 +11,8 @@ import subprocess
 import threading
 from datetime import datetime
 
+from apscheduler.schedulers.background import BackgroundScheduler
+
 # Repo root: parent of the core/ package. Used to anchor __file__-based paths
 # so they resolve to the same absolute location they did when defined in the
 # top-level app.py (which lived at the repo root).
@@ -26,6 +28,9 @@ _WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0
 # ─── Activity log buffer ───────────────────────────────────────
 activity_log = []
 LOG_MAX = 200
+
+# ─── Background scheduler (single shared instance) ─────────────
+scheduler = BackgroundScheduler()
 
 # ─── Scan / clean / wellness / registry / security state ───────
 scan_results = {

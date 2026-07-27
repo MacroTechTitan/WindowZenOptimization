@@ -26,7 +26,7 @@ from core.state import (
     undo_log, UNDO_LOG_MAX, large_files_results, organize_preview_results,
     NETWORK_FIX_STEPS, _net_fix_lock, network_fix_state,
 )
-from core.util import log_activity, format_bytes, get_dir_size, get_windows_username
+from core.util import log_activity, format_bytes, get_dir_size, get_windows_username, get_local_version
 from core.config import (
     settings, save_settings, load_analytics, save_analytics, increment_analytics,
 )
@@ -62,12 +62,9 @@ log_activity("Activity monitor active", "INFO")
 log_activity("Ready for operations", "SUCCESS")
 
 
-@app.route("/")
-def landing():
-    if session.get('desktop_mode'):
-        return redirect('/app')
-    increment_analytics("visits")
-    return render_template("landing.html")
+# ─── Blueprint registration ───────────────────────────────────
+from routes.pages import bp as pages_bp
+app.register_blueprint(pages_bp)
 
 
 @app.route("/api/counters")
@@ -81,40 +78,10 @@ def count_download():
     return jsonify({"ok": True, "downloads": data["downloads"]})
 
 
-@app.route("/eula")
-def eula_page():
-    return render_template("eula.html")
-
-
-@app.route("/loading")
-def loading_page():
-    """Desktop splash screen — served by Flask so there is only one navigation."""
-    session['desktop_mode'] = True
-    return render_template("splash_loading.html")
-
-
 # ── Update system ────────────────────────────────────────────────
 # The app never modifies itself. It only checks GitHub Releases and points the
 # user at the release page; the NSIS installer handles upgrade-in-place.
 GITHUB_RELEASES_API = "https://api.github.com/repos/MacroTechTitan/WindowZenOptimization/releases/latest"
-LOCAL_VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "version.json")
-
-
-def get_local_version():
-    try:
-        with open(LOCAL_VERSION_FILE) as f:
-            return json.load(f)
-    except Exception:
-        return {"version": "1.0.0", "build": 100}
-
-
-@app.route("/updates/version.json")
-def serve_version_json():
-    """Self-hosted update manifest — mirrors what's in version.json"""
-    data = get_local_version()
-    resp = jsonify(data)
-    resp.headers["Cache-Control"] = "no-cache"
-    return resp
 
 
 def _ver_tuple(v):
@@ -160,15 +127,6 @@ def api_updates_check():
         "current": local_version,
         "url": html_url,
     })
-
-
-@app.route("/app")
-@app.route("/app/<page>")
-def dashboard(page=None):
-    desktop_mode = request.args.get("mode") == "desktop" or bool(session.get('desktop_mode'))
-    if desktop_mode:
-        session['desktop_mode'] = True
-    return render_template("dashboard.html", initial_page=page or "dashboard", desktop_mode=desktop_mode)
 
 
 @app.route("/api/metrics")

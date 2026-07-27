@@ -1,9 +1,12 @@
 """Generic helpers shared across the app: logging, byte formatting,
-directory sizing, and environment lookups."""
+directory sizing, environment lookups, and local version info."""
 import os
+import json
 from datetime import datetime
 
-from core.state import activity_log, LOG_MAX
+from core.state import activity_log, LOG_MAX, BASE_DIR
+
+LOCAL_VERSION_FILE = os.path.join(BASE_DIR, "version.json")
 
 
 def log_activity(message, level="INFO"):
@@ -42,3 +45,11 @@ def get_dir_size(path):
 
 def get_windows_username():
     return os.environ.get("USERNAME", os.environ.get("USER", "User"))
+
+
+def get_local_version():
+    try:
+        with open(LOCAL_VERSION_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {"version": "1.0.0", "build": 100}

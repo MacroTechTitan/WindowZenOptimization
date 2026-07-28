@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime
 
-from core.state import activity_log, LOG_MAX, BASE_DIR
+from core.state import activity_log, LOG_MAX, BASE_DIR, undo_log, UNDO_LOG_MAX
 
 LOCAL_VERSION_FILE = os.path.join(BASE_DIR, "version.json")
 
@@ -15,6 +15,19 @@ def log_activity(message, level="INFO"):
     activity_log.append(entry)
     if len(activity_log) > LOG_MAX:
         activity_log.pop(0)
+
+
+def log_undo(action_type, description, details=None):
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "type": action_type,
+        "description": description,
+        "details": details or {},
+        "undone": False,
+    }
+    undo_log.append(entry)
+    if len(undo_log) > UNDO_LOG_MAX:
+        undo_log.pop(0)
 
 
 def format_bytes(size):

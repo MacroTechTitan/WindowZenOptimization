@@ -75,23 +75,8 @@ app.register_blueprint(apps_bp)
 from routes.clean import bp as clean_bp
 app.register_blueprint(clean_bp)
 
-
-@app.route("/api/registry")
-def api_registry():
-    return jsonify(registry_data)
-
-
-@app.route("/api/registry/scan", methods=["POST"])
-def api_registry_scan():
-    thread = threading.Thread(target=scan_registry, daemon=True)
-    thread.start()
-    return jsonify({"status": "scanning"})
-
-
-@app.route("/api/registry/fix", methods=["POST"])
-def api_registry_fix():
-    fixed_count = fix_registry()
-    return jsonify({"status": "fixed", "fixed_count": fixed_count, "remaining_issues": registry_data["issues_found"]})
+from routes.registry import bp as registry_bp
+app.register_blueprint(registry_bp)
 
 
 @app.route("/api/file-organizer/scan", methods=["POST"])

@@ -78,6 +78,9 @@ app.register_blueprint(clean_bp)
 from routes.registry import bp as registry_bp
 app.register_blueprint(registry_bp)
 
+from routes.security import bp as security_bp
+app.register_blueprint(security_bp)
+
 
 @app.route("/api/file-organizer/scan", methods=["POST"])
 def api_file_organizer_scan():
@@ -119,15 +122,6 @@ def api_file_organizer_delete():
         ]
 
     return jsonify({"status": "ok", "deleted": deleted})
-
-
-@app.route("/api/security/scan", methods=["GET", "POST"])
-def api_security_scan():
-    if request.method == "POST":
-        thread = threading.Thread(target=run_security_scan, daemon=True)
-        thread.start()
-        return jsonify({"status": "scanning"})
-    return jsonify(security_data)
 
 
 @app.route("/api/system/deep-analysis", methods=["GET", "POST"])

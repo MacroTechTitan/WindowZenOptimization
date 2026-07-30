@@ -1,0 +1,238 @@
+"""Admin panel: login/logout, registration list, version manifest editing,
+installer uploads, and counter resets."""
+import os
+import json
+import urllib.request
+from datetime import datetime
+
+from flask import Blueprint, render_template, jsonify, request, session
+
+from core.state import SITE_URL, BASE_DIR
+from core.util import log_activity, get_local_version, LOCAL_VERSION_FILE
+from core.config import load_analytics, save_analytics, _analytics_lock
+from core.registrations import load_registrations
+
+bp = Blueprint("admin", __name__)
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "mttadmin2026")
+
+
+@bp.route("/admin/api/registrations")
+def admin_registrations():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    registrations = load_registrations()
+    items = []
+    for email, info in registrations.items():
+        items.append({
+            "email": email,
+            "verified": info.get("verified", False),
+            "registered_at": info.get("registered_at", ""),
+            "verified_at": info.get("verified_at", ""),
+            "ip": info.get("ip", ""),
+        })
+    items.sort(key=lambda x: x["registered_at"], reverse=True)
+    return jsonify({
+        "ok": True,
+        "total": len(items),
+        "verified": sum(1 for i in items if i["verified"]),
+        "registrations": items,
+    })
+
+
+# ─── Admin Panel ──────────────────────────────────────────────
+def _admin_required():
+    return session.get("admin_logged_in") is True
+
+
+@bp.route("/admin")
+def admin_index():
+    return render_template("admin.html", site_url=SITE_URL)
+
+
+@bp.route("/admin/login", methods=["POST"])
+def admin_login():
+    data = request.get_json() or {}
+    if data.get("password") == ADMIN_PASSWORD:
+        session["admin_logged_in"] = True
+        return jsonify({"ok": True})
+    return jsonify({"ok": False}), 401
+
+
+@bp.route("/admin/logout")
+def admin_logout():
+    session.pop("admin_logged_in", None)
+    return render_template("admin.html", site_url=SITE_URL)
+
+
+@bp.route("/admin/api/save-version", methods=["POST"])
+def admin_save_version():
+    if not _admin_required():
+        return jsonify({"ok": False, "error": "Not authenticated"}), 401
+    data = request.get_json() or {}
+    try:
+        existing = get_local_version()
+        existing.update({
+            "version": data.get("version", existing.get("version", "1.0.0")),
+            "build": int(data.get("build", existing.get("build", 100))),
+            "release_date": data.get("release_date", existing.get("release_date", "")),
+            "channel": data.get("channel", existing.get("channel", "stable")),
+            "download_url": data.get("download_url", existing.get("download_url", "")),
+            "changelog": data.get("changelog", existing.get("changelog", [])),
+        })
+        with open(LOCAL_VERSION_FILE, "w") as f:
+            json.dump(existing, f, indent=2)
+        log_activity(f"version.json updated to v{existing['version']} build {existing['build']}", "SUCCESS")
+        return jsonify({"ok": True, "version": existing})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# Anchored to the repo root (as it was when this lived in the top-level app.py),
+# not to routes/, so the path resolves to <repo>/static/downloads as before.
+DOWNLOADS_DIR = os.path.join(BASE_DIR, "static", "downloads")
+_MAX_UPLOAD_MB = 500
+
+
+@bp.route("/admin/api/download-files")
+def admin_list_download_files():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+    files = []
+    for fname in sorted(os.listdir(DOWNLOADS_DIR)):
+        fpath = os.path.join(DOWNLOADS_DIR, fname)
+        if not os.path.isfile(fpath):
+            continue
+        size = os.path.getsize(fpath)
+        mtime = datetime.fromtimestamp(os.path.getmtime(fpath)).strftime("%Y-%m-%d %H:%M")
+        if size >= 1024 ** 3:
+            size_fmt = f"{size/1024**3:.1f} GB"
+        elif size >= 1024 ** 2:
+            size_fmt = f"{size/1024**2:.1f} MB"
+        else:
+            size_fmt = f"{size/1024:.1f} KB"
+        files.append({"name": fname, "size": size_fmt, "modified": mtime})
+    return jsonify({"files": files})
+
+
+@bp.route("/admin/api/upload-installer", methods=["POST"])
+def admin_upload_installer():
+    if not _admin_required():
+        return jsonify({"ok": False, "error": "Not authenticated"}), 401
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file provided"}), 400
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"ok": False, "error": "Empty filename"}), 400
+    ext = os.path.splitext(f.filename)[1].lower()
+    if ext not in (".exe", ".zip"):
+        return jsonify({"ok": False, "error": "Only .exe and .zip files are allowed"}), 400
+
+    # Optional metadata from form fields
+    new_version  = request.form.get("version", "").strip()
+    new_build    = request.form.get("build", "").strip()
+    new_channel  = request.form.get("channel", "stable").strip()
+    new_changelog_raw = request.form.get("changelog", "").strip()
+    new_changelog = [l.strip() for l in new_changelog_raw.splitlines() if l.strip()]
+
+    safe_name = os.path.basename(f.filename)
+    os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+    dest = os.path.join(DOWNLOADS_DIR, safe_name)
+    f.save(dest)
+    size = os.path.getsize(dest)
+    if size > _MAX_UPLOAD_MB * 1024 * 1024:
+        os.remove(dest)
+        return jsonify({"ok": False, "error": f"File exceeds {_MAX_UPLOAD_MB} MB limit"}), 413
+    size_fmt = f"{size/1024**2:.1f} MB"
+
+    # Always create/overwrite latest.zip wrapping the uploaded file
+    import zipfile as _zipfile
+    latest_zip_path = os.path.join(DOWNLOADS_DIR, "latest.zip")
+    try:
+        with _zipfile.ZipFile(latest_zip_path, "w", _zipfile.ZIP_DEFLATED) as zf:
+            zf.write(dest, arcname=safe_name)
+        zip_size = os.path.getsize(latest_zip_path)
+        zip_size_fmt = f"{zip_size/1024**2:.1f} MB"
+    except Exception as ze:
+        return jsonify({"ok": False, "error": f"Saved installer but failed to create latest.zip: {ze}"})
+
+    # Auto-update version.json if metadata was provided
+    version_updated = False
+    download_url = f"{SITE_URL}/static/downloads/latest.zip"
+    if new_version or new_build:
+        try:
+            existing = get_local_version()
+            if new_version:
+                existing["version"] = new_version
+            if new_build:
+                try:
+                    existing["build"] = int(new_build)
+                except ValueError:
+                    pass
+            existing["channel"] = new_channel or existing.get("channel", "stable")
+            existing["download_url"] = download_url
+            existing["release_date"] = datetime.now().strftime("%Y-%m-%d")
+            if new_changelog:
+                existing["changelog"] = new_changelog
+            with open(LOCAL_VERSION_FILE, "w") as vf:
+                json.dump(existing, vf, indent=2)
+            version_updated = True
+        except Exception as ve:
+            log_activity(f"version.json update failed: {ve}", "WARN")
+
+    log_activity(f"Admin released v{new_version or '?'} build {new_build or '?'}: {safe_name} ({size_fmt}) → latest.zip ({zip_size_fmt})", "SUCCESS")
+    return jsonify({
+        "ok": True,
+        "filename": safe_name,
+        "size": size_fmt,
+        "latest_zip": "latest.zip",
+        "zip_size": zip_size_fmt,
+        "download_url": download_url,
+        "version_updated": version_updated,
+    })
+
+
+@bp.route("/admin/api/download-files/delete", methods=["POST"])
+def admin_delete_download_file():
+    if not _admin_required():
+        return jsonify({"ok": False, "error": "Not authenticated"}), 401
+    data = request.get_json() or {}
+    filename = os.path.basename(data.get("filename", ""))
+    if not filename:
+        return jsonify({"ok": False, "error": "No filename provided"}), 400
+    fpath = os.path.join(DOWNLOADS_DIR, filename)
+    if not os.path.isfile(fpath):
+        return jsonify({"ok": False, "error": "File not found"}), 404
+    os.remove(fpath)
+    log_activity(f"Admin deleted installer: {filename}", "WARN")
+    return jsonify({"ok": True})
+
+
+@bp.route("/admin/api/check-remote-manifest")
+def admin_check_remote_manifest():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    local = get_local_version()
+    remote_url = local.get("update_server", "https://windowzen.macrotechtitan.com/updates/version.json")
+    try:
+        with urllib.request.urlopen(remote_url, timeout=8) as resp:
+            remote = json.loads(resp.read().decode())
+        return jsonify(remote)
+    except Exception as e:
+        return jsonify({"error": f"Could not reach {remote_url}: {e}"})
+
+
+@bp.route("/admin/api/reset-counters", methods=["POST"])
+def admin_reset_counters():
+    if not _admin_required():
+        return jsonify({"error": "Not authenticated"}), 401
+    key = request.json.get("key", "all") if request.json else "all"
+    with _analytics_lock:
+        data = load_analytics()
+        if key == "all":
+            data = {"visits": 0, "downloads": 0}
+        elif key in data:
+            data[key] = 0
+        save_analytics(data)
+    return jsonify({"ok": True, "counters": data})

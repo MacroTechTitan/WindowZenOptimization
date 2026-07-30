@@ -17,3 +17,5 @@ dist/
 build/
 .venv/
 *.spec
+
+static/downloads/*.exe

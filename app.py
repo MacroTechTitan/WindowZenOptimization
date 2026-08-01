@@ -61,6 +61,9 @@ app.register_blueprint(registration_bp)
 from routes.admin import bp as admin_bp
 app.register_blueprint(admin_bp)
 
+from routes.deepclean import bp as deepclean_bp
+app.register_blueprint(deepclean_bp)
+
 
 if __name__ == "__main__":
     scheduler.start()

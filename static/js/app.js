@@ -90,6 +90,7 @@ const App = {
         if (pageName === 'profiles') this.refreshProfiles();
         if (pageName === 'maintenance') { this.refreshMaintenance(); this.refreshMaintenanceHistory(); }
         if (pageName === 'debug-logs') this.refreshDebugLogs();
+        if (pageName === 'deepclean' && !this._deepcleanReport) this.deepcleanLoadTargets();
     },
 
     startClock() {
@@ -2707,6 +2708,278 @@ const App = {
 
     _escHtml(str) {
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    },
+
+    // ══════════════════════════════════════════════════════════
+    // DEEP CLEAN (Sprint 3, Feature 1) — two-step: scan then apply
+    // ══════════════════════════════════════════════════════════
+    _deepcleanReport: null,
+    _deepcleanPoller: null,
+
+    _fmtBytes(b) {
+        b = Number(b) || 0;
+        const units = ['B','KB','MB','GB','TB'];
+        let i = 0;
+        while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+        return `${b.toFixed(1)} ${units[i]}`;
+    },
+
+    _riskChip(risk) {
+        const map = {
+            safe:    ['var(--accent-green)',  'rgba(16,185,129,0.12)',  'SAFE'],
+            caution: ['var(--accent-yellow)', 'rgba(245,158,11,0.12)',  'CAUTION'],
+            high:    ['var(--accent-red)',    'rgba(239,68,68,0.12)',   'HIGH RISK'],
+        };
+        const [color, bg, label] = map[risk] || map.safe;
+        return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:${bg};color:${color};white-space:nowrap;">${label}</span>`;
+    },
+
+    async deepcleanLoadTargets() {
+        // Show the catalogue (labels, risk, defaults) before any scan runs so the
+        // page is never empty. Sizes stay blank until Step 1 is pressed.
+        try {
+            const res = await fetch('/api/deepclean/targets');
+            const data = await res.json();
+            this.renderDeepcleanReport({
+                targets: (data.targets || []).map(t => ({ ...t, bytes: 0, count: 0, note: '' })),
+                total_fmt: '—', last_scan: 'not scanned yet', platform_supported: true
+            });
+            const applyBtn = document.getElementById('btn-deepclean-apply');
+            if (applyBtn) applyBtn.disabled = true;   // Step 2 needs a report first
+            this._deepcleanReport = null;
+        } catch (e) { /* page still usable via Scan */ }
+    },
+
+    async deepcleanScan() {
+        const btn = document.getElementById('btn-deepclean-scan');
+        const includeDism = !!document.getElementById('deepclean-include-dism')?.checked;
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Scanning…'; }
+        document.getElementById('deepclean-results').style.display = 'none';
+        document.getElementById('deepclean-targets').innerHTML =
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                Building report${includeDism ? ' (DISM analysis can take several minutes)' : ''}…
+             </div>`;
+        try {
+            await fetch('/api/deepclean/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ include_dism: includeDism })
+            });
+            this._pollDeepcleanReport();
+        } catch (e) {
+            this.showNotification('Deep Clean scan failed to start', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+        }
+    },
+
+    _pollDeepcleanReport() {
+        if (this._deepcleanPoller) clearInterval(this._deepcleanPoller);
+        this._deepcleanPoller = setInterval(async () => {
+            try {
+                const res = await fetch('/api/deepclean/report');
+                const data = await res.json();
+                if (data.status === 'scanning') return;
+                clearInterval(this._deepcleanPoller);
+                this._deepcleanPoller = null;
+                const btn = document.getElementById('btn-deepclean-scan');
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+                if (data.status === 'error') {
+                    this.showNotification('Deep Clean scan error: ' + (data.message || ''), 'error');
+                    return;
+                }
+                this._deepcleanReport = data;
+                this.renderDeepcleanReport(data);
+            } catch (e) { /* keep polling */ }
+        }, 1200);
+    },
+
+    renderDeepcleanReport(data) {
+        const targets = data.targets || [];
+        const summary = document.getElementById('deepclean-summary');
+        summary.style.display = 'block';
+        summary.innerHTML = `
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:14px 16px;background:var(--bg-tertiary);border-radius:8px;">
+                <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">TOTAL RECLAIMABLE</div>
+                    <div style="font-size:24px;font-weight:600;color:var(--accent-cyan);">${escapeHtml(data.total_fmt || '0 B')}</div>
+                </div>
+                <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">TARGETS</div>
+                    <div style="font-size:24px;font-weight:600;">${targets.length}</div>
+                </div>
+                <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">
+                    Scanned ${escapeHtml(data.last_scan || '—')}${data.platform_supported ? '' : ' — PREVIEW MODE (non-Windows)'}
+                </div>
+            </div>`;
+
+        const rows = targets.map(t => {
+            const disabled = t.report_only ? 'disabled' : '';
+            const checked = (t.default_on && !t.report_only) ? 'checked' : '';
+            return `
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--border-color);">
+                <input type="checkbox" class="deepclean-target" value="${escapeHtml(t.key)}" ${checked} ${disabled} style="margin-top:3px;">
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <span style="font-weight:600;">${escapeHtml(t.label)}</span>
+                        ${this._riskChip(t.risk)}
+                        ${t.report_only ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(156,163,175,0.15);color:var(--text-muted);">REPORT ONLY</span>` : ''}
+                        ${!t.default_on && !t.report_only ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(156,163,175,0.15);color:var(--text-muted);">OPT-IN</span>` : ''}
+                    </div>
+                    <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;line-height:1.6;">${escapeHtml(t.description)}</div>
+                    ${t.note ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px;font-family:'JetBrains Mono',monospace;">${escapeHtml(t.note)}</div>` : ''}
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--accent-cyan);">${escapeHtml(this._fmtBytes(t.bytes))}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${t.count} item(s)</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('deepclean-targets').innerHTML = rows ||
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;">Nothing found.</div>`;
+        const applyBtn = document.getElementById('btn-deepclean-apply');
+        if (applyBtn) applyBtn.disabled = targets.length === 0;
+    },
+
+    async deepcleanReview(opts) {
+        opts = opts || {};
+        const keys = Array.from(document.querySelectorAll('.deepclean-target:checked')).map(c => c.value);
+        if (!keys.length) { this.showNotification('Select at least one target to clean', 'warning'); return; }
+
+        const report = this._deepcleanReport || { targets: [] };
+        const chosen = report.targets.filter(t => keys.includes(t.key));
+        const total = chosen.reduce((s, t) => s + (t.bytes || 0), 0);
+        const highRisk = chosen.filter(t => t.risk === 'high');
+
+        if (!opts.skipConfirm) {
+            let msg = `Clean ${keys.length} target(s) and reclaim about ${this._fmtBytes(total)}?\n\n`;
+            msg += chosen.map(t => `  • ${t.label} — ${this._fmtBytes(t.bytes)}`).join('\n');
+            msg += `\n\nSafety:\n`;
+            msg += `  • A System Restore point is created first\n`;
+            msg += `  • Files go to the Recycle Bin (recoverable), not a permanent delete\n`;
+            msg += `  • Windows, Program Files and cloud-sync folders are excluded\n`;
+            if (highRisk.length) {
+                msg += `\n⚠ HIGH RISK targets selected:\n`;
+                msg += highRisk.map(t => `  • ${t.label}`).join('\n');
+                msg += `\nThese changes cannot be reversed.\n`;
+            }
+            if (!confirm(msg)) return;
+        }
+
+        const btn = document.getElementById('btn-deepclean-apply');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Cleaning…'; }
+        document.getElementById('deepclean-progress').style.display = 'block';
+        document.getElementById('deepclean-progress').innerHTML =
+            `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-cyan);">Creating restore point and cleaning…</div>`;
+
+        try {
+            const res = await fetch('/api/deepclean/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirm: true,
+                    targets: keys,
+                    proceed_without_restore_point: !!opts.withoutRestorePoint,
+                    allow_permanent: !!opts.allowPermanent
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'error') {
+                this.showNotification(data.message || 'Deep Clean rejected', 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = '🧹 Step 2 — Review & Clean'; }
+                return;
+            }
+            this._pollDeepcleanStatus();
+        } catch (e) {
+            this.showNotification('Deep Clean failed to start', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🧹 Step 2 — Review & Clean'; }
+        }
+    },
+
+    _pollDeepcleanStatus() {
+        if (this._deepcleanPoller) clearInterval(this._deepcleanPoller);
+        this._deepcleanPoller = setInterval(async () => {
+            try {
+                const res = await fetch('/api/deepclean/status');
+                const data = await res.json();
+                const prog = document.getElementById('deepclean-progress');
+                if (data.status === 'running') {
+                    prog.innerHTML = `
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-cyan);margin-bottom:6px;">
+                            ${escapeHtml(data.current || 'Working…')} — ${data.progress || 0}%
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:${data.progress || 0}%"></div></div>`;
+                    return;
+                }
+                clearInterval(this._deepcleanPoller);
+                this._deepcleanPoller = null;
+                const btn = document.getElementById('btn-deepclean-apply');
+                if (btn) { btn.disabled = false; btn.innerHTML = '🧹 Step 2 — Review & Clean'; }
+                prog.style.display = 'none';
+
+                if (data.status === 'blocked') {
+                    this.renderDeepcleanBlocked(data);
+                    return;
+                }
+                this.renderDeepcleanResults(data);
+            } catch (e) { /* keep polling */ }
+        }, 1500);
+    },
+
+    renderDeepcleanBlocked(data) {
+        const el = document.getElementById('deepclean-results');
+        el.style.display = 'block';
+        el.innerHTML = `
+            <div style="padding:16px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px;">
+                <div style="font-weight:600;color:var(--accent-yellow);margin-bottom:8px;">⚠ Stopped — no restore point</div>
+                <div style="font-size:12px;color:var(--text-secondary);line-height:1.7;margin-bottom:12px;">
+                    ${escapeHtml(data.message || 'A System Restore point could not be created.')}
+                </div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
+                    Nothing was deleted. You can continue without a restore point, but the cleanup
+                    will not be revertible from System Restore. Files still go to the Recycle Bin.
+                </div>
+                <button class="btn btn-outline" onclick="App.deepcleanForceWithoutRestorePoint()">Continue without a restore point</button>
+            </div>`;
+        this.showNotification('Deep Clean stopped — restore point could not be created', 'warning');
+    },
+
+    deepcleanForceWithoutRestorePoint() {
+        if (!confirm('Continue WITHOUT a System Restore point?\n\nThe cleanup will not be revertible via System Restore. Files will still go to the Recycle Bin where you can recover them individually.')) return;
+        document.getElementById('deepclean-results').style.display = 'none';
+        this.deepcleanReview({ withoutRestorePoint: true, skipConfirm: true });
+    },
+
+    renderDeepcleanResults(data) {
+        const el = document.getElementById('deepclean-results');
+        el.style.display = 'block';
+        const results = data.results || [];
+        const rp = data.restore_point || {};
+        const rows = results.map(r => `
+            <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border-color);">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:12px;">${escapeHtml(r.label)}</div>
+                    ${r.note ? `<div style="font-size:10px;color:var(--text-muted);margin-top:3px;font-family:'JetBrains Mono',monospace;">${escapeHtml(r.note)}</div>` : ''}
+                    ${(r.blocked && r.blocked.length) ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:3px;">${r.blocked.length} item(s) skipped by safety rules</div>` : ''}
+                    ${(r.errors && r.errors.length) ? `<div style="font-size:10px;color:var(--accent-red);margin-top:3px;">${escapeHtml(r.errors[0].error || '')}</div>` : ''}
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-green);">${escapeHtml(this._fmtBytes(r.bytes))}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${r.count || 0} item(s)</div>
+                </div>
+            </div>`).join('');
+
+        el.innerHTML = `
+            <div style="padding:14px 16px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-radius:8px;margin-bottom:12px;">
+                <div style="font-weight:600;color:var(--accent-green);">✓ Deep Clean complete — ${escapeHtml(data.bytes_freed_fmt || '0 B')} reclaimed</div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;font-family:'JetBrains Mono',monospace;">
+                    Restore point: ${rp.created ? 'created' : escapeHtml(rp.message || 'not created')}<br>
+                    Removed files are in the Recycle Bin and can be restored.
+                </div>
+            </div>
+            ${rows}`;
+        this.showNotification(`Deep Clean complete — ${data.bytes_freed_fmt || '0 B'} reclaimed`, 'success');
+        this.refreshLogs();
     },
 };
 

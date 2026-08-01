@@ -67,6 +67,9 @@ app.register_blueprint(deepclean_bp)
 from routes.largefiles import bp as largefiles_bp
 app.register_blueprint(largefiles_bp)
 
+from routes.duplicates import bp as duplicates_bp
+app.register_blueprint(duplicates_bp)
+
 
 if __name__ == "__main__":
     scheduler.start()

@@ -92,6 +92,7 @@ const App = {
         if (pageName === 'debug-logs') this.refreshDebugLogs();
         if (pageName === 'deepclean' && !this._deepcleanReport) this.deepcleanLoadTargets();
         if (pageName === 'largefiles' && !this._largefilesReport) this.largefilesLoadRoots();
+        if (pageName === 'duplicates' && !this._duplicatesReport) this.duplicatesLoadRoots();
     },
 
     startClock() {
@@ -2733,6 +2734,175 @@ const App = {
         };
         const [color, bg, label] = map[risk] || map.safe;
         return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:${bg};color:${color};white-space:nowrap;">${label}</span>`;
+    },
+
+    // ══════════════════════════════════════════════════════════
+    // DUPLICATE FINDER (Sprint 3, Feature 3) — file level, user picks copies
+    // ══════════════════════════════════════════════════════════
+    _duplicatesReport: null,
+    _duplicatesPoller: null,
+
+    async duplicatesLoadRoots() {
+        try {
+            const data = await (await fetch('/api/duplicates/roots')).json();
+            document.getElementById('duplicates-roots').innerHTML =
+                (data.roots || []).map(r => `
+                    <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;display:block;">
+                        <input type="checkbox" class="duplicates-root" value="${escapeHtml(r.path)}" ${r.default_on ? 'checked' : ''} style="vertical-align:middle;">
+                        ${escapeHtml(r.label)} <span style="color:var(--text-muted);">${escapeHtml(r.path)}</span>
+                        ${r.cloud_synced ? `<span style="color:var(--accent-yellow);"> ☁ cloud-synced — delete blocked</span>` : ''}
+                    </label>`).join('') ||
+                `<span style="color:var(--text-muted);font-size:12px;">No standard folders found.</span>`;
+        } catch (e) { /* ignore */ }
+    },
+
+    async duplicatesScan() {
+        const roots = Array.from(document.querySelectorAll('.duplicates-root:checked')).map(c => c.value);
+        if (!roots.length) { this.showNotification('Select at least one folder to scan', 'warning'); return; }
+        const btn = document.getElementById('btn-duplicates-scan');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Scanning…'; }
+        document.getElementById('duplicates-list').innerHTML =
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                Pass 1 (size) → pass 2 (partial hash) → pass 3 (SHA-256)… this can take a while on large folders.
+             </div>`;
+        try {
+            const d = await (await fetch('/api/duplicates/scan', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roots })
+            })).json();
+            if (d.status === 'error') {
+                this.showNotification(d.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+                return;
+            }
+            if (this._duplicatesPoller) clearInterval(this._duplicatesPoller);
+            this._duplicatesPoller = setInterval(async () => {
+                const rep = await (await fetch('/api/duplicates/report')).json();
+                if (rep.status === 'scanning') return;
+                clearInterval(this._duplicatesPoller);
+                this._duplicatesPoller = null;
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+                this._duplicatesReport = rep;
+                this.renderDuplicates();
+            }, 1500);
+        } catch (e) {
+            this.showNotification('Duplicate scan failed to start', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+        }
+    },
+
+    renderDuplicates() {
+        const rep = this._duplicatesReport;
+        if (!rep) return;
+        const groups = rep.groups || [];
+        const p = rep.passes || {};
+
+        const summary = document.getElementById('duplicates-summary');
+        summary.style.display = 'block';
+        summary.innerHTML = `
+            <div style="padding:14px 16px;background:var(--bg-tertiary);border-radius:8px;">
+                <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+                    <div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">RECLAIMABLE</div>
+                        <div style="font-size:22px;font-weight:600;color:var(--accent-cyan);">${escapeHtml(rep.reclaimable_fmt || '0 B')}</div>
+                    </div>
+                    <div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">DUPLICATE GROUPS</div>
+                        <div style="font-size:22px;font-weight:600;">${rep.group_count || 0}</div>
+                    </div>
+                    <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);line-height:1.7;">
+                        pass 1 size candidates: ${p.pass1_size_candidates || 0}<br>
+                        pass 2 partial-hash collisions: ${p.pass2_partial_collisions || 0}<br>
+                        pass 3 confirmed identical: ${p.pass3_confirmed_files || 0} (${rep.files_hashed || 0} hash ops)
+                    </div>
+                </div>
+                ${rep.truncated ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:8px;font-family:'JetBrains Mono',monospace;">Showing the ${rep.shown} largest of ${rep.group_count} groups.</div>` : ''}
+                ${(rep.skipped_roots || []).length ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:6px;font-family:'JetBrains Mono',monospace;">${rep.skipped_roots.length} root(s) skipped by safety rules.</div>` : ''}
+            </div>`;
+
+        const html = groups.map(g => `
+            <div style="border:1px solid var(--border-color);border-radius:8px;margin-bottom:10px;overflow:hidden;">
+                <div style="display:flex;gap:12px;align-items:center;padding:9px 12px;background:var(--bg-tertiary);">
+                    <div style="flex:1;min-width:0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        ${escapeHtml(g.copies[0].name)}
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:8px;">${g.count} identical copies · ${escapeHtml(g.size_fmt)} each · sha256:${escapeHtml(g.hash)}</span>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-yellow);white-space:nowrap;">${escapeHtml(g.wasted_fmt)} wasted</div>
+                </div>
+                ${g.copies.map(c => `
+                    <div style="display:flex;gap:10px;align-items:center;padding:7px 12px;border-top:1px solid var(--border-color);">
+                        <input type="checkbox" class="duplicates-file" data-group="${escapeHtml(g.hash)}" value="${escapeHtml(c.path)}" ${(c.cloud_synced || c.protected) ? 'disabled' : ''}>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.path)}</div>
+                            <div style="font-size:10px;color:var(--text-muted);">modified ${escapeHtml(c.modified)}
+                                ${c.cloud_synced ? `<span style="color:var(--accent-red);"> · ☁ cloud-synced, delete blocked</span>` : ''}
+                                ${c.protected ? `<span style="color:var(--accent-red);"> · protected location</span>` : ''}
+                            </div>
+                        </div>
+                    </div>`).join('')}
+            </div>`).join('');
+
+        document.getElementById('duplicates-list').innerHTML = html ||
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;">No duplicate files found in the selected folders.</div>`;
+        const btn = document.getElementById('btn-duplicates-delete');
+        if (btn) btn.disabled = groups.length === 0;
+    },
+
+    async duplicatesDelete(opts) {
+        opts = opts || {};
+        const boxes = Array.from(document.querySelectorAll('.duplicates-file:checked'));
+        if (!boxes.length) { this.showNotification('Tick the copies you want to remove', 'warning'); return; }
+
+        // Client-side mirror of the server rule: keep at least one copy per group.
+        const perGroup = {};
+        boxes.forEach(b => { perGroup[b.dataset.group] = (perGroup[b.dataset.group] || 0) + 1; });
+        const wipe = (this._duplicatesReport.groups || [])
+            .filter(g => perGroup[g.hash] && perGroup[g.hash] >= g.count);
+        if (wipe.length) {
+            alert(`That selection would delete every copy of ${wipe.length} file(s):\n\n` +
+                  wipe.slice(0, 6).map(g => `  • ${g.copies[0].name}`).join('\n') +
+                  `\n\nLeave at least one copy of each file.`);
+            return;
+        }
+
+        const files = boxes.map(b => b.value);
+        if (!opts.skipConfirm) {
+            if (!confirm(`Remove ${files.length} duplicate copy(ies)?\n\nEvery file will still have at least one copy left.\nRemoved copies go to the Recycle Bin after a System Restore point is created.`)) return;
+        }
+
+        const btn = document.getElementById('btn-duplicates-delete');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Removing…'; }
+        try {
+            const res = await fetch('/api/duplicates/delete', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirm: true, files,
+                    proceed_without_restore_point: !!opts.withoutRestorePoint,
+                    allow_permanent: !!opts.allowPermanent
+                })
+            });
+            const data = await res.json();
+            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
+
+            if (res.status === 409 && data.status === 'restore_point_failed') {
+                if (confirm(`A System Restore point could not be created:\n\n${data.message}\n\nNothing was deleted. Continue WITHOUT a restore point? Copies still go to the Recycle Bin.`)) {
+                    this.duplicatesDelete({ withoutRestorePoint: true, skipConfirm: true });
+                }
+                return;
+            }
+            if (data.status !== 'ok') {
+                this.showNotification(data.message || 'Removal refused', 'error');
+                return;
+            }
+            if (data.message) this.showNotification(data.message, 'warning');
+            this.showNotification(`${data.deleted} copy(ies) moved to the Recycle Bin — ${data.bytes_fmt} reclaimed`, 'success');
+            this._duplicatesReport = await (await fetch('/api/duplicates/report')).json();
+            this.renderDuplicates();
+            this.refreshLogs();
+        } catch (e) {
+            this.showNotification('Removal failed', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
+        }
     },
 
     // ══════════════════════════════════════════════════════════

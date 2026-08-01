@@ -143,6 +143,10 @@
                 <span class="icon">&#x1F4CF;</span>
                 <span>Large Files</span>
             </div>
+            <div class="nav-item" data-page="duplicates">
+                <span class="icon">&#x1F46F;</span>
+                <span>Duplicates</span>
+            </div>
             <div class="nav-item" data-page="speedup">
                 <span class="icon">&#x1F680;</span>
                 <span>Speed Up</span>
@@ -507,6 +511,46 @@
 
                         <div id="largefiles-summary" style="display:none;margin-bottom:16px;"></div>
                         <div id="largefiles-list">
+                            <div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                Pick folders and press <strong style="color:var(--accent-cyan);">Scan</strong>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DUPLICATES PAGE -->
+            <div class="page" id="page-duplicates">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F46F; Duplicate File Finder</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="btn-duplicates-scan" onclick="App.duplicatesScan()">&#x1F50D; Step 1 &mdash; Scan</button>
+                            <button class="btn btn-danger" id="btn-duplicates-delete" onclick="App.duplicatesDelete()" disabled>&#x1F5D1; Step 2 &mdash; Review &amp; Delete</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:16px; padding:12px; background:rgba(6,182,212,0.07); border:1px solid rgba(6,182,212,0.25); border-radius:8px;">
+                            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-secondary); line-height:1.9;">
+                                &#x1F6E1; <strong style="color:var(--accent-cyan);">You choose which copies go.</strong>
+                                Nothing is ever pre-selected, and at least one copy of every file must survive.
+                                Files are matched by size, then a partial hash, then a full SHA-256 &mdash; so a
+                                group only appears here if the files are <strong>byte-for-byte identical</strong>.
+                                Removals go to the <strong>Recycle Bin</strong> after a <strong>System Restore point</strong>.
+                                <br>This release matches <strong>individual files</strong>. Whole-folder duplicate
+                                detection is not included.
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom:16px;">
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">FOLDERS TO SCAN</div>
+                            <div id="duplicates-roots" style="display:grid;gap:6px;">
+                                <span style="color:var(--text-muted);font-size:12px;">Loading…</span>
+                            </div>
+                        </div>
+
+                        <div id="duplicates-summary" style="display:none;margin-bottom:16px;"></div>
+                        <div id="duplicates-list">
                             <div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
                                 Pick folders and press <strong style="color:var(--accent-cyan);">Scan</strong>.
                             </div>

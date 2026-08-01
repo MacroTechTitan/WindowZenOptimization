@@ -147,6 +147,10 @@
                 <span class="icon">&#x1F46F;</span>
                 <span>Duplicates</span>
             </div>
+            <div class="nav-item" data-page="ai-storage">
+                <span class="icon">&#x1F916;</span>
+                <span>AI Storage</span>
+            </div>
             <div class="nav-item" data-page="speedup">
                 <span class="icon">&#x1F680;</span>
                 <span>Speed Up</span>
@@ -553,6 +557,34 @@
                         <div id="duplicates-list">
                             <div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
                                 Pick folders and press <strong style="color:var(--accent-cyan);">Scan</strong>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI STORAGE PAGE -->
+            <div class="page" id="page-ai-storage">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F916; AI Storage Report</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="btn-aistorage-scan" onclick="App.aiStorageScan()">&#x1F50D; Build Report</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:16px; padding:12px; background:rgba(16,185,129,0.07); border:1px solid rgba(16,185,129,0.25); border-radius:8px;">
+                            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-secondary); line-height:1.9;">
+                                &#x1F4D6; <strong style="color:var(--accent-green);">Read-only report.</strong>
+                                This page only measures what your local AI tools are storing &mdash; it never
+                                deletes, prunes, or moves anything. Use it to find where your disk went, then
+                                remove models through each tool's own interface.
+                            </div>
+                        </div>
+                        <div id="aistorage-summary" style="display:none;margin-bottom:16px;"></div>
+                        <div id="aistorage-list">
+                            <div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                Press <strong style="color:var(--accent-cyan);">Build Report</strong> to scan Ollama, HuggingFace, LM Studio, ComfyUI, pip, conda and torch caches.
                             </div>
                         </div>
                     </div>

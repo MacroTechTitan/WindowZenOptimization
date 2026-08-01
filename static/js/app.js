@@ -2737,6 +2737,99 @@ const App = {
     },
 
     // ══════════════════════════════════════════════════════════
+    // AI STORAGE REPORT (Sprint 3, Feature 4) — READ ONLY, no delete path
+    // ══════════════════════════════════════════════════════════
+    _aiStoragePoller: null,
+
+    async aiStorageScan() {
+        const btn = document.getElementById('btn-aistorage-scan');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Measuring…'; }
+        document.getElementById('aistorage-list').innerHTML =
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">Measuring model caches… large model directories can take a minute.</div>`;
+        try {
+            await fetch('/api/ai-storage/scan', { method: 'POST' });
+            if (this._aiStoragePoller) clearInterval(this._aiStoragePoller);
+            this._aiStoragePoller = setInterval(async () => {
+                const rep = await (await fetch('/api/ai-storage/report')).json();
+                if (rep.status === 'scanning') return;
+                clearInterval(this._aiStoragePoller);
+                this._aiStoragePoller = null;
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Build Report'; }
+                this.renderAiStorage(rep);
+            }, 1500);
+        } catch (e) {
+            this.showNotification('AI storage report failed to start', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Build Report'; }
+        }
+    },
+
+    renderAiStorage(rep) {
+        const tools = rep.tools || [];
+        const detected = tools.filter(t => t.present);
+        const missing = tools.filter(t => !t.present);
+
+        const summary = document.getElementById('aistorage-summary');
+        summary.style.display = 'block';
+        summary.innerHTML = `
+            <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;padding:14px 16px;background:var(--bg-tertiary);border-radius:8px;">
+                <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">TOTAL AI STORAGE</div>
+                    <div style="font-size:24px;font-weight:600;color:var(--accent-cyan);">${escapeHtml(rep.total_fmt || '0 B')}</div>
+                </div>
+                <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">TOOLS DETECTED</div>
+                    <div style="font-size:24px;font-weight:600;">${rep.detected || 0}</div>
+                </div>
+                <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">ORPHANED REVISIONS</div>
+                    <div style="font-size:24px;font-weight:600;color:${(rep.stale_revisions || 0) > 0 ? 'var(--accent-yellow)' : 'var(--text-primary)'};">${rep.stale_revisions || 0}</div>
+                </div>
+                <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">
+                    ${escapeHtml(rep.last_scan || '')}
+                </div>
+            </div>`;
+
+        const toolHtml = detected.map(t => {
+            const models = (t.models || []).slice(0, 25);
+            const rows = models.map(m => `
+                <div style="display:flex;gap:10px;align-items:center;padding:5px 12px 5px 26px;border-top:1px solid var(--border-color);">
+                    <div style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        ${escapeHtml(m.name)}
+                        ${m.kind === 'dataset' ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(156,163,175,0.15);color:var(--text-muted);margin-left:6px;">DATASET</span>` : ''}
+                        ${m.orphaned_revisions > 0 ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(245,158,11,0.14);color:var(--accent-yellow);margin-left:6px;">${m.orphaned_revisions} ORPHANED REVISION${m.orphaned_revisions > 1 ? 'S' : ''}</span>` : ''}
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-cyan);white-space:nowrap;">${escapeHtml(m.bytes_fmt)}</div>
+                </div>`).join('');
+            return `
+            <div style="border:1px solid var(--border-color);border-radius:8px;margin-bottom:10px;overflow:hidden;">
+                <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--bg-tertiary);">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:600;">${escapeHtml(t.tool)}</div>
+                        <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.path)}</div>
+                    </div>
+                    <div style="text-align:right;white-space:nowrap;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--accent-cyan);">${escapeHtml(t.bytes_fmt)}</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${t.files} file(s)</div>
+                    </div>
+                </div>
+                ${t.note ? `<div style="padding:7px 12px;font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;line-height:1.6;border-top:1px solid var(--border-color);">${escapeHtml(t.note)}</div>` : ''}
+                ${rows}
+                ${(t.models || []).length > 25 ? `<div style="padding:6px 12px 8px 26px;font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">…and ${t.models.length - 25} more</div>` : ''}
+            </div>`;
+        }).join('');
+
+        const missingHtml = missing.length ? `
+            <div style="margin-top:14px;padding:12px;border:1px dashed var(--border-color);border-radius:8px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">NOT DETECTED</div>
+                ${missing.map(t => `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">${escapeHtml(t.tool)} — ${escapeHtml(t.note)}</div>`).join('')}
+            </div>` : '';
+
+        document.getElementById('aistorage-list').innerHTML =
+            (toolHtml || `<div style="text-align:center;color:var(--text-muted);padding:24px;">No AI tool caches detected on this machine.</div>`)
+            + missingHtml;
+    },
+
+    // ══════════════════════════════════════════════════════════
     // DUPLICATE FINDER (Sprint 3, Feature 3) — file level, user picks copies
     // ══════════════════════════════════════════════════════════
     _duplicatesReport: null,

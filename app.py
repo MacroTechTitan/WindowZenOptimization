@@ -70,6 +70,9 @@ app.register_blueprint(largefiles_bp)
 from routes.duplicates import bp as duplicates_bp
 app.register_blueprint(duplicates_bp)
 
+from routes.ai_storage import bp as ai_storage_bp
+app.register_blueprint(ai_storage_bp)
+
 
 if __name__ == "__main__":
     scheduler.start()

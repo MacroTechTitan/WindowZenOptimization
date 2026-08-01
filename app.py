@@ -64,6 +64,9 @@ app.register_blueprint(admin_bp)
 from routes.deepclean import bp as deepclean_bp
 app.register_blueprint(deepclean_bp)
 
+from routes.largefiles import bp as largefiles_bp
+app.register_blueprint(largefiles_bp)
+
 
 if __name__ == "__main__":
     scheduler.start()

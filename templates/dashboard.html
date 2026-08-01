@@ -139,6 +139,10 @@
                 <span class="icon">&#x1F9FD;</span>
                 <span>Deep Clean</span>
             </div>
+            <div class="nav-item" data-page="largefiles">
+                <span class="icon">&#x1F4CF;</span>
+                <span>Large Files</span>
+            </div>
             <div class="nav-item" data-page="speedup">
                 <span class="icon">&#x1F680;</span>
                 <span>Speed Up</span>
@@ -449,6 +453,64 @@
                         </div>
                         <div id="deepclean-progress" style="display:none; margin-top:18px;"></div>
                         <div id="deepclean-results" style="display:none; margin-top:18px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LARGE FILES PAGE -->
+            <div class="page" id="page-largefiles">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CF; Large File Finder</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="btn-largefiles-scan" onclick="App.largefilesScan()">&#x1F50D; Step 1 &mdash; Scan</button>
+                            <button class="btn btn-danger" id="btn-largefiles-delete" onclick="App.largefilesDelete()" disabled>&#x1F5D1; Step 2 &mdash; Review &amp; Delete</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:16px; padding:12px; background:rgba(6,182,212,0.07); border:1px solid rgba(6,182,212,0.25); border-radius:8px;">
+                            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-secondary); line-height:1.9;">
+                                &#x1F6E1; <strong style="color:var(--accent-cyan);">Report only</strong> &mdash;
+                                scanning never deletes. Only the folders you tick are scanned; whole-drive
+                                scans are not offered. Deletion is per-file and you select each one &mdash;
+                                nothing is ever auto-selected. Removals go to the <strong>Recycle Bin</strong>
+                                after a <strong>System Restore point</strong>.
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px;">
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">FOLDERS TO SCAN</div>
+                                <div id="largefiles-roots" style="display:grid;gap:6px;">
+                                    <span style="color:var(--text-muted);font-size:12px;">Loading…</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">MINIMUM SIZE (MB)</div>
+                                <input type="number" id="largefiles-threshold" value="500" min="1" step="50"
+                                       style="width:120px;padding:7px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;">
+                            </div>
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">FILTER</div>
+                                <select id="largefiles-category" onchange="App.renderLargefiles()"
+                                        style="padding:7px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                    <option value="">All categories</option>
+                                    <option value="video">Video</option>
+                                    <option value="installer_archive">Installer / Archive</option>
+                                    <option value="disk_image">Disk image</option>
+                                    <option value="model_file">Model file</option>
+                                    <option value="other">Other</option>
+                                    <option value="__old">Superseded installers only</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="largefiles-summary" style="display:none;margin-bottom:16px;"></div>
+                        <div id="largefiles-list">
+                            <div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                Pick folders and press <strong style="color:var(--accent-cyan);">Scan</strong>.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

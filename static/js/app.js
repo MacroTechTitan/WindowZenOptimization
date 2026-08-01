@@ -91,6 +91,7 @@ const App = {
         if (pageName === 'maintenance') { this.refreshMaintenance(); this.refreshMaintenanceHistory(); }
         if (pageName === 'debug-logs') this.refreshDebugLogs();
         if (pageName === 'deepclean' && !this._deepcleanReport) this.deepcleanLoadTargets();
+        if (pageName === 'largefiles' && !this._largefilesReport) this.largefilesLoadRoots();
     },
 
     startClock() {
@@ -2732,6 +2733,184 @@ const App = {
         };
         const [color, bg, label] = map[risk] || map.safe;
         return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:${bg};color:${color};white-space:nowrap;">${label}</span>`;
+    },
+
+    // ══════════════════════════════════════════════════════════
+    // LARGE FILE FINDER (Sprint 3, Feature 2) — report, then per-file delete
+    // ══════════════════════════════════════════════════════════
+    _largefilesReport: null,
+    _largefilesPoller: null,
+
+    _catLabel(c) {
+        return ({ video: 'Video', installer_archive: 'Installer/Archive',
+                  disk_image: 'Disk image', model_file: 'Model file',
+                  other: 'Other' })[c] || c;
+    },
+
+    async largefilesLoadRoots() {
+        try {
+            const res = await fetch('/api/largefiles/roots');
+            const data = await res.json();
+            const el = document.getElementById('largefiles-roots');
+            el.innerHTML = (data.roots || []).map(r => `
+                <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;display:block;">
+                    <input type="checkbox" class="largefiles-root" value="${escapeHtml(r.path)}" ${r.default_on ? 'checked' : ''} style="vertical-align:middle;">
+                    ${escapeHtml(r.label)}
+                    <span style="color:var(--text-muted);">${escapeHtml(r.path)}</span>
+                    ${r.cloud_synced ? `<span style="color:var(--accent-yellow);"> ☁ cloud-synced — delete blocked</span>` : ''}
+                </label>`).join('') ||
+                `<span style="color:var(--text-muted);font-size:12px;">No standard folders found.</span>`;
+            const t = document.getElementById('largefiles-threshold');
+            if (t && data.default_threshold_mb) t.value = data.default_threshold_mb;
+        } catch (e) { /* ignore */ }
+    },
+
+    async largefilesScan() {
+        const roots = Array.from(document.querySelectorAll('.largefiles-root:checked')).map(c => c.value);
+        if (!roots.length) { this.showNotification('Select at least one folder to scan', 'warning'); return; }
+        const threshold = parseInt(document.getElementById('largefiles-threshold')?.value || '500', 10);
+        const btn = document.getElementById('btn-largefiles-scan');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Scanning…'; }
+        document.getElementById('largefiles-list').innerHTML =
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">Scanning ${roots.length} folder(s)…</div>`;
+        try {
+            const res = await fetch('/api/largefiles/scan', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roots, threshold_mb: threshold })
+            });
+            const d = await res.json();
+            if (d.status === 'error') {
+                this.showNotification(d.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+                return;
+            }
+            if (this._largefilesPoller) clearInterval(this._largefilesPoller);
+            this._largefilesPoller = setInterval(async () => {
+                const rep = await (await fetch('/api/largefiles/report')).json();
+                if (rep.status === 'scanning') return;
+                clearInterval(this._largefilesPoller);
+                this._largefilesPoller = null;
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+                this._largefilesReport = rep;
+                this.renderLargefiles();
+            }, 1200);
+        } catch (e) {
+            this.showNotification('Large file scan failed to start', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+        }
+    },
+
+    renderLargefiles() {
+        const rep = this._largefilesReport;
+        if (!rep) return;
+        const filter = document.getElementById('largefiles-category')?.value || '';
+        let files = rep.files || [];
+        if (filter === '__old') files = files.filter(f => f.old_installer);
+        else if (filter) files = files.filter(f => f.category === filter);
+
+        const summary = document.getElementById('largefiles-summary');
+        summary.style.display = 'block';
+        const cats = Object.entries(rep.by_category || {})
+            .sort((a, b) => b[1].bytes - a[1].bytes)
+            .map(([c, v]) => `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px;background:var(--bg-tertiary);margin-right:6px;">${escapeHtml(this._catLabel(c))}: ${escapeHtml(v.bytes_fmt)} (${v.count})</span>`)
+            .join('');
+        summary.innerHTML = `
+            <div style="padding:14px 16px;background:var(--bg-tertiary);border-radius:8px;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+                    <div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">TOTAL</div>
+                        <div style="font-size:22px;font-weight:600;color:var(--accent-cyan);">${escapeHtml(rep.total_fmt || '0 B')}</div>
+                    </div>
+                    <div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">FILES &gt; ${rep.threshold_mb} MB</div>
+                        <div style="font-size:22px;font-weight:600;">${rep.found || 0}</div>
+                    </div>
+                    <div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">SUPERSEDED INSTALLERS</div>
+                        <div style="font-size:22px;font-weight:600;color:var(--accent-yellow);">${rep.old_installers || 0}</div>
+                    </div>
+                </div>
+                <div>${cats}</div>
+                ${rep.truncated ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:8px;font-family:'JetBrains Mono',monospace;">Showing the largest ${rep.shown} of ${rep.found} matches.</div>` : ''}
+                ${(rep.skipped_roots || []).length ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:6px;font-family:'JetBrains Mono',monospace;">${rep.skipped_roots.length} root(s) skipped by safety rules.</div>` : ''}
+            </div>`;
+
+        const rows = files.map(f => `
+            <div style="display:flex;gap:12px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border-color);">
+                <input type="checkbox" class="largefiles-file" value="${escapeHtml(f.path)}" ${f.cloud_synced ? 'disabled' : ''}>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        ${escapeHtml(f.name)}
+                        ${f.old_installer ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.14);color:var(--accent-yellow);margin-left:6px;">OLD INSTALLER → v${escapeHtml(f.superseded_by)}</span>` : ''}
+                        ${f.cloud_synced ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.14);color:var(--accent-red);margin-left:6px;">☁ CLOUD-SYNCED</span>` : ''}
+                    </div>
+                    <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        ${escapeHtml(this._catLabel(f.category))} · ${escapeHtml(f.modified)} · ${escapeHtml(f.folder)}
+                    </div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-cyan);white-space:nowrap;">${escapeHtml(f.size_fmt)}</div>
+            </div>`).join('');
+
+        document.getElementById('largefiles-list').innerHTML = rows ||
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;">No files matched.</div>`;
+        const btn = document.getElementById('btn-largefiles-delete');
+        if (btn) btn.disabled = files.length === 0;
+    },
+
+    async largefilesDelete(opts) {
+        opts = opts || {};
+        const files = Array.from(document.querySelectorAll('.largefiles-file:checked')).map(c => c.value);
+        if (!files.length) { this.showNotification('Select the files you want to delete', 'warning'); return; }
+
+        const rep = this._largefilesReport || { files: [] };
+        const chosen = rep.files.filter(f => files.includes(f.path));
+        const total = chosen.reduce((s, f) => s + f.size, 0);
+
+        if (!opts.skipConfirm) {
+            let msg = `Delete ${files.length} file(s), ${this._fmtBytes(total)}?\n\n`;
+            msg += chosen.slice(0, 12).map(f => `  • ${f.name} — ${f.size_fmt}`).join('\n');
+            if (chosen.length > 12) msg += `\n  … and ${chosen.length - 12} more`;
+            msg += `\n\nThese go to the Recycle Bin (recoverable) after a System Restore point is created.`;
+            if (!confirm(msg)) return;
+        }
+
+        const btn = document.getElementById('btn-largefiles-delete');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Deleting…'; }
+        try {
+            const res = await fetch('/api/largefiles/delete', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirm: true, files,
+                    proceed_without_restore_point: !!opts.withoutRestorePoint,
+                    allow_permanent: !!opts.allowPermanent
+                })
+            });
+            const data = await res.json();
+            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
+
+            if (res.status === 409 && data.status === 'restore_point_failed') {
+                if (confirm(`A System Restore point could not be created:\n\n${data.message}\n\nNothing was deleted. Continue WITHOUT a restore point? Files still go to the Recycle Bin.`)) {
+                    this.largefilesDelete({ withoutRestorePoint: true, skipConfirm: true });
+                }
+                return;
+            }
+            if (data.status !== 'ok') {
+                this.showNotification(data.message || 'Deletion refused', 'error');
+                return;
+            }
+            if (data.message) this.showNotification(data.message, 'warning');
+            this.showNotification(`${data.deleted} file(s) moved to the Recycle Bin — ${data.bytes_fmt} reclaimed`, 'success');
+            if ((data.blocked || []).length) {
+                this.showNotification(`${data.blocked.length} file(s) skipped by safety rules`, 'warning');
+            }
+            const rep2 = await (await fetch('/api/largefiles/report')).json();
+            this._largefilesReport = rep2;
+            this.renderLargefiles();
+            this.refreshLogs();
+        } catch (e) {
+            this.showNotification('Deletion failed', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
+        }
     },
 
     async deepcleanLoadTargets() {

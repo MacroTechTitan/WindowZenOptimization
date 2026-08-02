@@ -1,0 +1,11 @@
+{
+  "previous_dns": {
+    "Ethernet 2": {
+      "servers": [
+        "192.168.1.254"
+      ],
+      "dhcp": true
+    }
+  },
+  "previous_mtu": {}
+}

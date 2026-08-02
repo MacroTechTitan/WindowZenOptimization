@@ -73,6 +73,9 @@ app.register_blueprint(duplicates_bp)
 from routes.ai_storage import bp as ai_storage_bp
 app.register_blueprint(ai_storage_bp)
 
+from routes.network import bp as network_bp
+app.register_blueprint(network_bp)
+
 
 if __name__ == "__main__":
     scheduler.start()

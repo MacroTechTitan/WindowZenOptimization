@@ -187,6 +187,10 @@
                 <span class="icon">&#x1F527;</span>
                 <span>Network</span>
             </div>
+            <div class="nav-item" data-page="internet">
+                <span class="icon">&#x1F310;</span>
+                <span>Internet Optimizer</span>
+            </div>
             <div class="nav-item" data-page="system">
                 <span class="icon">&#x1F5A5;&#xFE0F;</span>
                 <span>System Info</span>
@@ -587,6 +591,111 @@
                                 Press <strong style="color:var(--accent-cyan);">Build Report</strong> to scan Ollama, HuggingFace, LM Studio, ComfyUI, pip, conda and torch caches.
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERNET OPTIMIZER PAGE -->
+            <div class="page" id="page-internet">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F310; Internet Optimizer</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="App.netDiagnose()">&#x1F50D; Diagnose</button>
+                            <button class="btn" onclick="App.netQuickFix()">&#x26A1; Quick Fix</button>
+                            <button class="btn btn-danger" onclick="App.netDeepReset()">&#x26A0; Deep Reset</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:16px; padding:12px; background:rgba(6,182,212,0.07); border:1px solid rgba(6,182,212,0.25); border-radius:8px;">
+                            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-secondary); line-height:1.9;">
+                                <strong style="color:var(--accent-cyan);">Diagnose</strong> is read-only.
+                                <strong style="color:var(--accent-cyan);">Quick Fix</strong> flushes DNS and renews your IP &mdash; no reboot.
+                                <strong style="color:var(--accent-red);">Deep Reset</strong> rebuilds the Winsock catalog and TCP/IP stack: your connection will drop and you must restart.
+                                DNS and MTU changes save the previous value so they can be put back.
+                            </div>
+                        </div>
+                        <div id="net-diagnose"></div>
+                        <div id="net-output" style="display:none;margin-top:16px;"></div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4E1; DNS</span>
+                        <div class="btn-group">
+                            <button class="btn" onclick="App.netDnsBenchmark()">&#x23F1; Benchmark DNS</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">ADAPTER</div>
+                                <select id="net-dns-adapter" style="padding:7px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-size:12px;min-width:200px;"></select>
+                            </div>
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">PRESET</div>
+                                <select id="net-dns-preset" style="padding:7px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-size:12px;">
+                                    <option value="cloudflare">Cloudflare — 1.1.1.1</option>
+                                    <option value="google">Google — 8.8.8.8</option>
+                                    <option value="quad9">Quad9 — 9.9.9.9</option>
+                                    <option value="dhcp">Restore to DHCP (automatic)</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="App.netSetDns()">Apply DNS</button>
+                            <button class="btn btn-outline" onclick="App.netRestoreDns()">Restore previous</button>
+                        </div>
+                        <div id="net-dns-benchmark"></div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4CF; MTU</span>
+                        <div class="btn-group">
+                            <button class="btn" onclick="App.netMtuProbe()">&#x1F50D; Probe optimal MTU</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">ADAPTER</div>
+                                <select id="net-mtu-adapter" style="padding:7px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-size:12px;min-width:200px;"></select>
+                            </div>
+                            <div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">MTU</div>
+                                <input type="number" id="net-mtu-value" value="1500" min="576" max="9000"
+                                       style="width:110px;padding:7px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;">
+                            </div>
+                            <button class="btn btn-primary" onclick="App.netSetMtu()">Apply MTU</button>
+                            <button class="btn btn-outline" onclick="App.netRestoreMtu()">Restore previous</button>
+                        </div>
+                        <div id="net-mtu-result"></div>
+                        <div style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);line-height:1.7;" id="net-advanced-note"></div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F5C2; Browser Cache</span>
+                        <div class="btn-group">
+                            <button class="btn" onclick="App.netBrowserCache('scan')">&#x1F50D; Scan</button>
+                            <button class="btn btn-danger" onclick="App.netBrowserCache('clear')">&#x1F9F9; Clear cache</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+                            &#x1F6E1; Cache directories <strong>only</strong>. Cookies, history, saved passwords
+                            and bookmarks are never read or removed. Close the browser first so its cache files
+                            are not locked.
+                        </div>
+                        <div id="net-browsers" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;">
+                            <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="net-browser" value="Chrome" checked style="vertical-align:middle;"> Chrome</label>
+                            <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="net-browser" value="Edge" checked style="vertical-align:middle;"> Edge</label>
+                            <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="net-browser" value="Firefox" checked style="vertical-align:middle;"> Firefox</label>
+                            <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="net-browser" value="Brave" checked style="vertical-align:middle;"> Brave</label>
+                        </div>
+                        <div id="net-browser-result"></div>
                     </div>
                 </div>
             </div>

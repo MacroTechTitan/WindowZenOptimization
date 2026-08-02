@@ -93,6 +93,7 @@ const App = {
         if (pageName === 'deepclean' && !this._deepcleanReport) this.deepcleanLoadTargets();
         if (pageName === 'largefiles' && !this._largefilesReport) this.largefilesLoadRoots();
         if (pageName === 'duplicates' && !this._duplicatesReport) this.duplicatesLoadRoots();
+        if (pageName === 'internet' && !this._netDiag) this.netDiagnose();
     },
 
     startClock() {
@@ -2734,6 +2735,286 @@ const App = {
         };
         const [color, bg, label] = map[risk] || map.safe;
         return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:${bg};color:${color};white-space:nowrap;">${label}</span>`;
+    },
+
+    // ══════════════════════════════════════════════════════════
+    // INTERNET OPTIMIZER (Sprint 3, Feature 5)
+    // ══════════════════════════════════════════════════════════
+    _netDiag: null,
+
+    _netShowOutput(title, steps, extra) {
+        const el = document.getElementById('net-output');
+        el.style.display = 'block';
+        el.innerHTML = `
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="terminal-dots"><div class="terminal-dot red"></div><div class="terminal-dot yellow"></div><div class="terminal-dot green"></div></div>
+                    <div class="terminal-title">${escapeHtml(title)}</div>
+                </div>
+                <div class="terminal-body" style="max-height:320px;overflow:auto;">
+                    ${(steps || []).map(s => `
+                        <div style="margin-bottom:10px;">
+                            <div style="color:var(--accent-cyan);">&gt; ${escapeHtml(s.command)}</div>
+                            <pre style="margin:4px 0 0;white-space:pre-wrap;color:${s.exit_code === 0 ? 'var(--text-secondary)' : 'var(--accent-yellow)'};font-size:11px;">${escapeHtml(s.output || '(no output)')}</pre>
+                        </div>`).join('')}
+                    ${extra ? `<div style="color:var(--accent-yellow);margin-top:8px;">${escapeHtml(extra)}</div>` : ''}
+                </div>
+            </div>`;
+    },
+
+    async netDiagnose() {
+        const el = document.getElementById('net-diagnose');
+        el.innerHTML = `<div style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px;">Collecting diagnostics…</div>`;
+        try {
+            const d = await (await fetch('/api/network/diagnose')).json();
+            this._netDiag = d;
+
+            const dnsSel = document.getElementById('net-dns-adapter');
+            const mtuSel = document.getElementById('net-mtu-adapter');
+            if (dnsSel) dnsSel.innerHTML = (d.adapters || []).map(a => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`).join('');
+            if (mtuSel) mtuSel.innerHTML = (d.mtu || []).map(m => `<option value="${escapeHtml(m.adapter)}">${escapeHtml(m.adapter)} (now ${m.mtu})</option>`).join('');
+            const note = document.getElementById('net-advanced-note');
+            if (note) note.textContent = d.advanced_note || '';
+
+            el.innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+                    <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:8px;">ADAPTERS</div>
+                        ${(d.adapters || []).map(a => `<div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);">${escapeHtml(a.name)} — <span style="color:${a.state === 'Connected' ? 'var(--accent-green)' : 'var(--text-muted)'}">${escapeHtml(a.state)}</span></div>`).join('') || '<span style="color:var(--text-muted);font-size:11px;">none</span>'}
+                    </div>
+                    <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:8px;">DNS PER ADAPTER</div>
+                        ${(d.dns || []).map(x => `<div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);">${escapeHtml(x.adapter)}: ${escapeHtml((x.servers || []).join(', ') || 'none')} ${x.dhcp ? '<span style="color:var(--text-muted);">(DHCP)</span>' : '<span style="color:var(--accent-cyan);">(static)</span>'}</div>`).join('')}
+                    </div>
+                    <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:8px;">MTU</div>
+                        ${(d.mtu || []).map(x => `<div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);">${escapeHtml(x.adapter)}: ${x.mtu}</div>`).join('')}
+                    </div>
+                    <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:8px;">WINSOCK LSP CATALOG — ${d.winsock?.count || 0} ENTRIES</div>
+                        <div style="max-height:150px;overflow:auto;">
+                        ${(d.winsock?.entries || []).map(e => `<div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);">${escapeHtml(e.name)}</div>`).join('')}
+                        </div>
+                        ${d.winsock?.truncated ? `<div style="font-size:10px;color:var(--text-muted);margin-top:6px;">…showing the first 60</div>` : ''}
+                    </div>
+                </div>`;
+        } catch (e) {
+            el.innerHTML = `<div style="color:var(--accent-red);font-size:12px;padding:12px;">Diagnostics failed.</div>`;
+        }
+    },
+
+    async netQuickFix() {
+        if (!confirm('Run Quick Fix?\n\n  • ipconfig /flushdns\n  • ipconfig /release\n  • ipconfig /renew\n\nYour connection drops briefly while the IP is renewed. No reboot needed.')) return;
+        this._netShowOutput('QUICK FIX — running…', []);
+        try {
+            const d = await (await fetch('/api/network/quick-fix', { method: 'POST' })).json();
+            this._netShowOutput('QUICK FIX', d.steps, d.message);
+            this.showNotification('Quick fix complete', 'success');
+            this.netDiagnose();
+        } catch (e) { this.showNotification('Quick fix failed', 'error'); }
+    },
+
+    async netDeepReset() {
+        const warning =
+            '⚠ DEEP RESET — read this carefully\n\n' +
+            'This runs:\n  • netsh winsock reset\n  • netsh int ip reset\n\n' +
+            'What will happen:\n' +
+            '  • Your network connection WILL DROP immediately\n' +
+            '  • You MUST RESTART the computer afterwards\n' +
+            '  • Winsock LSP entries added by VPN/AV software are removed\n' +
+            '  • Administrator privileges are required\n\n' +
+            'Save your work before continuing. Proceed?';
+        if (!confirm(warning)) return;
+        if (!confirm('Last check — the connection will drop and a restart is required.\n\nRun the deep reset now?')) return;
+        this._netShowOutput('DEEP RESET — running…', []);
+        try {
+            const res = await fetch('/api/network/deep-reset', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirm: true })
+            });
+            const d = await res.json();
+            if (d.status !== 'ok') { this.showNotification(d.message, 'error'); return; }
+            this._netShowOutput('DEEP RESET', d.steps, d.message);
+            alert('Deep reset complete.\n\nRESTART REQUIRED — networking will not behave normally until you restart the computer.');
+            this.showNotification('Deep reset complete — reboot required', 'warning');
+        } catch (e) { this.showNotification('Deep reset failed', 'error'); }
+    },
+
+    async netSetDns() {
+        const adapter = document.getElementById('net-dns-adapter')?.value;
+        const preset = document.getElementById('net-dns-preset')?.value;
+        if (!adapter) { this.showNotification('Run Diagnose first to list adapters', 'warning'); return; }
+        if (!confirm(`Set DNS on "${adapter}" to ${preset}?\n\nThe current setting is saved first so you can restore it.`)) return;
+        try {
+            const d = await (await fetch('/api/network/set-dns', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adapter, preset })
+            })).json();
+            if (d.status !== 'ok') { this.showNotification(d.message, 'error'); return; }
+            this._netShowOutput('SET DNS', d.steps, d.message);
+            this.showNotification(`DNS on ${adapter} → ${(d.applied || []).join(', ')}`, 'success');
+            this.netDiagnose();
+        } catch (e) { this.showNotification('Could not set DNS', 'error'); }
+    },
+
+    async netRestoreDns() {
+        const adapter = document.getElementById('net-dns-adapter')?.value;
+        if (!adapter) return;
+        try {
+            const d = await (await fetch('/api/network/set-dns', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adapter, restore: true })
+            })).json();
+            if (d.status !== 'ok') { this.showNotification(d.message, 'warning'); return; }
+            this.showNotification(`DNS on ${adapter} restored`, 'success');
+            this.netDiagnose();
+        } catch (e) { this.showNotification('Could not restore DNS', 'error'); }
+    },
+
+    async netDnsBenchmark() {
+        const el = document.getElementById('net-dns-benchmark');
+        el.innerHTML = `<div style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Timing lookups against 1.1.1.1, 8.8.8.8, 9.9.9.9 and your current DNS…</div>`;
+        try {
+            const d = await (await fetch('/api/network/dns-benchmark')).json();
+            if (d.error) { el.innerHTML = `<div style="color:var(--accent-red);font-size:12px;">${escapeHtml(d.error)}</div>`; return; }
+            el.innerHTML = `
+                <div style="border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
+                    ${(d.results || []).map((r, i) => `
+                        <div style="display:flex;gap:12px;align-items:center;padding:9px 12px;${i ? 'border-top:1px solid var(--border-color);' : ''}${i === 0 && r.avg_ms > 0 ? 'background:rgba(16,185,129,0.07);' : ''}">
+                            <div style="width:22px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">${i + 1}</div>
+                            <div style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                                ${escapeHtml(r.server)}
+                                ${r.preset ? `<span style="font-size:9px;color:var(--text-muted);margin-left:6px;">${escapeHtml(r.preset)}</span>` : ''}
+                                ${r.current ? `<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(6,182,212,0.15);color:var(--accent-cyan);margin-left:6px;">CURRENT</span>` : ''}
+                            </div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${r.avg_ms > 0 ? 'var(--accent-cyan)' : 'var(--accent-red)'};">
+                                ${r.avg_ms > 0 ? r.avg_ms + ' ms' : 'no response'}
+                            </div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);width:70px;text-align:right;">${r.ok}/${r.ok + r.failed} ok</div>
+                        </div>`).join('')}
+                </div>
+                ${d.note ? `<div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.7;">${escapeHtml(d.note)}</div>` : ''}`;
+        } catch (e) {
+            el.innerHTML = `<div style="color:var(--accent-red);font-size:12px;">Benchmark failed.</div>`;
+        }
+    },
+
+    async netMtuProbe() {
+        const el = document.getElementById('net-mtu-result');
+        el.innerHTML = `<div style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Binary-searching the largest unfragmented packet…</div>`;
+        try {
+            const d = await (await fetch('/api/network/mtu-probe')).json();
+            el.innerHTML = `
+                <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;">
+                    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+                        <div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">OPTIMAL MTU</div>
+                            <div style="font-size:22px;font-weight:600;color:var(--accent-cyan);">${d.optimal_mtu ?? '—'}</div>
+                        </div>
+                        <div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">LARGEST PAYLOAD</div>
+                            <div style="font-size:22px;font-weight:600;">${d.optimal_payload ?? '—'}</div>
+                        </div>
+                        <div style="flex:1;min-width:200px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.7;">${escapeHtml(d.note || '')}</div>
+                    </div>
+                </div>`;
+            if (d.optimal_mtu) {
+                const input = document.getElementById('net-mtu-value');
+                if (input) input.value = d.optimal_mtu;
+            }
+        } catch (e) {
+            el.innerHTML = `<div style="color:var(--accent-red);font-size:12px;">MTU probe failed.</div>`;
+        }
+    },
+
+    async netSetMtu() {
+        const adapter = document.getElementById('net-mtu-adapter')?.value;
+        const mtu = parseInt(document.getElementById('net-mtu-value')?.value || '1500', 10);
+        if (!adapter) { this.showNotification('Run Diagnose first to list adapters', 'warning'); return; }
+        if (!confirm(`Set MTU on "${adapter}" to ${mtu}?\n\nThe change is persistent. The previous value is saved so you can restore it.\nAdministrator privileges are required.`)) return;
+        try {
+            const d = await (await fetch('/api/network/set-mtu', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adapter, mtu })
+            })).json();
+            this.showNotification(d.message, d.status === 'ok' ? 'success' : 'error');
+            this.netDiagnose();
+        } catch (e) { this.showNotification('Could not set MTU', 'error'); }
+    },
+
+    async netRestoreMtu() {
+        const adapter = document.getElementById('net-mtu-adapter')?.value;
+        if (!adapter) return;
+        try {
+            const d = await (await fetch('/api/network/set-mtu', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adapter, restore: true })
+            })).json();
+            this.showNotification(d.message || 'Restored', d.status === 'ok' ? 'success' : 'warning');
+            this.netDiagnose();
+        } catch (e) { this.showNotification('Could not restore MTU', 'error'); }
+    },
+
+    async netBrowserCache(action) {
+        const browsers = Array.from(document.querySelectorAll('.net-browser:checked')).map(c => c.value);
+        if (!browsers.length) { this.showNotification('Select at least one browser', 'warning'); return; }
+        const el = document.getElementById('net-browser-result');
+
+        if (action === 'clear') {
+            if (!confirm(`Clear the cache for ${browsers.join(', ')}?\n\nOnly cache directories are removed — cookies, history, saved passwords and bookmarks are untouched.\nThey go to the Recycle Bin after a System Restore point is created.\n\nClose the browsers first.`)) return;
+        }
+        el.innerHTML = `<div style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Working…</div>`;
+
+        const send = (extra) => fetch('/api/network/browser-cache', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ browsers, action, confirm: action === 'clear', ...extra })
+        });
+
+        try {
+            let res = await send({});
+            let d = await res.json();
+
+            if (res.status === 409 && d.status === 'restore_point_failed') {
+                if (!confirm(`A System Restore point could not be created:\n\n${d.message}\n\nNothing was cleared. Continue WITHOUT a restore point? Cache folders still go to the Recycle Bin.`)) {
+                    el.innerHTML = '';
+                    return;
+                }
+                res = await send({ proceed_without_restore_point: true });
+                d = await res.json();
+            }
+
+            if (d.status !== 'ok') {
+                el.innerHTML = `<div style="color:var(--accent-red);font-size:12px;">${escapeHtml(d.message || 'Failed')}</div>`;
+                return;
+            }
+
+            if (d.action === 'scan') {
+                el.innerHTML = `
+                    <div style="border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
+                        ${(d.browsers || []).map((b, i) => `
+                            <div style="display:flex;gap:12px;align-items:center;padding:9px 12px;${i ? 'border-top:1px solid var(--border-color);' : ''}">
+                                <div style="flex:1;font-size:12px;font-weight:600;">${escapeHtml(b.browser)}
+                                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:8px;">${b.installed ? b.cache_dirs.length + ' cache dir(s)' : 'not installed'}</span>
+                                </div>
+                                <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-cyan);">${escapeHtml(b.bytes_fmt)}</div>
+                            </div>`).join('')}
+                        <div style="display:flex;gap:12px;padding:9px 12px;border-top:1px solid var(--border-color);background:var(--bg-tertiary);">
+                            <div style="flex:1;font-size:12px;font-weight:600;">Total</div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-cyan);">${escapeHtml(d.total_fmt)}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${escapeHtml(d.note || '')}</div>`;
+            } else {
+                el.innerHTML = `<div style="padding:12px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-radius:8px;font-size:12px;color:var(--text-secondary);">
+                    ✓ ${d.cleared} cache folder(s) cleared — ${escapeHtml(d.bytes_fmt)} reclaimed.<br>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${escapeHtml(d.message || '')}</span>
+                </div>`;
+                this.showNotification(`Browser cache cleared — ${d.bytes_fmt}`, 'success');
+                this.refreshLogs();
+            }
+        } catch (e) {
+            el.innerHTML = `<div style="color:var(--accent-red);font-size:12px;">Request failed.</div>`;
+        }
     },
 
     // ══════════════════════════════════════════════════════════

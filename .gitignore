@@ -19,3 +19,9 @@ build/
 *.spec
 
 static/downloads/*.exe
+
+# Built installer output (produced by build_installer.bat)
+MTT_InfiniteOptimizer_Setup_v*.exe
+
+# Machine-specific runtime state written by the Internet Optimizer
+network_state.json

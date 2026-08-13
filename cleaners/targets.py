@@ -1,4 +1,18 @@
-"""Cleanup target definitions and per-target scan/clean logic."""
+"""Cleanup target definitions and per-target scan/clean logic.
+
+Deletion here is PERMANENT and deliberately so: these targets are system and
+application caches (%TEMP%, Windows Update cache, thumbnail cache, browser
+cache). Routing millions of regenerable cache files through the Recycle Bin
+would not free the space, it would only relocate it.
+
+Because it is permanent, it is also tightly scoped. ``permanent_delete``
+below is the only deleter in this module and it refuses any path that is not
+inside one of the roots declared by the target table itself
+(``system_target_roots``). A caller that hands ``clean_target`` a fabricated
+target pointing at an arbitrary user path gets a refusal, not a destroyed
+file. User-selected files never come through here — those go to the Recycle
+Bin via core.safety.send_to_recycle_bin.
+"""
 import os
 import glob
 import subprocess
@@ -181,6 +195,77 @@ def get_active_targets():
     return LINUX_CLEAN_TARGETS
 
 
+# ─── Permanent-delete allowlist ────────────────────────────────
+class PermanentDeleteRefused(ValueError):
+    """Raised when something asks the permanent deleter for a path it does
+    not own. Always a caller bug — never swallow it silently upstream."""
+
+
+def system_target_roots():
+    """Every root the declared clean targets are permitted to delete inside.
+
+    Derived from the target table in THIS module, not from whatever target
+    dict a caller happens to pass in — that is what makes it a real guard.
+    """
+    roots = []
+    for key, target in get_active_targets().items():
+        if target.get("special") == "recycle_bin":
+            continue
+        try:
+            paths = target["paths_fn"]()
+        except Exception:
+            continue
+        for p in paths:
+            if not p:
+                continue
+            try:
+                roots.append(os.path.normcase(os.path.abspath(p)))
+            except (OSError, ValueError):
+                pass
+    return roots
+
+
+def is_system_target_path(path, allowlist=None):
+    """True when ``path`` is inside a declared clean-target root."""
+    if allowlist is None:
+        allowlist = system_target_roots()
+    if not path:
+        return False
+    try:
+        target = os.path.normcase(os.path.abspath(path))
+    except (OSError, ValueError):
+        return False
+    # A bare drive root can never be a target, whatever the table says.
+    drive, tail = os.path.splitdrive(target)
+    if tail in ("", os.sep, "/"):
+        return False
+    for root in allowlist:
+        if target == root or target.startswith(root + os.sep):
+            return True
+    return False
+
+
+def permanent_delete(path, allowlist=None):
+    """The ONLY permanent deleter in this module.
+
+    Refuses anything outside the declared system-target allowlist. Returns
+    (deleted, bytes_freed); ``deleted`` is False for anything that was not a
+    regular file. Raises PermanentDeleteRefused for a disallowed path — that
+    is a caller bug, not a per-file error, so it is not folded into the
+    OSError path.
+    """
+    if not is_system_target_path(path, allowlist):
+        raise PermanentDeleteRefused(
+            f"Refusing to permanently delete {path!r} — it is not inside any "
+            f"declared system clean-target root. User-selected files must go "
+            f"through core.safety.send_to_recycle_bin instead.")
+    if not os.path.isfile(path):
+        return False, 0
+    fsize = os.path.getsize(path)
+    os.remove(path)
+    return True, fsize
+
+
 def scan_target(key, target):
     paths = target["paths_fn"]()
     total_count = 0
@@ -249,39 +334,58 @@ def clean_target(key, target):
 
     file_patterns = target.get("file_patterns")
 
+    # Computed once per target — system_target_roots() globs, so resolving it
+    # per file would be ruinous on a %TEMP% tree with a million entries.
+    allowlist = system_target_roots()
+    refused = 0
+
     for path in paths:
         if not os.path.exists(path):
+            continue
+        # Refuse the whole root up front if it is not one this module declares.
+        if not is_system_target_path(path, allowlist):
+            log_activity(f"Clean refused — '{key}' pointed at {path}, which is not a "
+                         f"declared system clean-target root. Nothing deleted.", "ERROR")
             continue
         if file_patterns:
             for pattern in file_patterns:
                 for match in glob.glob(os.path.join(path, "**", pattern), recursive=True):
                     try:
-                        if os.path.isfile(match):
-                            fsize = os.path.getsize(match)
-                            os.remove(match)
+                        deleted, fsize = permanent_delete(match, allowlist)
+                        if deleted:
                             cleaned_size += fsize
                             cleaned_count += 1
+                    except PermanentDeleteRefused:
+                        refused += 1
                     except (OSError, PermissionError):
                         pass
         else:
             for dirpath, dirnames, filenames in os.walk(path, topdown=False):
                 for f in filenames:
+                    fp = os.path.join(dirpath, f)
                     try:
-                        fp = os.path.join(dirpath, f)
-                        if os.path.isfile(fp):
-                            fsize = os.path.getsize(fp)
-                            os.remove(fp)
+                        deleted, fsize = permanent_delete(fp, allowlist)
+                        if deleted:
                             cleaned_size += fsize
                             cleaned_count += 1
+                    except PermanentDeleteRefused:
+                        refused += 1
                     except (OSError, PermissionError):
                         pass
                 for d in dirnames:
+                    dp = os.path.join(dirpath, d)
                     try:
-                        dp = os.path.join(dirpath, d)
+                        if not is_system_target_path(dp, allowlist):
+                            refused += 1
+                            continue
                         if os.path.isdir(dp) and not os.listdir(dp):
                             os.rmdir(dp)
                     except (OSError, PermissionError):
                         pass
+
+    if refused:
+        log_activity(f"Clean '{key}': {refused} entry(ies) refused — outside the "
+                     f"declared system clean-target roots", "WARN")
 
     return cleaned_count, cleaned_size
 

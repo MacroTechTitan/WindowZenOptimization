@@ -1,5 +1,13 @@
 """File-side endpoints: the file organizer, large-file finder, Downloads
-organizer preview/execute, and the folder size explorer."""
+organizer preview/execute, and the folder size explorer.
+
+Every removal here acts on files the USER picked out of a report, so all of
+them go through core.safety: check_deletable per item, one restore point per
+batch (guard_batch), and send_to_recycle_bin for the removal itself. Nothing
+in this module deletes permanently. The move/archive actions are not deletes,
+but they still run check_deletable so we never yank a file out of a
+cloud-sync root or a protected system location.
+"""
 import os
 import shutil
 import threading
@@ -11,6 +19,7 @@ from core.state import (
     IS_WINDOWS, file_organizer_results, large_files_results, organize_preview_results,
 )
 from core.util import log_activity, log_undo, format_bytes
+from core.safety import send_to_recycle_bin, guard_batch, check_deletable
 from scanners.files import run_file_organizer_scan
 
 bp = Blueprint("files", __name__)
@@ -32,30 +41,65 @@ def api_file_organizer_results():
 
 @bp.route("/api/file-organizer/delete", methods=["POST"])
 def api_file_organizer_delete():
-    data = request.get_json()
+    """Remove user-selected files to the Recycle Bin, behind a restore point."""
+    data = request.get_json() or {}
     category = data.get("category")
     files = data.get("files", [])
 
     if not category or not files:
         return jsonify({"status": "error", "message": "Category and files are required"}), 400
 
-    deleted = 0
+    blocked, allowed = [], []
     for fp in files:
+        ok, reason = check_deletable(fp)
+        (allowed.append(fp) if ok else blocked.append({"path": fp, "reason": reason}))
+    if not allowed:
+        return jsonify({"status": "blocked", "blocked": blocked,
+                        "message": "Every selected file is protected by the safety rules."}), 400
+
+    total = 0
+    for fp in allowed:
         try:
-            if os.path.isfile(fp):
-                os.remove(fp)
-                deleted += 1
-                log_activity(f"Deleted: {fp}", "SUCCESS")
-        except (OSError, PermissionError) as e:
-            log_activity(f"Failed to delete {fp}: {e}", "ERROR")
+            total += os.path.getsize(fp)
+        except (OSError, PermissionError):
+            pass
+
+    # Restore point once, before the batch — never per file.
+    ok, payload = guard_batch(
+        allowed, bool(data.get("proceed_without_restore_point", False)),
+        description="MTT Optimizer — before file organizer removal")
+    if not ok:
+        payload["blocked"] = blocked
+        return jsonify(payload), 409
+
+    result = send_to_recycle_bin(
+        allowed, allow_permanent=bool(data.get("allow_permanent", False)),
+        total_bytes=total)
+    result["blocked"].extend(blocked)
+
+    removed = set(result["recycled"])
+    if removed:
+        log_undo("recycle", f"File Organizer removed {len(removed)} file(s)",
+                 {"count": len(removed), "bytes": result["bytes"],
+                  "recoverable": not result["permanent"]})
 
     if category in file_organizer_results:
         file_organizer_results[category] = [
             item for item in file_organizer_results[category]
-            if item.get("path") not in files
+            if item.get("path") not in removed
         ]
 
-    return jsonify({"status": "ok", "deleted": deleted})
+    return jsonify({
+        "status": "ok",
+        "deleted": len(result["recycled"]),
+        "bytes": result["bytes"],
+        "bytes_fmt": format_bytes(result["bytes"]),
+        "permanent": result["permanent"],
+        "blocked": result["blocked"],
+        "errors": result["errors"],
+        "message": result["message"],
+        "restore_point": payload["restore_point"],
+    })
 
 
 @bp.route("/api/large-files/scan", methods=["POST"])
@@ -76,26 +120,66 @@ def api_large_files_results():
 
 @bp.route("/api/large-files/delete", methods=["POST"])
 def api_large_files_delete():
-    data = request.get_json()
+    """Remove user-selected large files to the Recycle Bin, behind a restore point."""
+    data = request.get_json() or {}
     files = data.get("files", [])
     dry_run = data.get("dry_run", False)
-    deleted = 0
+
+    blocked, allowed = [], []
     for fp in files:
-        if dry_run:
-            log_activity(f"[DRY RUN] Would delete: {fp}", "INFO")
-            deleted += 1
-        else:
-            try:
-                if os.path.isfile(fp):
-                    fsize = os.path.getsize(fp)
-                    os.remove(fp)
-                    deleted += 1
-                    log_undo("delete", f"Deleted large file: {os.path.basename(fp)}", {"path": fp, "size": fsize})
-                    log_activity(f"Deleted large file: {fp}", "SUCCESS")
-            except (OSError, PermissionError) as e:
-                log_activity(f"Failed to delete {fp}: {e}", "ERROR")
-    large_files_results["files"] = [f for f in large_files_results["files"] if f["path"] not in files]
-    return jsonify({"status": "ok", "deleted": deleted, "dry_run": dry_run})
+        ok, reason = check_deletable(fp)
+        (allowed.append(fp) if ok else blocked.append({"path": fp, "reason": reason}))
+
+    if dry_run:
+        for fp in allowed:
+            log_activity(f"[DRY RUN] Would move to Recycle Bin: {fp}", "INFO")
+        return jsonify({"status": "ok", "deleted": len(allowed), "dry_run": True,
+                        "blocked": blocked})
+
+    if not allowed:
+        return jsonify({"status": "blocked", "blocked": blocked,
+                        "message": "Every selected file is protected by the safety rules."}), 400
+
+    total = 0
+    for fp in allowed:
+        try:
+            total += os.path.getsize(fp)
+        except (OSError, PermissionError):
+            pass
+
+    # Restore point once, before the batch — never per file.
+    ok, payload = guard_batch(
+        allowed, bool(data.get("proceed_without_restore_point", False)),
+        description="MTT Optimizer — before large-file removal")
+    if not ok:
+        payload["blocked"] = blocked
+        return jsonify(payload), 409
+
+    result = send_to_recycle_bin(
+        allowed, allow_permanent=bool(data.get("allow_permanent", False)),
+        total_bytes=total)
+    result["blocked"].extend(blocked)
+
+    removed = set(result["recycled"])
+    if removed:
+        log_undo("recycle", f"Removed {len(removed)} large file(s)",
+                 {"count": len(removed), "bytes": result["bytes"],
+                  "recoverable": not result["permanent"]})
+
+    large_files_results["files"] = [
+        f for f in large_files_results["files"] if f["path"] not in removed]
+    return jsonify({
+        "status": "ok",
+        "deleted": len(result["recycled"]),
+        "dry_run": False,
+        "bytes": result["bytes"],
+        "bytes_fmt": format_bytes(result["bytes"]),
+        "permanent": result["permanent"],
+        "blocked": result["blocked"],
+        "errors": result["errors"],
+        "message": result["message"],
+        "restore_point": payload["restore_point"],
+    })
 
 
 @bp.route("/api/large-files/archive", methods=["POST"])
@@ -105,7 +189,17 @@ def api_large_files_archive():
     dry_run = data.get("dry_run", False)
     archive_dir = os.path.join(os.path.expanduser("~"), "Archive")
     moved = 0
+    blocked = []
+    archived = set()
     for fp in files:
+        # A move is not a delete, but it still relocates the file — refuse the
+        # same paths the delete gate refuses (cloud-sync roots especially,
+        # where a move reads as a delete + re-upload to the provider).
+        ok, reason = check_deletable(fp)
+        if not ok:
+            blocked.append({"path": fp, "reason": reason})
+            log_activity(f"Archive refused: {fp} — {reason}", "WARN")
+            continue
         if dry_run:
             log_activity(f"[DRY RUN] Would archive: {fp} -> {archive_dir}", "INFO")
             moved += 1
@@ -116,12 +210,16 @@ def api_large_files_archive():
                     dest = os.path.join(archive_dir, os.path.basename(fp))
                     shutil.move(fp, dest)
                     moved += 1
+                    archived.add(fp)
                     log_undo("move", f"Archived: {os.path.basename(fp)}", {"from": fp, "to": dest})
                     log_activity(f"Archived: {fp} -> {dest}", "SUCCESS")
             except (OSError, PermissionError) as e:
                 log_activity(f"Failed to archive {fp}: {e}", "ERROR")
-    large_files_results["files"] = [f for f in large_files_results["files"] if f["path"] not in files]
-    return jsonify({"status": "ok", "moved": moved, "archive_dir": archive_dir, "dry_run": dry_run})
+    if not dry_run:
+        large_files_results["files"] = [
+            f for f in large_files_results["files"] if f["path"] not in archived]
+    return jsonify({"status": "ok", "moved": moved, "archive_dir": archive_dir,
+                    "dry_run": dry_run, "blocked": blocked})
 
 
 def run_large_files_scan(threshold_mb=100):
@@ -252,10 +350,18 @@ def api_organize_execute():
     dry_run = data.get("dry_run", False)
     actions = data.get("actions", organize_preview_results.get("actions", []))
     executed = 0
+    blocked = []
     for act in actions:
         fp = act.get("path", "")
         action_desc = act.get("action", "")
         if not os.path.isfile(fp):
+            continue
+        # Same gate as the delete paths — a move out of a cloud-sync root
+        # propagates as a delete to the provider.
+        ok, reason = check_deletable(fp)
+        if not ok:
+            blocked.append({"path": fp, "reason": reason})
+            log_activity(f"Organize refused: {fp} — {reason}", "WARN")
             continue
         if dry_run:
             log_activity(f"[DRY RUN] {action_desc}: {act.get('file', '')}", "INFO")
@@ -280,7 +386,8 @@ def api_organize_execute():
             log_activity(f"{action_desc}: {act.get('file', '')}", "SUCCESS")
         except (OSError, PermissionError) as e:
             log_activity(f"Failed: {act.get('file', '')}: {e}", "ERROR")
-    return jsonify({"status": "ok", "executed": executed, "dry_run": dry_run})
+    return jsonify({"status": "ok", "executed": executed, "dry_run": dry_run,
+                    "blocked": blocked})
 
 
 # ══════════════════════════════════════════════════════════════════════════════

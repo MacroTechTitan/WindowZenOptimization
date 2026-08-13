@@ -1,12 +1,27 @@
 """Deep Clean apply phase.
 
-Every path here is gated by core.safety:
-  * a restore point is taken once before the batch (guard_batch),
+The restore-point gate covers the whole run: guard_batch is called once
+before any target is touched, and the run is refused unless it succeeds or
+the user explicitly confirmed proceeding without one.
+
+File-removing targets (modes "contents", "files", "patterns", "tree") are
+gated by core.safety:
   * every item passes check_deletable (Windows core / Program Files /
     Package Cache / cloud-sync roots are refused),
-  * removals go to the Recycle Bin via SHFileOperationW with FOF_ALLOWUNDO,
-    and the batch is refused outright if it would overflow the bin,
+  * removal goes through send_to_recycle_bin, which uses SHFileOperationW
+    with FOF_ALLOWUNDO so the delete is undoable, and refuses the batch
+    outright rather than silently permanent-deleting when it would overflow
+    the bin — unless the caller passed allow_permanent, which the UI has to
+    surface to the user per action,
   * before/after paths and bytes are written to the activity log.
+
+Two modes do NOT delete files and so are not gated that way:
+  * "recycle_bin" runs Clear-RecycleBin. Emptying the bin is permanent by
+    definition — there is nowhere further to recycle to. It only ever runs
+    when the user ticks that specific target.
+  * "dism" shells out to DISM /StartComponentCleanup. It is a subprocess
+    that manages the component store itself; this module deletes nothing
+    for it and cannot make it undoable.
 
 The apply phase only ever runs for targets the user explicitly selected in
 the UI after seeing the report.

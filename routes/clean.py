@@ -18,7 +18,8 @@ from core.state import (
     file_organizer_results, undo_log,
     NETWORK_FIX_STEPS, _net_fix_lock, network_fix_state,
 )
-from core.util import log_activity, format_bytes
+from core.util import log_activity, log_undo, format_bytes
+from core.safety import send_to_recycle_bin, guard_batch, check_deletable
 from core.config import settings, save_settings
 from cleaners.targets import get_active_targets
 from cleaners.runner import run_system_scan, run_system_clean, setup_scheduler
@@ -458,19 +459,56 @@ def api_broken_shortcuts():
 
 @bp.route("/api/cleaner/delete-shortcuts", methods=["POST"])
 def api_delete_shortcuts():
+    """Remove user-selected broken shortcuts to the Recycle Bin.
+
+    These live on the Desktop and in the Start Menu — user-reachable files —
+    so they go to the bin behind a restore point, never permanently.
+    """
     data = request.get_json() or {}
     paths = data.get("paths", [])
-    deleted = []
-    errors = []
+    blocked, allowed = [], []
     for p in paths:
+        if not (os.path.isfile(p) and p.lower().endswith(".lnk")):
+            blocked.append({"path": p, "reason": "Blocked — not an existing .lnk shortcut"})
+            continue
+        ok, reason = check_deletable(p)
+        (allowed.append(p) if ok else blocked.append({"path": p, "reason": reason}))
+
+    if not allowed:
+        return jsonify({"deleted": [], "errors": [], "blocked": blocked,
+                        "message": "No selected shortcut passed the safety rules."})
+
+    total = 0
+    for p in allowed:
         try:
-            if os.path.isfile(p) and p.lower().endswith(".lnk"):
-                os.remove(p)
-                deleted.append(p)
-                log_activity(f"Deleted broken shortcut: {p}", "SUCCESS")
-        except Exception as e:
-            errors.append({"path": p, "error": str(e)})
-    return jsonify({"deleted": deleted, "errors": errors})
+            total += os.path.getsize(p)
+        except (OSError, PermissionError):
+            pass
+
+    ok, payload = guard_batch(
+        allowed, bool(data.get("proceed_without_restore_point", False)),
+        description="MTT Optimizer — before broken-shortcut removal")
+    if not ok:
+        payload["blocked"] = blocked
+        return jsonify(payload), 409
+
+    result = send_to_recycle_bin(
+        allowed, allow_permanent=bool(data.get("allow_permanent", False)),
+        total_bytes=total)
+    result["blocked"].extend(blocked)
+    if result["recycled"]:
+        log_undo("recycle", f"Removed {len(result['recycled'])} broken shortcut(s)",
+                 {"count": len(result["recycled"]), "bytes": result["bytes"],
+                  "recoverable": not result["permanent"]})
+
+    return jsonify({
+        "deleted": result["recycled"],
+        "errors": result["errors"],
+        "blocked": result["blocked"],
+        "permanent": result["permanent"],
+        "message": result["message"],
+        "restore_point": payload["restore_point"],
+    })
 
 
 @bp.route("/api/cleaner/empty-folders")
@@ -514,26 +552,68 @@ def api_empty_folders():
 
 @bp.route("/api/cleaner/delete-empty-folders", methods=["POST"])
 def api_delete_empty_folders():
+    """Remove user-selected empty folders to the Recycle Bin.
+
+    Still a user-reachable delete, so it gets the same treatment as the
+    others: scoped to the six user folders we scan, re-checked per item,
+    restore point before the batch, and undoable removal.
+    """
     data = request.get_json() or {}
     paths = data.get("paths", [])
-    deleted = []
-    errors = []
+    blocked, allowed = [], []
     home = os.path.expanduser("~")
-    safe_roots = [os.path.join(home, d) for d in ["Desktop", "Downloads", "Documents", "Pictures", "Videos", "Music"]]
+    safe_roots = [os.path.normcase(os.path.abspath(os.path.join(home, d)))
+                  for d in ["Desktop", "Downloads", "Documents", "Pictures", "Videos", "Music"]]
 
     for p in paths:
         try:
-            in_safe = any(p.startswith(r) for r in safe_roots)
-            if not in_safe:
-                errors.append({"path": p, "error": "Path is outside safe user folders"})
+            target = os.path.normcase(os.path.abspath(p))
+        except (OSError, ValueError):
+            blocked.append({"path": p, "reason": "Blocked — unresolvable path"})
+            continue
+        # Strict containment: a bare startswith would let "…\DesktopOld" through.
+        in_safe = any(target.startswith(r + os.sep) for r in safe_roots)
+        if not in_safe:
+            blocked.append({"path": p, "reason": "Blocked — outside the scanned user folders"})
+            continue
+        if not os.path.isdir(p):
+            blocked.append({"path": p, "reason": "Blocked — not a directory"})
+            continue
+        try:
+            if os.listdir(p):
+                blocked.append({"path": p, "reason": "Blocked — folder is not empty"})
                 continue
-            if os.path.isdir(p) and not os.listdir(p):
-                os.rmdir(p)
-                deleted.append(p)
-                log_activity(f"Removed empty folder: {p}", "SUCCESS")
-        except Exception as e:
-            errors.append({"path": p, "error": str(e)})
-    return jsonify({"deleted": deleted, "errors": errors})
+        except (OSError, PermissionError) as e:
+            blocked.append({"path": p, "reason": f"Blocked — unreadable ({e})"})
+            continue
+        ok, reason = check_deletable(p)
+        (allowed.append(p) if ok else blocked.append({"path": p, "reason": reason}))
+
+    if not allowed:
+        return jsonify({"deleted": [], "errors": [], "blocked": blocked,
+                        "message": "No selected folder passed the safety rules."})
+
+    ok, payload = guard_batch(
+        allowed, bool(data.get("proceed_without_restore_point", False)),
+        description="MTT Optimizer — before empty-folder removal")
+    if not ok:
+        payload["blocked"] = blocked
+        return jsonify(payload), 409
+
+    result = send_to_recycle_bin(allowed, total_bytes=0)
+    result["blocked"].extend(blocked)
+    if result["recycled"]:
+        log_undo("recycle", f"Removed {len(result['recycled'])} empty folder(s)",
+                 {"count": len(result["recycled"]), "bytes": 0,
+                  "recoverable": not result["permanent"]})
+
+    return jsonify({
+        "deleted": result["recycled"],
+        "errors": result["errors"],
+        "blocked": result["blocked"],
+        "message": result["message"],
+        "restore_point": payload["restore_point"],
+    })
 
 
 # ══════════════════════════════════════════════════════════════════════════════

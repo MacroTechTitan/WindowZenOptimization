@@ -3111,6 +3111,48 @@ const App = {
     },
 
     // ══════════════════════════════════════════════════════════
+    // SHARED FINDER UI — filename-first rows, custom roots, Review screen
+    // Used by the duplicate, large-file and zero-length finders.
+    // ══════════════════════════════════════════════════════════
+
+    _pathParts(path) {
+        const p = String(path || '');
+        const i = Math.max(p.lastIndexOf('\\'), p.lastIndexOf('/'));
+        return i < 0 ? { name: p, folder: '' } : { name: p.slice(i + 1), folder: p.slice(0, i) };
+    },
+
+    // Middle truncation: the head names the drive and the tail names the
+    // deepest folder, so cutting the middle is the only cut that loses
+    // neither. The filename is rendered separately and is never cut.
+    _midTrunc(text, max) {
+        const t = String(text || '');
+        max = max || 72;
+        if (t.length <= max) return t;
+        const head = Math.ceil((max - 1) / 2);
+        const tail = Math.floor((max - 1) / 2);
+        return t.slice(0, head) + '…' + t.slice(t.length - tail);
+    },
+
+    // One row shape everywhere: filename first, in bold, never truncated;
+    // the folder under it, truncated in the middle; full path on hover.
+    _fileRowHtml(f, opts) {
+        opts = opts || {};
+        const parts = this._pathParts(f.path);
+        const name = f.name || parts.name;
+        const full = escapeHtml(f.path);
+        return `
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${full}">
+                    ${escapeHtml(name)}${opts.chips || ''}
+                </div>
+                <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:2px;white-space:nowrap;" title="${full}">
+                    ${escapeHtml(this._midTrunc(parts.folder))}
+                </div>
+                ${opts.meta ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${opts.meta}</div>` : ''}
+            </div>`;
+    },
+
+    // ══════════════════════════════════════════════════════════
     // DUPLICATE FINDER (Sprint 3, Feature 3) — file level, user picks copies
     // ══════════════════════════════════════════════════════════
     _duplicatesReport: null,
@@ -3206,13 +3248,11 @@ const App = {
                 ${g.copies.map(c => `
                     <div style="display:flex;gap:10px;align-items:center;padding:7px 12px;border-top:1px solid var(--border-color);">
                         <input type="checkbox" class="duplicates-file" data-group="${escapeHtml(g.hash)}" value="${escapeHtml(c.path)}" ${(c.cloud_synced || c.protected) ? 'disabled' : ''}>
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.path)}</div>
-                            <div style="font-size:10px;color:var(--text-muted);">modified ${escapeHtml(c.modified)}
-                                ${c.cloud_synced ? `<span style="color:var(--accent-red);"> · ☁ cloud-synced, delete blocked</span>` : ''}
-                                ${c.protected ? `<span style="color:var(--accent-red);"> · protected location</span>` : ''}
-                            </div>
-                        </div>
+                        ${this._fileRowHtml(c, {
+                            meta: `modified ${escapeHtml(c.modified)}`
+                                + (c.cloud_synced ? `<span style="color:var(--accent-red);"> · ☁ cloud-synced, delete blocked</span>` : '')
+                                + (c.protected ? `<span style="color:var(--accent-red);"> · protected location</span>` : '')
+                        })}
                     </div>`).join('')}
             </div>`).join('');
 
@@ -3382,16 +3422,11 @@ const App = {
         const rows = files.map(f => `
             <div style="display:flex;gap:12px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border-color);">
                 <input type="checkbox" class="largefiles-file" value="${escapeHtml(f.path)}" ${f.cloud_synced ? 'disabled' : ''}>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                        ${escapeHtml(f.name)}
-                        ${f.old_installer ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.14);color:var(--accent-yellow);margin-left:6px;">OLD INSTALLER → v${escapeHtml(f.superseded_by)}</span>` : ''}
-                        ${f.cloud_synced ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.14);color:var(--accent-red);margin-left:6px;">☁ CLOUD-SYNCED</span>` : ''}
-                    </div>
-                    <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                        ${escapeHtml(this._catLabel(f.category))} · ${escapeHtml(f.modified)} · ${escapeHtml(f.folder)}
-                    </div>
-                </div>
+                ${this._fileRowHtml(f, {
+                    chips: (f.old_installer ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.14);color:var(--accent-yellow);margin-left:6px;">OLD INSTALLER → v${escapeHtml(f.superseded_by)}</span>` : '')
+                         + (f.cloud_synced ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.14);color:var(--accent-red);margin-left:6px;">☁ CLOUD-SYNCED</span>` : ''),
+                    meta: `${escapeHtml(this._catLabel(f.category))} · ${escapeHtml(f.modified)}`
+                })}
                 <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-cyan);white-space:nowrap;">${escapeHtml(f.size_fmt)}</div>
             </div>`).join('');
 

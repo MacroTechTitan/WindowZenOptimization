@@ -241,6 +241,40 @@ body::before {
     font-weight: 600;
 }
 
+/* ── Nav hub — a group header with its own sub-pages ──────────
+   The header is not a page: it carries no data-page, so clicking it
+   only expands the group. Every sub-item keeps the data-page value it
+   had as a top-level entry, so routes are untouched. */
+.nav-hub-header .caret {
+    margin-left: auto;
+    font-size: 9px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.nav-hub.open .nav-hub-header .caret {
+    transform: rotate(90deg);
+}
+
+/* Collapsed-but-active: the group is shut while one of its pages is
+   showing, so the header carries the marker its sub-item would. */
+.nav-hub.has-active .nav-hub-header {
+    color: var(--accent-blue);
+}
+
+.nav-hub:not(.open) .nav-hub-items {
+    display: none;
+}
+
+.nav-item.nav-sub {
+    padding-left: 34px;
+    font-size: 12.5px;
+}
+
+.nav-item.nav-sub .icon {
+    font-size: 14px;
+}
+
 .main-content {
     padding: 20px;
     overflow-y: auto;

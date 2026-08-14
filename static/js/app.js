@@ -54,6 +54,24 @@ const App = {
         });
     },
 
+    // A hub header has no data-page, so it never navigates — it only opens
+    // and closes its group.
+    toggleNavHub(name) {
+        const hub = document.getElementById(`nav-hub-${name}`);
+        if (hub) hub.classList.toggle('open');
+    },
+
+    // Keep every hub in step with the active page: the one containing it is
+    // expanded so the user can see where they are, and marked so a collapsed
+    // hub still shows that something inside it is active.
+    _syncNavHubs(activeNav) {
+        document.querySelectorAll('.nav-hub').forEach(hub => {
+            const owns = !!activeNav && hub.contains(activeNav);
+            hub.classList.toggle('has-active', owns);
+            if (owns) hub.classList.add('open');
+        });
+    },
+
     showPage(pageName) {
         this.currentPage = pageName;
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -64,6 +82,7 @@ const App = {
 
         const nav = document.querySelector(`.nav-item[data-page="${pageName}"]`);
         if (nav) nav.classList.add('active');
+        this._syncNavHubs(nav);
 
         if (pageName === 'processes') {
             this.refreshProcesses();

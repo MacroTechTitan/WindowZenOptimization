@@ -135,17 +135,33 @@
                 <span class="icon">&#x1F9F9;</span>
                 <span>System Cleaner</span>
             </div>
-            <div class="nav-item" data-page="deepclean">
-                <span class="icon">&#x1F9FD;</span>
-                <span>Deep Clean</span>
-            </div>
-            <div class="nav-item" data-page="largefiles">
-                <span class="icon">&#x1F4CF;</span>
-                <span>Large Files</span>
-            </div>
-            <div class="nav-item" data-page="duplicates">
-                <span class="icon">&#x1F46F;</span>
-                <span>Duplicates</span>
+            <!-- Deep Clean hub. The header is not a page — it has no data-page,
+                 so it only expands. Sub-items keep their original data-page
+                 values, so every route and API path is unchanged. -->
+            <div class="nav-hub" id="nav-hub-deepclean">
+                <div class="nav-item nav-hub-header" onclick="App.toggleNavHub('deepclean')">
+                    <span class="icon">&#x1F9FD;</span>
+                    <span>Deep Clean</span>
+                    <span class="caret">&#x25B6;</span>
+                </div>
+                <div class="nav-hub-items">
+                    <div class="nav-item nav-sub" data-page="deepclean">
+                        <span class="icon">&#x1F9FD;</span>
+                        <span>Deep Clean</span>
+                    </div>
+                    <div class="nav-item nav-sub" data-page="largefiles">
+                        <span class="icon">&#x1F4CF;</span>
+                        <span>Large Files</span>
+                    </div>
+                    <div class="nav-item nav-sub" data-page="duplicates">
+                        <span class="icon">&#x1F46F;</span>
+                        <span>Duplicates</span>
+                    </div>
+                    <div class="nav-item nav-sub" data-page="zerolength">
+                        <span class="icon">&#x1F4C4;</span>
+                        <span>Zero-length</span>
+                    </div>
+                </div>
             </div>
             <div class="nav-item" data-page="ai-storage">
                 <span class="icon">&#x1F916;</span>

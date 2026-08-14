@@ -3202,6 +3202,135 @@ const App = {
         say('Added and ticked.', 'var(--accent-green)');
     },
 
+    // ── Review screen (replaces the confirm() popups) ─────────
+    // cfg: {title, kindLabel, items:[{path,name,size,size_fmt,meta}],
+    //       destination, onDelete(opts), warning}
+    _review: null,
+
+    openReview(cfg) {
+        this._review = cfg;
+        const items = cfg.items || [];
+        const total = items.reduce((s, f) => s + (Number(f.size) || 0), 0);
+
+        document.getElementById('review-title').textContent =
+            cfg.title || 'Review before deleting';
+        document.getElementById('review-stats').innerHTML = `
+            <div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">MARKED FOR DELETION</div>
+                <div style="font-size:24px;font-weight:600;">${items.length}</div>
+            </div>
+            <div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">SPACE RECLAIMED</div>
+                <div style="font-size:24px;font-weight:600;color:var(--accent-cyan);">${escapeHtml(this._fmtBytes(total))}</div>
+            </div>
+            <div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">DESTINATION</div>
+                <div style="font-size:14px;font-weight:600;color:var(--accent-green);">♻ Recycle Bin</div>
+                <div style="font-size:10px;color:var(--text-muted);">recoverable — not a permanent delete</div>
+            </div>`;
+
+        this._reviewRestoreStatus(
+            'pending',
+            'A System Restore point will be created before anything is deleted.');
+
+        document.getElementById('review-list').innerHTML = items.map(f => `
+            <div style="display:flex;gap:12px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border,#2a3042);">
+                ${this._fileRowHtml(f, { meta: f.meta || '' })}
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-cyan);white-space:nowrap;">${escapeHtml(f.size_fmt || this._fmtBytes(f.size))}</div>
+            </div>`).join('') ||
+            `<div style="padding:18px;text-align:center;color:var(--text-muted);">Nothing selected.</div>`;
+
+        const outcome = document.getElementById('review-outcome');
+        outcome.style.display = 'none';
+        outcome.innerHTML = '';
+        document.getElementById('review-footnote').innerHTML = cfg.warning
+            ? escapeHtml(cfg.warning)
+            : 'Only the items listed above are touched.';
+
+        const btn = document.getElementById('review-confirm');
+        btn.style.display = '';
+        btn.disabled = items.length === 0;
+        btn.innerHTML = '🗑 Delete to Recycle Bin';
+        document.getElementById('review-screen').style.display = 'block';
+    },
+
+    closeReview() {
+        document.getElementById('review-screen').style.display = 'none';
+        const cfg = this._review;
+        this._review = null;
+        if (cfg && cfg.onClose) cfg.onClose();
+    },
+
+    reviewConfirm() {
+        const cfg = this._review;
+        if (cfg && cfg.onDelete) cfg.onDelete({});
+    },
+
+    reviewBusy(on, label) {
+        const btn = document.getElementById('review-confirm');
+        if (!btn) return;
+        btn.disabled = !!on;
+        btn.innerHTML = on ? (label || '⏳ Deleting…') : '🗑 Delete to Recycle Bin';
+    },
+
+    // Restore-point state lives INSIDE the review screen — the guard_batch
+    // failure is never a browser popup.
+    _reviewRestoreStatus(state, message) {
+        const el = document.getElementById('review-restore');
+        if (!el) return;
+        if (state === 'failed') {
+            el.innerHTML = `
+                <div style="padding:12px 14px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px;">
+                    <div style="font-weight:600;color:var(--accent-yellow);margin-bottom:6px;">⚠ No System Restore point — nothing was deleted</div>
+                    <div style="font-size:11px;color:var(--text-secondary);line-height:1.7;">${escapeHtml(message || '')}</div>
+                    <div style="font-size:11px;color:var(--text-secondary);line-height:1.7;margin-top:6px;">
+                        You can continue without one. The deletion will not be revertible from System
+                        Restore, but the files still go to the Recycle Bin where you can restore them
+                        individually.
+                    </div>
+                    <button class="btn btn-outline" style="margin-top:10px;" onclick="App.reviewProceedWithoutRestorePoint()">
+                        Delete without a restore point
+                    </button>
+                </div>`;
+            return;
+        }
+        const done = state === 'created';
+        el.innerHTML = `
+            <div style="padding:10px 14px;background:${done ? 'rgba(16,185,129,0.07)' : 'rgba(6,182,212,0.07)'};border:1px solid ${done ? 'rgba(16,185,129,0.25)' : 'rgba(6,182,212,0.25)'};border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);">
+                ${done ? '✓' : '🛡'} <strong style="color:${done ? 'var(--accent-green)' : 'var(--accent-cyan)'};">Restore point</strong> — ${escapeHtml(message || '')}
+            </div>`;
+    },
+
+    reviewProceedWithoutRestorePoint() {
+        const cfg = this._review;
+        if (cfg && cfg.onDelete) cfg.onDelete({ withoutRestorePoint: true });
+    },
+
+    // Terminal state: show what actually happened without leaving the screen.
+    reviewOutcome(data, kindLabel) {
+        const el = document.getElementById('review-outcome');
+        const blocked = data.blocked || [];
+        const errors = data.errors || [];
+        el.style.display = 'block';
+        el.innerHTML = `
+            <div style="padding:14px 16px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-radius:8px;">
+                <div style="font-weight:600;color:var(--accent-green);">
+                    ✓ ${data.deleted || 0} ${escapeHtml(kindLabel || 'item(s)')} ${data.permanent ? 'permanently deleted' : 'moved to the Recycle Bin'} — ${escapeHtml(data.bytes_fmt || '0 B')} reclaimed
+                </div>
+                ${blocked.length ? `<div style="font-size:11px;color:var(--accent-yellow);margin-top:8px;">${blocked.length} item(s) skipped by the safety rules: ${escapeHtml((blocked[0].reason) || '')}</div>` : ''}
+                ${errors.length ? `<div style="font-size:11px;color:var(--accent-red);margin-top:6px;">${escapeHtml(errors[0].error || '')}</div>` : ''}
+            </div>`;
+        this._reviewRestoreStatus(
+            (data.restore_point || {}).created ? 'created' : 'pending',
+            (data.restore_point || {}).created
+                ? 'created before the batch.'
+                : escapeHtml((data.restore_point || {}).message || 'not created.'));
+        const btn = document.getElementById('review-confirm');
+        btn.style.display = 'none';
+        document.getElementById('review-footnote').textContent =
+            'Close this screen to return to the report.';
+    },
+
     // ══════════════════════════════════════════════════════════
     // DUPLICATE FINDER (Sprint 3, Feature 3) — file level, user picks copies
     // ══════════════════════════════════════════════════════════
@@ -3374,30 +3503,61 @@ const App = {
         el.textContent = `${boxes.length} copy(ies) selected · ${this._fmtBytes(bytes)}`;
     },
 
-    async duplicatesDelete(opts) {
-        opts = opts || {};
+    // Step 2 opens the Review screen. It never deletes by itself — the only
+    // thing that calls the API is _duplicatesRunDelete, from inside the review.
+    duplicatesDelete() {
         const boxes = Array.from(document.querySelectorAll('.duplicates-file:checked'));
+        const warn = document.getElementById('duplicates-warning');
+        if (warn) warn.style.display = 'none';
         if (!boxes.length) { this.showNotification('Tick the copies you want to remove', 'warning'); return; }
 
         // Client-side mirror of the server rule: keep at least one copy per group.
+        // Shown inline on the page — a refused selection is a thing to fix, not
+        // a popup to dismiss.
         const perGroup = {};
         boxes.forEach(b => { perGroup[b.dataset.group] = (perGroup[b.dataset.group] || 0) + 1; });
         const wipe = (this._duplicatesReport.groups || [])
             .filter(g => perGroup[g.hash] && perGroup[g.hash] >= g.count);
         if (wipe.length) {
-            alert(`That selection would delete every copy of ${wipe.length} file(s):\n\n` +
-                  wipe.slice(0, 6).map(g => `  • ${g.copies[0].name}`).join('\n') +
-                  `\n\nLeave at least one copy of each file.`);
+            if (warn) {
+                warn.style.display = 'block';
+                warn.innerHTML = `
+                    <div style="padding:12px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;">
+                        <div style="font-weight:600;color:var(--accent-red);margin-bottom:6px;">
+                            That selection would delete every copy of ${wipe.length} file(s)
+                        </div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+                            ${wipe.slice(0, 6).map(g => `• ${escapeHtml(g.copies[0].name)}`).join('<br>')}
+                            ${wipe.length > 6 ? `<br>… and ${wipe.length - 6} more` : ''}
+                        </div>
+                        <div style="font-size:11px;color:var(--text-secondary);margin-top:8px;">
+                            Untick one copy of each, or use <strong>Select all duplicates</strong>, which always leaves one.
+                        </div>
+                    </div>`;
+            }
             return;
         }
 
+        // Snapshot the selection now so the review screen and the request that
+        // follows it can never disagree about what is being deleted.
+        const index = {};
+        (this._duplicatesReport.groups || []).forEach(g =>
+            (g.copies || []).forEach(c => { index[c.path] = c; }));
         const files = boxes.map(b => b.value);
-        if (!opts.skipConfirm) {
-            if (!confirm(`Remove ${files.length} duplicate copy(ies)?\n\nEvery file will still have at least one copy left.\nRemoved copies go to the Recycle Bin after a System Restore point is created.`)) return;
-        }
+        const items = files.map(p => index[p]).filter(Boolean)
+            .map(c => ({ ...c, meta: `modified ${escapeHtml(c.modified)}` }));
 
-        const btn = document.getElementById('btn-duplicates-delete');
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ Removing…'; }
+        this.openReview({
+            title: 'Review — duplicate copies to remove',
+            items,
+            warning: 'One copy of every file above is left in place.',
+            onDelete: opts => this._duplicatesRunDelete(files, opts)
+        });
+    },
+
+    async _duplicatesRunDelete(files, opts) {
+        opts = opts || {};
+        this.reviewBusy(true, '⏳ Removing…');
         try {
             const res = await fetch('/api/duplicates/delete', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3408,26 +3568,27 @@ const App = {
                 })
             });
             const data = await res.json();
-            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
 
+            // The restore-point failure is a state of the review screen, not a
+            // browser popup: nothing was deleted, and the way forward is the
+            // explicit second button _reviewRestoreStatus renders.
             if (res.status === 409 && data.status === 'restore_point_failed') {
-                if (confirm(`A System Restore point could not be created:\n\n${data.message}\n\nNothing was deleted. Continue WITHOUT a restore point? Copies still go to the Recycle Bin.`)) {
-                    this.duplicatesDelete({ withoutRestorePoint: true, skipConfirm: true });
-                }
+                this.reviewBusy(false);
+                this._reviewRestoreStatus('failed', data.message || '');
                 return;
             }
             if (data.status !== 'ok') {
+                this.reviewBusy(false);
                 this.showNotification(data.message || 'Removal refused', 'error');
                 return;
             }
-            if (data.message) this.showNotification(data.message, 'warning');
-            this.showNotification(`${data.deleted} copy(ies) moved to the Recycle Bin — ${data.bytes_fmt} reclaimed`, 'success');
+            this.reviewOutcome(data, 'copy(ies)');
             this._duplicatesReport = await (await fetch('/api/duplicates/report')).json();
             this.renderDuplicates();
             this.refreshLogs();
         } catch (e) {
+            this.reviewBusy(false);
             this.showNotification('Removal failed', 'error');
-            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
         }
     },
 
@@ -3548,25 +3709,24 @@ const App = {
         if (btn) btn.disabled = files.length === 0;
     },
 
-    async largefilesDelete(opts) {
-        opts = opts || {};
+    largefilesDelete() {
         const files = Array.from(document.querySelectorAll('.largefiles-file:checked')).map(c => c.value);
         if (!files.length) { this.showNotification('Select the files you want to delete', 'warning'); return; }
 
         const rep = this._largefilesReport || { files: [] };
-        const chosen = rep.files.filter(f => files.includes(f.path));
-        const total = chosen.reduce((s, f) => s + f.size, 0);
+        const items = (rep.files || []).filter(f => files.includes(f.path))
+            .map(f => ({ ...f, meta: `${escapeHtml(this._catLabel(f.category))} · ${escapeHtml(f.modified)}` }));
 
-        if (!opts.skipConfirm) {
-            let msg = `Delete ${files.length} file(s), ${this._fmtBytes(total)}?\n\n`;
-            msg += chosen.slice(0, 12).map(f => `  • ${f.name} — ${f.size_fmt}`).join('\n');
-            if (chosen.length > 12) msg += `\n  … and ${chosen.length - 12} more`;
-            msg += `\n\nThese go to the Recycle Bin (recoverable) after a System Restore point is created.`;
-            if (!confirm(msg)) return;
-        }
+        this.openReview({
+            title: 'Review — large files to delete',
+            items,
+            onDelete: opts => this._largefilesRunDelete(files, opts)
+        });
+    },
 
-        const btn = document.getElementById('btn-largefiles-delete');
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ Deleting…'; }
+    async _largefilesRunDelete(files, opts) {
+        opts = opts || {};
+        this.reviewBusy(true);
         try {
             const res = await fetch('/api/largefiles/delete', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3577,30 +3737,24 @@ const App = {
                 })
             });
             const data = await res.json();
-            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
 
             if (res.status === 409 && data.status === 'restore_point_failed') {
-                if (confirm(`A System Restore point could not be created:\n\n${data.message}\n\nNothing was deleted. Continue WITHOUT a restore point? Files still go to the Recycle Bin.`)) {
-                    this.largefilesDelete({ withoutRestorePoint: true, skipConfirm: true });
-                }
+                this.reviewBusy(false);
+                this._reviewRestoreStatus('failed', data.message || '');
                 return;
             }
             if (data.status !== 'ok') {
+                this.reviewBusy(false);
                 this.showNotification(data.message || 'Deletion refused', 'error');
                 return;
             }
-            if (data.message) this.showNotification(data.message, 'warning');
-            this.showNotification(`${data.deleted} file(s) moved to the Recycle Bin — ${data.bytes_fmt} reclaimed`, 'success');
-            if ((data.blocked || []).length) {
-                this.showNotification(`${data.blocked.length} file(s) skipped by safety rules`, 'warning');
-            }
-            const rep2 = await (await fetch('/api/largefiles/report')).json();
-            this._largefilesReport = rep2;
+            this.reviewOutcome(data, 'file(s)');
+            this._largefilesReport = await (await fetch('/api/largefiles/report')).json();
             this.renderLargefiles();
             this.refreshLogs();
         } catch (e) {
+            this.reviewBusy(false);
             this.showNotification('Deletion failed', 'error');
-            if (btn) { btn.disabled = false; btn.innerHTML = '🗑 Step 2 — Review & Delete'; }
         }
     },
 

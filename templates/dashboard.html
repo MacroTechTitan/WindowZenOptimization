@@ -496,6 +496,13 @@
                                 <div id="largefiles-roots" style="display:grid;gap:6px;">
                                     <span style="color:var(--text-muted);font-size:12px;">Loading…</span>
                                 </div>
+                                <div style="display:flex;gap:6px;align-items:center;margin-top:10px;">
+                                    <input type="text" id="largefiles-custom-path" placeholder="Or scan another folder&hellip;  D:\Projects"
+                                           onkeydown="if(event.key==='Enter'){event.preventDefault();App.addCustomRoot('largefiles');}"
+                                           style="width:300px;padding:6px 9px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:11px;">
+                                    <button class="btn btn-outline" style="padding:6px 12px;font-size:11px;" onclick="App.addCustomRoot('largefiles')">+ Add folder</button>
+                                </div>
+                                <div id="largefiles-custom-status" style="font-family:'JetBrains Mono',monospace;font-size:10px;margin-top:5px;min-height:13px;"></div>
                             </div>
                             <div>
                                 <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;">MINIMUM SIZE (MB)</div>
@@ -555,6 +562,13 @@
                             <div id="duplicates-roots" style="display:grid;gap:6px;">
                                 <span style="color:var(--text-muted);font-size:12px;">Loading…</span>
                             </div>
+                            <div style="display:flex;gap:6px;align-items:center;margin-top:10px;">
+                                <input type="text" id="duplicates-custom-path" placeholder="Or scan another folder&hellip;  D:\FL Studio"
+                                       onkeydown="if(event.key==='Enter'){event.preventDefault();App.addCustomRoot('duplicates');}"
+                                       style="width:300px;padding:6px 9px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:11px;">
+                                <button class="btn btn-outline" style="padding:6px 12px;font-size:11px;" onclick="App.addCustomRoot('duplicates')">+ Add folder</button>
+                            </div>
+                            <div id="duplicates-custom-status" style="font-family:'JetBrains Mono',monospace;font-size:10px;margin-top:5px;min-height:13px;"></div>
                         </div>
 
                         <div id="duplicates-summary" style="display:none;margin-bottom:16px;"></div>

@@ -3152,6 +3152,56 @@ const App = {
             </div>`;
     },
 
+    // ── Custom folder picker (shared by all three finders) ────
+    // kind is 'duplicates' | 'largefiles' | 'zerolength'; the finder's root
+    // checkboxes are .<kind>-root inside #<kind>-roots.
+    async addCustomRoot(kind) {
+        const input = document.getElementById(`${kind}-custom-path`);
+        const status = document.getElementById(`${kind}-custom-status`);
+        const say = (html, color) => {
+            if (status) status.innerHTML = `<span style="color:${color};">${html}</span>`;
+        };
+        const path = (input?.value || '').trim();
+        if (!path) { say('Type a folder path first.', 'var(--accent-yellow)'); return; }
+
+        say('Checking…', 'var(--text-muted)');
+        let data;
+        try {
+            const res = await fetch('/api/scan-roots/validate', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path })
+            });
+            data = await res.json();
+        } catch (e) {
+            say('Could not validate that folder.', 'var(--accent-red)');
+            return;
+        }
+        if (!data.ok) { say(escapeHtml(data.message || 'Refused.'), 'var(--accent-red)'); return; }
+
+        const list = document.getElementById(`${kind}-roots`);
+        const existing = Array.from(list.querySelectorAll(`.${kind}-root`))
+            .find(c => c.value.toLowerCase() === data.path.toLowerCase());
+        if (existing) {
+            existing.checked = true;
+            say('Already in the list — ticked it.', 'var(--accent-cyan)');
+            if (input) input.value = '';
+            return;
+        }
+        const label = document.createElement('label');
+        label.style.cssText = "font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;display:block;";
+        label.innerHTML = `
+            <input type="checkbox" class="${kind}-root" value="${escapeHtml(data.path)}" checked style="vertical-align:middle;">
+            ${escapeHtml(data.label)}
+            <span style="color:var(--text-muted);" title="${escapeHtml(data.path)}">${escapeHtml(this._midTrunc(data.path, 60))}</span>
+            <span style="color:var(--accent-cyan);"> · custom</span>
+            ${data.cloud_synced ? `<span style="color:var(--accent-yellow);"> ☁ cloud-synced — delete blocked</span>` : ''}`;
+        const placeholder = list.querySelector('span');
+        if (placeholder && !list.querySelector(`.${kind}-root`)) list.innerHTML = '';
+        list.appendChild(label);
+        if (input) input.value = '';
+        say('Added and ticked.', 'var(--accent-green)');
+    },
+
     // ══════════════════════════════════════════════════════════
     // DUPLICATE FINDER (Sprint 3, Feature 3) — file level, user picks copies
     // ══════════════════════════════════════════════════════════

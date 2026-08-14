@@ -93,6 +93,7 @@ const App = {
         if (pageName === 'deepclean' && !this._deepcleanReport) this.deepcleanLoadTargets();
         if (pageName === 'largefiles' && !this._largefilesReport) this.largefilesLoadRoots();
         if (pageName === 'duplicates' && !this._duplicatesReport) this.duplicatesLoadRoots();
+        if (pageName === 'zerolength' && !this._zerolengthReport) this.zerolengthLoadRoots();
         if (pageName === 'internet' && !this._netDiag) this.netDiagnose();
     },
 
@@ -3751,6 +3752,164 @@ const App = {
             this.reviewOutcome(data, 'file(s)');
             this._largefilesReport = await (await fetch('/api/largefiles/report')).json();
             this.renderLargefiles();
+            this.refreshLogs();
+        } catch (e) {
+            this.reviewBusy(false);
+            this.showNotification('Deletion failed', 'error');
+        }
+    },
+
+    // ══════════════════════════════════════════════════════════
+    // ZERO-LENGTH FINDER (Sprint 3) — report only, user picks each file
+    // ══════════════════════════════════════════════════════════
+    _zerolengthReport: null,
+    _zerolengthPoller: null,
+
+    async zerolengthLoadRoots() {
+        try {
+            const data = await (await fetch('/api/zerolength/roots')).json();
+            document.getElementById('zerolength-roots').innerHTML =
+                (data.roots || []).map(r => `
+                    <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);cursor:pointer;display:block;">
+                        <input type="checkbox" class="zerolength-root" value="${escapeHtml(r.path)}" ${r.default_on ? 'checked' : ''} style="vertical-align:middle;">
+                        ${escapeHtml(r.label)} <span style="color:var(--text-muted);">${escapeHtml(r.path)}</span>
+                        ${r.cloud_synced ? `<span style="color:var(--accent-yellow);"> ☁ cloud-synced — delete blocked</span>` : ''}
+                    </label>`).join('') ||
+                `<span style="color:var(--text-muted);font-size:12px;">No standard folders found.</span>`;
+        } catch (e) { /* ignore */ }
+    },
+
+    async zerolengthScan() {
+        const roots = Array.from(document.querySelectorAll('.zerolength-root:checked')).map(c => c.value);
+        if (!roots.length) { this.showNotification('Select at least one folder to scan', 'warning'); return; }
+        const btn = document.getElementById('btn-zerolength-scan');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Scanning…'; }
+        document.getElementById('zerolength-list').innerHTML =
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">Scanning ${roots.length} folder(s) for empty files…</div>`;
+        try {
+            const d = await (await fetch('/api/zerolength/scan', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roots })
+            })).json();
+            if (d.status === 'error') {
+                this.showNotification(d.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+                return;
+            }
+            if (this._zerolengthPoller) clearInterval(this._zerolengthPoller);
+            this._zerolengthPoller = setInterval(async () => {
+                const rep = await (await fetch('/api/zerolength/report')).json();
+                if (rep.status === 'scanning') return;
+                clearInterval(this._zerolengthPoller);
+                this._zerolengthPoller = null;
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+                this._zerolengthReport = rep;
+                this.renderZerolength();
+            }, 1200);
+        } catch (e) {
+            this.showNotification('Zero-length scan failed to start', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Step 1 — Scan'; }
+        }
+    },
+
+    renderZerolength() {
+        const rep = this._zerolengthReport;
+        if (!rep) return;
+        const files = rep.files || [];
+
+        const summary = document.getElementById('zerolength-summary');
+        summary.style.display = 'block';
+        summary.innerHTML = `
+            <div style="padding:14px 16px;background:var(--bg-tertiary);border-radius:8px;">
+                <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+                    <div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">EMPTY FILES FOUND</div>
+                        <div style="font-size:22px;font-weight:600;">${rep.found || 0}</div>
+                    </div>
+                    <div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">PLACEHOLDERS WITHHELD</div>
+                        <div style="font-size:22px;font-weight:600;color:var(--accent-green);">${rep.excluded || 0}</div>
+                        <div style="font-size:10px;color:var(--text-muted);">locks and markers — never listed</div>
+                    </div>
+                    <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);line-height:1.7;">
+                        Empty files reclaim no disk space beyond their<br>directory entry — this is about tidiness, not GB.
+                    </div>
+                </div>
+                ${rep.truncated ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:8px;font-family:'JetBrains Mono',monospace;">Showing the ${rep.shown} oldest of ${rep.found} matches.</div>` : ''}
+                ${(rep.skipped_roots || []).length ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:6px;font-family:'JetBrains Mono',monospace;">${rep.skipped_roots.length} root(s) skipped by safety rules.</div>` : ''}
+            </div>`;
+
+        const rows = files.map(f => `
+            <div style="display:flex;gap:12px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border-color);">
+                <input type="checkbox" class="zerolength-file" value="${escapeHtml(f.path)}" onchange="App._zerolengthSelectionCount()" ${f.cloud_synced ? 'disabled' : ''}>
+                ${this._fileRowHtml(f, {
+                    chips: f.cloud_synced ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.14);color:var(--accent-red);margin-left:6px;">☁ CLOUD-SYNCED</span>` : '',
+                    meta: `0 bytes · modified ${escapeHtml(f.modified)}`
+                })}
+            </div>`).join('');
+
+        document.getElementById('zerolength-list').innerHTML = rows ||
+            `<div style="text-align:center;color:var(--text-muted);padding:24px;">No zero-length files found in the selected folders.</div>`;
+        const btn = document.getElementById('btn-zerolength-delete');
+        if (btn) btn.disabled = files.length === 0;
+        this._zerolengthSelectionCount();
+    },
+
+    zerolengthClearSelection() {
+        document.querySelectorAll('.zerolength-file:checked').forEach(b => { b.checked = false; });
+        this._zerolengthSelectionCount();
+    },
+
+    _zerolengthSelectionCount() {
+        const el = document.getElementById('zerolength-selection');
+        if (!el) return;
+        const n = document.querySelectorAll('.zerolength-file:checked').length;
+        el.textContent = n ? `${n} empty file(s) selected` : 'Nothing selected.';
+    },
+
+    zerolengthDelete() {
+        const files = Array.from(document.querySelectorAll('.zerolength-file:checked')).map(c => c.value);
+        if (!files.length) { this.showNotification('Tick the empty files you want to remove', 'warning'); return; }
+
+        const rep = this._zerolengthReport || { files: [] };
+        const items = (rep.files || []).filter(f => files.includes(f.path))
+            .map(f => ({ ...f, meta: `0 bytes · modified ${escapeHtml(f.modified)}` }));
+
+        this.openReview({
+            title: 'Review — empty files to delete',
+            items,
+            warning: 'Empty files free no meaningful disk space. Delete them for tidiness, not for room.',
+            onDelete: opts => this._zerolengthRunDelete(files, opts)
+        });
+    },
+
+    async _zerolengthRunDelete(files, opts) {
+        opts = opts || {};
+        this.reviewBusy(true);
+        try {
+            const res = await fetch('/api/zerolength/delete', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirm: true, files,
+                    proceed_without_restore_point: !!opts.withoutRestorePoint,
+                    allow_permanent: !!opts.allowPermanent
+                })
+            });
+            const data = await res.json();
+
+            if (res.status === 409 && data.status === 'restore_point_failed') {
+                this.reviewBusy(false);
+                this._reviewRestoreStatus('failed', data.message || '');
+                return;
+            }
+            if (data.status !== 'ok') {
+                this.reviewBusy(false);
+                this.showNotification(data.message || 'Deletion refused', 'error');
+                return;
+            }
+            this.reviewOutcome(data, 'empty file(s)');
+            this._zerolengthReport = await (await fetch('/api/zerolength/report')).json();
+            this.renderZerolength();
             this.refreshLogs();
         } catch (e) {
             this.reviewBusy(false);

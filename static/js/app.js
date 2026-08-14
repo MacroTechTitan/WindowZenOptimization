@@ -3297,7 +3297,7 @@ const App = {
                 </div>
                 ${g.copies.map(c => `
                     <div style="display:flex;gap:10px;align-items:center;padding:7px 12px;border-top:1px solid var(--border-color);">
-                        <input type="checkbox" class="duplicates-file" data-group="${escapeHtml(g.hash)}" value="${escapeHtml(c.path)}" ${(c.cloud_synced || c.protected) ? 'disabled' : ''}>
+                        <input type="checkbox" class="duplicates-file" data-group="${escapeHtml(g.hash)}" value="${escapeHtml(c.path)}" onchange="App._duplicatesSelectionCount()" ${(c.cloud_synced || c.protected) ? 'disabled' : ''}>
                         ${this._fileRowHtml(c, {
                             meta: `modified ${escapeHtml(c.modified)}`
                                 + (c.cloud_synced ? `<span style="color:var(--accent-red);"> · ☁ cloud-synced, delete blocked</span>` : '')
@@ -3310,6 +3310,68 @@ const App = {
             `<div style="text-align:center;color:var(--text-muted);padding:24px;">No duplicate files found in the selected folders.</div>`;
         const btn = document.getElementById('btn-duplicates-delete');
         if (btn) btn.disabled = groups.length === 0;
+        const sel = document.getElementById('btn-duplicates-selectall');
+        if (sel) sel.disabled = groups.length === 0;
+        this._duplicatesSelectionCount();
+    },
+
+    // "name (1)", "name (2)", "name - Copy", "name - Copy (3)", "name copy".
+    // Tested on the stem only, so "report (1).pdf" matches but "Part 2.mp3"
+    // — where the number is the name, not a copy marker — does not.
+    _hasCopySuffix(name) {
+        const dot = String(name || '').lastIndexOf('.');
+        const stem = dot > 0 ? name.slice(0, dot) : String(name || '');
+        return /\s*\(\d+\)$/.test(stem) || /[\s-]+copy(\s*\(\d+\))?$/i.test(stem);
+    },
+
+    // The one copy in a group that must never be ticked.
+    _survivorOf(group) {
+        const copies = (group.copies || []).slice();
+        if (!copies.length) return null;
+        const older = (a, b) => ((a.mtime ?? Infinity) <= (b.mtime ?? Infinity) ? a : b);
+        // Prefer an original — a copy whose name carries no copy-suffix. If the
+        // whole group is suffixed, every copy is equally a candidate.
+        const originals = copies.filter(c => !this._hasCopySuffix(c.name));
+        return (originals.length ? originals : copies).reduce(older);
+    },
+
+    // Ticks every copy EXCEPT one survivor per group. Selection is still just
+    // checkboxes — the server's "at least one copy must survive" guard is
+    // untouched and remains the authority.
+    duplicatesSelectAll() {
+        const rep = this._duplicatesReport;
+        if (!rep) return;
+        let ticked = 0, skipped = 0;
+        (rep.groups || []).forEach(g => {
+            const survivor = this._survivorOf(g);
+            document.querySelectorAll(`.duplicates-file[data-group="${CSS.escape(g.hash)}"]`)
+                .forEach(box => {
+                    if (box.disabled) { skipped++; return; }
+                    box.checked = !survivor || box.value !== survivor.path;
+                    if (box.checked) ticked++;
+                });
+        });
+        this._duplicatesSelectionCount();
+        this.showNotification(
+            `${ticked} copy(ies) ticked — one copy of every file left untouched` +
+            (skipped ? `, ${skipped} locked by safety rules` : ''), 'success');
+    },
+
+    duplicatesClearSelection() {
+        document.querySelectorAll('.duplicates-file:checked').forEach(b => { b.checked = false; });
+        this._duplicatesSelectionCount();
+    },
+
+    _duplicatesSelectionCount() {
+        const el = document.getElementById('duplicates-selection');
+        if (!el) return;
+        const boxes = Array.from(document.querySelectorAll('.duplicates-file:checked'));
+        if (!boxes.length) { el.textContent = 'Nothing selected.'; return; }
+        const rep = this._duplicatesReport || { groups: [] };
+        const sizes = {};
+        (rep.groups || []).forEach(g => (g.copies || []).forEach(c => { sizes[c.path] = c.size; }));
+        const bytes = boxes.reduce((s, b) => s + (Number(sizes[b.value]) || 0), 0);
+        el.textContent = `${boxes.length} copy(ies) selected · ${this._fmtBytes(bytes)}`;
     },
 
     async duplicatesDelete(opts) {

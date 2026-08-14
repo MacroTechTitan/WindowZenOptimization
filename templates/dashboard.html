@@ -541,6 +541,7 @@
                         <span class="panel-title">&#x1F46F; Duplicate File Finder</span>
                         <div class="btn-group">
                             <button class="btn btn-primary" id="btn-duplicates-scan" onclick="App.duplicatesScan()">&#x1F50D; Step 1 &mdash; Scan</button>
+                            <button class="btn btn-outline" id="btn-duplicates-selectall" onclick="App.duplicatesSelectAll()" disabled>&#x2713; Select all duplicates</button>
                             <button class="btn btn-danger" id="btn-duplicates-delete" onclick="App.duplicatesDelete()" disabled>&#x1F5D1; Step 2 &mdash; Review &amp; Delete</button>
                         </div>
                     </div>
@@ -572,6 +573,13 @@
                         </div>
 
                         <div id="duplicates-summary" style="display:none;margin-bottom:16px;"></div>
+                        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+                            <span id="duplicates-selection" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);">Nothing selected.</span>
+                            <a href="javascript:void(0)" onclick="App.duplicatesClearSelection()" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">clear</a>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:auto;">
+                                &#x2713; Select all duplicates keeps one copy per file &mdash; the one with no &ldquo;(1)&rdquo;/&ldquo;Copy&rdquo; suffix, else the oldest.
+                            </span>
+                        </div>
                         <div id="duplicates-list">
                             <div style="text-align:center;color:var(--text-muted);padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;">
                                 Pick folders and press <strong style="color:var(--accent-cyan);">Scan</strong>.

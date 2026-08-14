@@ -168,6 +168,9 @@ def scan_duplicates(roots, min_size=MIN_SIZE):
                 "size": size,
                 "size_fmt": format_bytes(size),
                 "modified": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M"),
+                # Raw epoch too: the "select all duplicates" survivor rule picks the
+                # oldest copy and must not depend on parsing the display string.
+                "mtime": st.st_mtime,
                 "cloud_synced": synced,
                 "cloud_root": cloud_root if synced else "",
                 "protected": allowed_excluded,

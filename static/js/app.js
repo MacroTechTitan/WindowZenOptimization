@@ -4026,6 +4026,8 @@ const App = {
                         ${this._riskChip(t.risk)}
                         ${t.report_only ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(156,163,175,0.15);color:var(--text-muted);">REPORT ONLY</span>` : ''}
                         ${!t.default_on && !t.report_only ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(156,163,175,0.15);color:var(--text-muted);">OPT-IN</span>` : ''}
+                        ${t.permanent ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(239,68,68,0.15);color:var(--accent-red);">PERMANENT — NOT RECYCLED</span>` : ''}
+                        ${t.mode === 'command' ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(6,182,212,0.15);color:var(--accent-cyan);">RUNS A COMMAND</span>` : ''}
                     </div>
                     <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;line-height:1.6;">${escapeHtml(t.description)}</div>
                     ${t.note ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px;font-family:'JetBrains Mono',monospace;">${escapeHtml(t.note)}</div>` : ''}
@@ -4056,10 +4058,19 @@ const App = {
         if (!opts.skipConfirm) {
             let msg = `Clean ${keys.length} target(s) and reclaim about ${this._fmtBytes(total)}?\n\n`;
             msg += chosen.map(t => `  • ${t.label} — ${this._fmtBytes(t.bytes)}`).join('\n');
+            const permanent = chosen.filter(t => t.permanent);
             msg += `\n\nSafety:\n`;
             msg += `  • A System Restore point is created first\n`;
-            msg += `  • Files go to the Recycle Bin (recoverable), not a permanent delete\n`;
+            if (permanent.length < chosen.length) {
+                msg += `  • Files go to the Recycle Bin (recoverable), not a permanent delete\n`;
+            }
             msg += `  • Windows, Program Files and cloud-sync folders are excluded\n`;
+            // System caches the Recycle Bin cannot usefully hold are deleted
+            // outright. Say so rather than let the blanket line above cover them.
+            if (permanent.length) {
+                msg += `\n⚠ PERMANENTLY DELETED (not recycled — Windows regenerates these):\n`;
+                msg += permanent.map(t => `  • ${t.label}`).join('\n') + '\n';
+            }
             if (highRisk.length) {
                 msg += `\n⚠ HIGH RISK targets selected:\n`;
                 msg += highRisk.map(t => `  • ${t.label}`).join('\n');

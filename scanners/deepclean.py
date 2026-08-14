@@ -12,6 +12,11 @@ from datetime import datetime, timedelta
 from core.state import IS_WINDOWS, _WIN_NO_WINDOW
 from core.util import log_activity, format_bytes
 
+try:
+    import winreg
+except ImportError:      # non-Windows dev box
+    winreg = None
+
 # Risk labels surfaced in the UI.
 RISK_SAFE = "safe"          # regenerated automatically, no user data
 RISK_CAUTION = "caution"    # reclaims a lot, has a real trade-off
@@ -109,6 +114,139 @@ def _old_log_files():
         except (OSError, PermissionError):
             pass
     return found
+
+
+def _appdata():
+    return os.environ.get("APPDATA", os.path.join(_home(), "AppData", "Roaming"))
+
+
+def _jump_list_dirs():
+    """Recent-items jump lists. These live in the user's profile."""
+    recent = os.path.join(_appdata(), "Microsoft", "Windows", "Recent")
+    return [
+        os.path.join(recent, "AutomaticDestinations"),
+        os.path.join(recent, "CustomDestinations"),
+    ]
+
+
+def font_cache_paths():
+    """Windows font cache. Rebuilt automatically on the next boot."""
+    sysroot = _sysroot()
+    return [
+        os.path.join(sysroot, "ServiceProfiles", "LocalService", "AppData",
+                     "Local", "FontCache"),
+        os.path.join(sysroot, "System32", "FNTCACHE.DAT"),
+    ]
+
+
+def memory_dump_paths():
+    """Kernel crash dumps. A full MEMORY.DMP is routinely 8-16 GB."""
+    sysroot = _sysroot()
+    return [
+        os.path.join(sysroot, "MEMORY.DMP"),
+        os.path.join(sysroot, "LiveKernelReports"),
+    ]
+
+
+def _store_cache_dir():
+    return os.path.join(_localappdata(), "Packages",
+                        "Microsoft.WindowsStore_8wekyb3d8bbwe", "LocalCache")
+
+
+# ─── Leftover program directories (REPORT ONLY) ────────────────
+# Matching an orphaned folder to an uninstalled program is a heuristic, and a
+# wrong guess here would delete a working installation. So this target is
+# report-only: it is never cleanable, whatever the client sends.
+_VENDOR_DIRS_TO_SKIP = {
+    "common files", "windows nt", "windowsapps", "windowspowershell",
+    "microsoft", "microsoft office", "microsoft visual studio", "internet explorer",
+    "windows defender", "windows mail", "windows media player", "windows photo viewer",
+    "windows portable devices", "windows security", "windows sidebar",
+    "modifiableatidesktop", "uninstall information", "reference assemblies",
+    "msbuild", "dotnet", "package cache", "temp", "desktop.ini",
+}
+
+
+def _installed_program_names():
+    """(display names, install locations) from the Uninstall registry hives."""
+    names, locations = set(), set()
+    if winreg is None:
+        return names, locations
+    hives = [
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+    ]
+    for hive, path in hives:
+        try:
+            with winreg.OpenKey(hive, path) as key:
+                for i in range(winreg.QueryInfoKey(key)[0]):
+                    try:
+                        with winreg.OpenKey(key, winreg.EnumKey(key, i)) as sub:
+                            try:
+                                names.add(str(winreg.QueryValueEx(sub, "DisplayName")[0]).lower())
+                            except OSError:
+                                pass
+                            try:
+                                loc = str(winreg.QueryValueEx(sub, "InstallLocation")[0]).strip()
+                                if loc:
+                                    locations.add(os.path.normcase(os.path.abspath(loc)))
+                            except OSError:
+                                pass
+                    except OSError:
+                        continue
+        except OSError:
+            continue
+    return names, locations
+
+
+def leftover_program_dirs():
+    """Program directories with no matching Uninstall registry entry.
+
+    Read-only and advisory. A folder appears here when nothing in the
+    Uninstall hives claims it — which usually means a sloppy uninstaller,
+    but can equally mean a portable app or a per-user install the hives do
+    not cover. That ambiguity is why the target never deletes.
+    """
+    if not IS_WINDOWS or winreg is None:
+        return []
+    names, locations = _installed_program_names()
+    if not names and not locations:
+        return []       # registry unreadable — report nothing rather than everything
+
+    bases = [
+        os.environ.get("ProgramFiles", os.path.join(_sysdrive_root(), "Program Files")),
+        os.environ.get("ProgramFiles(x86)", os.path.join(_sysdrive_root(), "Program Files (x86)")),
+        os.path.join(_localappdata(), "Programs"),
+    ]
+    found = []
+    for base in bases:
+        if not os.path.isdir(base):
+            continue
+        try:
+            entries = os.listdir(base)
+        except (OSError, PermissionError):
+            continue
+        for name in entries:
+            full = os.path.join(base, name)
+            if not os.path.isdir(full):
+                continue
+            low = name.lower()
+            if low in _VENDOR_DIRS_TO_SKIP:
+                continue
+            if os.path.normcase(os.path.abspath(full)) in locations:
+                continue
+            # A folder is claimed if any installed product name contains it or
+            # it contains any product name — vendors rarely name the two the same.
+            if any(low in n or n in low for n in names if n):
+                continue
+            found.append(full)
+    return found
+
+
+def _sysdrive_root():
+    return os.environ.get("SystemDrive", "C:") + os.sep
 
 
 # ─── Target table ──────────────────────────────────────────────
@@ -236,6 +374,75 @@ DEEPCLEAN_TARGETS = {
         "paths_fn": _old_log_files,
         "mode": "files",
     },
+
+    # ── Sprint 3 additions ─────────────────────────────────────
+    "dns_cache": {
+        "label": "DNS Resolver Cache",
+        "description": ("Runs ipconfig /flushdns. Clears cached name lookups, which "
+                        "fixes sites resolving to a stale IP. Frees no disk space — "
+                        "the cache lives in memory."),
+        "risk": RISK_SAFE,
+        "default_on": False,
+        "paths_fn": lambda: [],
+        "mode": "command",
+        "command": ["ipconfig", "/flushdns"],
+    },
+    "leftover_programs": {
+        "label": "Leftover Files from Uninstalled Programs (report only)",
+        "description": ("Program folders with no matching entry in the Uninstall "
+                        "registry hives — usually left by a sloppy uninstaller, but "
+                        "equally often a portable app or a per-user install. That "
+                        "ambiguity is why this target is REPORT ONLY and is never "
+                        "cleaned; review the list and remove folders yourself."),
+        "risk": RISK_CAUTION,
+        "default_on": False,
+        "report_only": True,
+        "paths_fn": leftover_program_dirs,
+        "mode": "report_dirs",
+    },
+    "jump_lists": {
+        "label": "Jump Lists & Recent Items",
+        "description": ("Recently-opened file shortcuts behind taskbar jump lists. "
+                        "Clearing them empties your recent-items history; the files "
+                        "themselves are untouched. Goes to the Recycle Bin."),
+        "risk": RISK_CAUTION,
+        "default_on": False,
+        "paths_fn": _jump_list_dirs,
+        "mode": "contents",
+    },
+    "font_cache": {
+        "label": "Font Cache",
+        "description": ("FontCache service data and FNTCACHE.DAT. Windows rebuilds "
+                        "both on the next boot. The Font Cache service is stopped "
+                        "first and restarted afterwards."),
+        "risk": RISK_SAFE,
+        "default_on": False,
+        "paths_fn": font_cache_paths,
+        "mode": "system_permanent",
+        "services": ["FontCache"],
+    },
+    "store_cache": {
+        "label": "Microsoft Store Cache",
+        "description": ("Runs wsreset.exe, which resets the Store cache without "
+                        "changing installed apps or sign-in. The reported size is "
+                        "the Store's LocalCache folder."),
+        "risk": RISK_SAFE,
+        "default_on": False,
+        "paths_fn": lambda: [_store_cache_dir()],
+        "mode": "command",
+        "command": ["wsreset.exe"],
+        "size_paths": True,
+    },
+    "memory_dumps": {
+        "label": "Memory Dumps (MEMORY.DMP, LiveKernelReports)",
+        "description": ("Kernel crash dumps. A full MEMORY.DMP is routinely 8-16 GB. "
+                        "Only useful for debugging a blue screen you have already "
+                        "analysed — once deleted the crash cannot be investigated."),
+        "risk": RISK_CAUTION,
+        "default_on": False,
+        "paths_fn": memory_dump_paths,
+        "mode": "system_permanent",
+    },
 }
 
 
@@ -316,6 +523,10 @@ def scan_target(key, target):
         "risk": target["risk"],
         "default_on": target["default_on"],
         "report_only": target.get("report_only", False),
+        # The UI needs the mode to say truthfully whether a target is
+        # recycled or permanently deleted.
+        "mode": mode,
+        "permanent": mode == "system_permanent",
         "paths": [],
         "count": 0,
         "bytes": 0,
@@ -341,6 +552,51 @@ def scan_target(key, target):
         paths = target["paths_fn"]()
     except Exception:
         paths = []
+
+    if mode == "command":
+        # The work is a subprocess, not a delete. Size the cache it resets
+        # where there is one to size, so the row is not silently blank.
+        if target.get("size_paths"):
+            for p in paths:
+                if os.path.isdir(p):
+                    count, size = _size_of_tree(p)
+                    entry["count"] += count
+                    entry["bytes"] += size
+                    entry["paths"].append(p)
+        entry["note"] = "Runs " + " ".join(target.get("command", [])) + "."
+        if not entry["bytes"]:
+            entry["note"] += " Frees no disk space directly."
+        return entry
+
+    if mode == "report_dirs":
+        # Report only — sized so the user can judge, never cleaned.
+        for p in paths:
+            count, size = _size_of_tree(p)
+            entry["count"] += count
+            entry["bytes"] += size
+            entry["paths"].append(p)
+        entry["note"] = (f"{len(paths)} folder(s) with no Uninstall registry entry. "
+                         f"Report only — nothing here is deleted."
+                         if paths else "No unclaimed program folders found.")
+        return entry
+
+    if mode == "system_permanent":
+        for p in paths:
+            if os.path.isfile(p):
+                try:
+                    entry["bytes"] += os.path.getsize(p)
+                    entry["count"] += 1
+                    entry["paths"].append(p)
+                except (OSError, PermissionError):
+                    pass
+            elif os.path.isdir(p):
+                count, size = _size_of_tree(p)
+                entry["count"] += count
+                entry["bytes"] += size
+                entry["paths"].append(p)
+        entry["note"] = ("Deleted permanently, not recycled — the Recycle Bin cannot "
+                         "usefully hold these and Windows regenerates them.")
+        return entry
 
     if mode == "files":
         for fp in paths:
@@ -398,6 +654,7 @@ def scan_deepclean(keys=None, include_dism=False):
                 "key": key, "label": target["label"],
                 "description": target["description"], "risk": target["risk"],
                 "default_on": target["default_on"], "report_only": False,
+                "mode": "dism", "permanent": False,
                 "paths": [], "count": 0, "bytes": 0,
                 "note": "Not analyzed — enable the DISM analysis option to estimate.",
             })

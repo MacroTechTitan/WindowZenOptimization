@@ -84,6 +84,15 @@ def documented_exceptions():
         os.path.join(sysroot, "Minidump"),
         os.path.join(sysroot, "Logs"),
         os.path.join(sysroot, "Prefetch"),
+        # Sprint 3 Deep Clean system targets. Listed here only so
+        # check_deletable does not blanket-refuse them for sitting under
+        # %SystemRoot%; what may actually delete them is the much narrower
+        # allowlist in cleaners/deepclean.deepclean_system_roots().
+        os.path.join(sysroot, "MEMORY.DMP"),
+        os.path.join(sysroot, "LiveKernelReports"),
+        os.path.join(sysroot, "ServiceProfiles", "LocalService", "AppData",
+                     "Local", "FontCache"),
+        os.path.join(sysroot, "System32", "FNTCACHE.DAT"),
     )]
 
 

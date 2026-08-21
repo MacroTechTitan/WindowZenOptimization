@@ -36,3 +36,35 @@ Guardrails required:
 - Driver update checker (report only; never auto-install drivers)
 - Disk health / SMART report
 - Restore-point creation before any destructive batch (safety net)
+
+## Cybersecurity module (Sprint 4 / v1.1 — report-only)
+HARD RULE: report-only posture checks. No malware detection engine, no
+auto-remediation, no reading/displaying/transmitting file CONTENTS.
+Surface signals and misconfigurations; never render verdicts or auto-fix.
+Reuse core/safety + the folder picker; check existing scanners/security.py
+first (may be a demo stub).
+
+- Windows security posture audit (read-only): Defender on + updated,
+  firewall enabled per profile, BitLocker status, UAC level, SmartScreen
+  enabled, Windows Update current, automatic updates on. Nobody bundles
+  this cleanly — the headline feature.
+- Account/auth hygiene: blank-password accounts, auto-login enabled,
+  Guest account active, members of Administrators group, RDP enabled/
+  exposed.
+- Network exposure: listening ports + owning process, SMBv1 enabled
+  (EternalBlue vector), open shares.
+- Startup/persistence surface: boot-run items, scheduled tasks, items
+  from unusual locations. Report, not judge.
+- Unencrypted-secrets FINDER (path-only): scan user-selected dirs for
+  files likely to hold plaintext credentials — .env, *.pem, *.ppk,
+  id_rsa, files named password/credentials, config files matching
+  password= patterns. REPORT PATHS ONLY. Never open, read, display,
+  log, upload, or delete contents. Message: "these may contain plaintext
+  secrets — review/encrypt them."
+
+Explicitly OUT: malware signature scanning, heuristic threat verdicts,
+quarantine, auto-disable/auto-change of any security setting, reading
+credential-file contents. A "suspicious indicators" report (unsigned
+startup exes, processes from temp, hosts-file edits) is allowed ONLY
+if clearly labeled "signals to review, not confirmed threats — run a
+real AV scan."

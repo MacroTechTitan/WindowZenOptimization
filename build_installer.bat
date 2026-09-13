@@ -5,7 +5,7 @@ echo  MTT Windows Infinite Optimizer - Build Script
 echo ============================================
 echo.
 
-echo [1/6] Reading version from version.json...
+echo [1/8] Reading version from version.json...
 REM No pipe in the command below on purpose: a '|' inside for /f backticks
 REM gets eaten by cmd before PowerShell ever sees it.
 for /f "usebackq delims=" %%v in (`powershell -NoProfile -Command "(ConvertFrom-Json (Get-Content -Raw version.json)).version"`) do set APPVERSION=%%v
@@ -19,11 +19,71 @@ set SETUPNAME=MTT_InfiniteOptimizer_Setup_v%APPVERSION%.exe
 echo    Installer will be: %SETUPNAME%
 echo.
 
-echo [2/6] Installing Python dependencies...
+REM ===========================================================================
+REM Code-signing configuration. See docs/SIGNING.md for the working recipe.
+REM
+REM Credentials are read from the environment ONLY - this repo is public, so
+REM nothing secret is ever stored in this file:
+REM     MTT_SIGN_USER   SSL.com account username
+REM     MTT_SIGN_PASS   SSL.com account password
+REM     MTT_SIGN_TOTP   base64 TOTP secret from the cert page (NOT base32)
+REM
+REM If any of the three is unset, signing is skipped and the build still
+REM produces a working (unsigned) installer.
+REM ===========================================================================
+echo [2/8] Checking code-signing configuration...
+set "SIGNING=0"
+set "CODESIGNTOOL=C:\Dev\CodeSignTool"
+set "SIGNTMP=%TEMP%\mtt_codesign"
+
+REM Preferred signtool (per docs/SIGNING.md), with a fallback search.
+set "SIGNTOOL=C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe"
+if not exist "!SIGNTOOL!" (
+    set "SIGNTOOL="
+    for /f "delims=" %%s in ('dir /b /s /a-d "%ProgramFiles(x86)%\Windows Kits\10\bin\*\x64\signtool.exe" 2^>nul') do set "SIGNTOOL=%%s"
+)
+
+set "SIGN_MISSING="
+if not defined MTT_SIGN_USER set "SIGN_MISSING=!SIGN_MISSING! MTT_SIGN_USER"
+if not defined MTT_SIGN_PASS set "SIGN_MISSING=!SIGN_MISSING! MTT_SIGN_PASS"
+if not defined MTT_SIGN_TOTP set "SIGN_MISSING=!SIGN_MISSING! MTT_SIGN_TOTP"
+
+if defined SIGN_MISSING (
+    echo    Code signing is OFF - these environment variables are not set:
+    echo     !SIGN_MISSING!
+    echo.
+    echo    The build will continue and produce an UNSIGNED installer.
+    echo    To produce a SIGNED build, set all three and re-run this script:
+    echo.
+    echo      set MTT_SIGN_USER=MacroTechTitan
+    echo      set MTT_SIGN_PASS=your-ssl-com-account-password
+    echo      set MTT_SIGN_TOTP=base64-totp-secret-from-the-cert-page
+    echo.
+) else (
+    if not exist "!CODESIGNTOOL!\CodeSignTool.bat" (
+        echo    ERROR: signing credentials are set, but CodeSignTool was not found at:
+        echo           !CODESIGNTOOL!\CodeSignTool.bat
+        pause
+        exit /b 1
+    )
+    if not defined SIGNTOOL (
+        echo    ERROR: signing credentials are set, but signtool.exe was not found.
+        echo           Install the Windows SDK signing tools, then re-run.
+        pause
+        exit /b 1
+    )
+    set "SIGNING=1"
+    echo    Code signing is ON - credentials found in the environment.
+    echo    CodeSignTool: !CODESIGNTOOL!\CodeSignTool.bat
+    echo    signtool:     !SIGNTOOL!
+)
+echo.
+
+echo [3/8] Installing Python dependencies...
 pip install flask psutil apscheduler pywebview pyinstaller
 echo.
 
-echo [3/6] Building executable with PyInstaller...
+echo [4/8] Building executable with PyInstaller...
 pyinstaller --noconfirm --onedir --windowed ^
     --uac-admin ^
     --name "MTT Windows Infinite Optimizer" ^
@@ -48,25 +108,32 @@ if not exist "dist\MTT Windows Infinite Optimizer\MTT Windows Infinite Optimizer
     exit /b 1
 )
 
-echo [4/6] PyInstaller Build complete!
+echo    PyInstaller build complete.
 echo    Output: dist\MTT Windows Infinite Optimizer\
 echo.
 
 REM ===========================================================================
-REM TODO CODE-SIGNING (post EV certificate) - sign the APPLICATION EXE here.
-REM Must run AFTER PyInstaller and BEFORE makensis, so the signed exe is the
-REM one packaged into the installer.
-REM
-REM   signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 ^
-REM       /n "Macro Tech Titan" ^
-REM       "dist\MTT Windows Infinite Optimizer\MTT Windows Infinite Optimizer.exe"
-REM   if %errorlevel% neq 0 ( echo ERROR: app exe signing failed & pause & exit /b 1 )
-REM
-REM Both binaries must be signed: the app exe (above) and the installer
-REM (see the second TODO block after makensis).
+REM Stage 1 of 2: sign the APPLICATION EXE. This must happen AFTER PyInstaller
+REM and BEFORE makensis, so the signed exe is the one packaged into the
+REM installer.
 REM ===========================================================================
+echo [5/8] Signing the application executable...
+if "!SIGNING!"=="1" (
+    call :sign_file "dist\MTT Windows Infinite Optimizer\MTT Windows Infinite Optimizer.exe"
+    if errorlevel 1 (
+        echo.
+        echo ERROR: signing the application exe failed - aborting the build.
+        echo        The installer was NOT built, so an unsigned app cannot
+        echo        slip into a release by mistake.
+        pause
+        exit /b 1
+    )
+) else (
+    echo    Skipped - no signing credentials in the environment.
+)
+echo.
 
-echo [5/6] Building NSIS installer...
+echo [6/8] Building NSIS installer...
 echo    Looking for NSIS...
 set MAKENSIS=
 where makensis >nul 2>nul
@@ -92,29 +159,109 @@ echo    Using: !MAKENSIS!
 echo.
 
 if exist "%SETUPNAME%" (
-    echo [6/6] Installer created successfully!
+    echo    Installer created successfully.
     echo    Installer: %SETUPNAME%
 ) else (
-    echo [6/6] NSIS build had issues. Check the output above.
+    echo    NSIS build had issues. Check the output above.
     pause
     exit /b 1
 )
-
-REM ===========================================================================
-REM TODO CODE-SIGNING (post EV certificate) - sign the INSTALLER here.
-REM Must run AFTER makensis has produced %SETUPNAME%.
-REM
-REM   signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 ^
-REM       /n "Macro Tech Titan" "%SETUPNAME%"
-REM   if %errorlevel% neq 0 ( echo ERROR: installer signing failed & pause & exit /b 1 )
-REM
-REM Verify afterwards with:  signtool verify /pa /v "%SETUPNAME%"
-REM ===========================================================================
-
 echo.
+
+REM ===========================================================================
+REM Stage 2 of 2: sign the INSTALLER. Must run AFTER makensis has produced
+REM %SETUPNAME%.
+REM ===========================================================================
+echo [7/8] Signing the installer...
+if "!SIGNING!"=="1" (
+    call :sign_file "%SETUPNAME%"
+    if errorlevel 1 (
+        echo.
+        echo ERROR: signing the installer failed - aborting the build.
+        echo        %SETUPNAME% is UNSIGNED - do not ship it.
+        pause
+        exit /b 1
+    )
+) else (
+    echo    Skipped - no signing credentials in the environment.
+)
+echo.
+
+echo [8/8] Build finished!
 echo ============================================
-echo  Build finished!
 echo  Version:   %APPVERSION%
 echo  Installer: %SETUPNAME%
+if "!SIGNING!"=="1" (
+    echo  Signing:   SIGNED and VERIFIED
+    echo               - app exe, packaged inside the installer
+    echo               - installer, %SETUPNAME%
+) else (
+    echo  Signing:   UNSIGNED - credentials were not set
+    echo               Set MTT_SIGN_USER, MTT_SIGN_PASS, MTT_SIGN_TOTP
+    echo               and re-run to produce a signed build.
+)
 echo ============================================
 pause
+exit /b 0
+
+
+REM ===========================================================================
+REM :sign_file  <path-to-file>
+REM
+REM CodeSignTool signs to -output_dir_path, NOT in place, so we sign into a
+REM scratch dir and copy the signed file back over the original, then verify
+REM with signtool. Returns 1 on any failure.
+REM
+REM Secrets are expanded with !delayed! expansion and passed inside double
+REM quotes: nothing is echoed, and characters such as $ & ^ %% survive intact.
+REM CodeSignTool.bat uses relative paths to its bundled JDK, so it must be run
+REM from its own directory (pushd).
+REM ===========================================================================
+:sign_file
+setlocal enabledelayedexpansion
+set "TARGET=%~f1"
+set "TARGETNAME=%~nx1"
+
+if not exist "!TARGET!" (
+    echo    ERROR: nothing to sign - file not found: !TARGET!
+    exit /b 1
+)
+
+echo    Signing: !TARGETNAME!
+if exist "!SIGNTMP!" rd /s /q "!SIGNTMP!"
+md "!SIGNTMP!" 2>nul
+if not exist "!SIGNTMP!" (
+    echo    ERROR: could not create the scratch directory !SIGNTMP!
+    exit /b 1
+)
+
+pushd "!CODESIGNTOOL!"
+call "!CODESIGNTOOL!\CodeSignTool.bat" sign -username="!MTT_SIGN_USER!" -password="!MTT_SIGN_PASS!" -totp_secret="!MTT_SIGN_TOTP!" -input_file_path="!TARGET!" -output_dir_path="!SIGNTMP!"
+set "CST_RC=!errorlevel!"
+popd
+
+if not exist "!SIGNTMP!\!TARGETNAME!" (
+    echo    ERROR: CodeSignTool produced no signed output for !TARGETNAME!
+    echo           CodeSignTool exit code: !CST_RC!
+    echo           See the message above, and docs/SIGNING.md for the
+    echo           known credential gotchas.
+    exit /b 1
+)
+
+echo    Copying the signed file back over the original...
+copy /y "!SIGNTMP!\!TARGETNAME!" "!TARGET!" >nul
+if errorlevel 1 (
+    echo    ERROR: could not copy the signed file back to !TARGET!
+    exit /b 1
+)
+rd /s /q "!SIGNTMP!" 2>nul
+
+echo    Verifying signature with signtool...
+"!SIGNTOOL!" verify /pa /v "!TARGET!"
+if errorlevel 1 (
+    echo    ERROR: signtool verification FAILED for !TARGETNAME!
+    exit /b 1
+)
+
+echo    OK: !TARGETNAME! is signed and verified.
+exit /b 0

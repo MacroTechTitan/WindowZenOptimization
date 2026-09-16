@@ -84,9 +84,11 @@ pip install flask psutil apscheduler pywebview pyinstaller
 echo.
 
 echo [4/8] Building executable with PyInstaller...
+REM static\branding (icons, logos, splash) ships via the static add-data below.
 pyinstaller --noconfirm --onedir --windowed ^
     --uac-admin ^
     --name "MTT Windows Infinite Optimizer" ^
+    --icon "static\branding\mtt-app.ico" ^
     --add-data "templates;templates" ^
     --add-data "static;static" ^
     --add-data "settings.json;." ^

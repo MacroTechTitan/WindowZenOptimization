@@ -187,7 +187,10 @@
     }
     </script>
 
-    <link rel="icon" type="image/png" href="/static/images/mtt-logo.png">
+    <link rel="icon" href="/static/branding/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/branding/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/branding/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/branding/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1464,7 +1467,11 @@
 
     <nav class="nav-landing">
         <a href="/" class="nav-logo">
-            <img src="/static/images/mtt-logo.png" alt="MTT" style="height: 36px; margin-right: 4px; vertical-align: middle;">
+            <!-- The square branding PNG is mostly flat #0a1018 padding, with the
+                 wordmark at y 85-151 and a clipped text fragment at y 171-176.
+                 object-fit crops to the wordmark and leaves the fragment out; the
+                 radius makes the remaining dark inset read as a badge. -->
+            <img src="/static/branding/mtt-logo-256.png" srcset="/static/branding/mtt-logo-256.png 1x, /static/branding/mtt-logo-512.png 2x" alt="MTT" style="height: 36px; width: 126px; flex: none; object-fit: cover; object-position: 50% 45%; border-radius: 6px; margin-right: 4px; vertical-align: middle;">
             <span class="nav-logo-text">Infinite Optimizer</span>
         </a>
         <div class="nav-links">

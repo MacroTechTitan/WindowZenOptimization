@@ -18,6 +18,9 @@
 !define PUBLISHER   "Macro Tech Titan"
 !define EXENAME     "MTT Windows Infinite Optimizer.exe"
 !define DISTDIR     "dist\MTT Windows Infinite Optimizer"
+; Shortcut icon, relative to $INSTDIR. PyInstaller (onedir) puts --add-data
+; files under _internal\, so static\branding lands here after install.
+!define APPICON     "_internal\static\branding\mtt-app.ico"
 !define REGUNINST   "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer"
 
 ;---------------------------------
@@ -48,6 +51,8 @@ VIAddVersionKey "LegalCopyright"  "Copyright ${PUBLISHER}"
 ; Interface Settings
 ;---------------------------------
 !define MUI_ABORTWARNING
+!define MUI_ICON   "static\branding\mtt-installer.ico"
+!define MUI_UNICON "static\branding\mtt-installer.ico"
 !define MUI_WELCOMEPAGE_TITLE "Welcome to ${APPNAME} Setup"
 !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of ${APPNAME} v${APPVERSION}.$\r$\n$\r$\n${APPNAME} helps you clean temporary files, reclaim disk space, find large and duplicate files, review local AI model storage, optimize your internet connection, and monitor system health.$\r$\n$\r$\nClick Next to continue."
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${EXENAME}"
@@ -105,12 +110,12 @@ Section "!${APPNAME}" SecMain
 
     ; Start Menu
     CreateDirectory "$SMPROGRAMS\${APPNAME}"
-    CreateShortcut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
+    CreateShortcut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\${EXENAME}" "" "$INSTDIR\${APPICON}" 0
     CreateShortcut "$SMPROGRAMS\${APPNAME}\Uninstall ${APPNAME}.lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
 
 Section "Desktop shortcut" SecDesktop
-    CreateShortcut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
+    CreateShortcut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\${EXENAME}" "" "$INSTDIR\${APPICON}" 0
 SectionEnd
 
 ;---------------------------------

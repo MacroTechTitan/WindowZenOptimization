@@ -8,6 +8,7 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from core import activity_log
 from core.state import IS_WINDOWS
 from core.util import log_activity, format_bytes
 from core.safety import cloud_sync_roots, excluded_roots
@@ -82,6 +83,7 @@ def _run_apply(keys, without_rp, allow_permanent):
                         allow_permanent=allow_permanent)
     except Exception as e:
         deepclean_state.update({"status": "complete", "message": f"Failed: {e}"})
+        activity_log.fail_running("deep_clean", f"Deep Clean failed: {e}")
         log_activity(f"Deep Clean apply failed: {e}", "ERROR")
 
 

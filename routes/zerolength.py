@@ -14,6 +14,7 @@ import threading
 
 from flask import Blueprint, jsonify, request
 
+from core import activity_log
 from core.util import log_activity, log_undo, format_bytes
 from core.safety import send_to_recycle_bin, guard_batch, check_deletable
 from scanners.zerolength import (scan_zero_length, zerolength_results,
@@ -112,21 +113,49 @@ def api_zerolength_delete():
         ok, why = check_deletable(p)
         (allowed.append(p) if ok else blocked.append({"path": p, "reason": why}))
 
+    # Log the operation from here on: this is the point where a delete is
+    # actually attempted. Logging only observes — the deletion path below is
+    # unchanged.
+    op = activity_log.start("zero_length")
+    skipped = list(blocked) + [{"path": p, "reason": "not in the current zero-length report"}
+                               for p in unknown]
+
     if not allowed:
+        activity_log.add_section(op, "Zero-length files", skipped=skipped)
+        activity_log.finish(op, status="blocked",
+                            message="Every selected file is protected by the safety rules.")
         return jsonify({"status": "blocked", "blocked": blocked,
                         "message": "Every selected file is protected by the safety rules."}), 400
 
     ok, payload = guard_batch(
         allowed, bool(data.get("proceed_without_restore_point", False)),
         description="MTT Optimizer — before zero-length file removal")
+    activity_log.set_restore_point(op, payload.get("restore_point") or {})
     if not ok:
         payload["blocked"] = blocked
+        activity_log.add_section(op, "Zero-length files", skipped=skipped)
+        activity_log.finish(op, status="blocked", message=payload.get("message", ""))
         return jsonify(payload), 409
 
     result = send_to_recycle_bin(
         allowed, allow_permanent=bool(data.get("allow_permanent", False)),
         total_bytes=0)
     result["blocked"].extend(blocked)
+
+    # Every item here is 0 bytes by definition, so there are no per-item
+    # sizes to read: make_items records 0 for each.
+    activity_log.add_section(
+        op, "Zero-length files",
+        count=len(result["recycled"]), bytes_freed=result["bytes"],
+        items=activity_log.make_items(
+            result["recycled"], None,
+            "permanent" if result["permanent"] else "recycled"),
+        skipped=skipped + [b for b in result["blocked"] if b not in blocked],
+        errors=result["errors"], permanent=result["permanent"],
+        note=result["message"] or "Empty files reclaim no disk space beyond "
+                                  "their directory entry.")
+    activity_log.finish(
+        op, message=f"Removed {len(result['recycled'])} zero-length file(s).")
 
     if result["recycled"]:
         log_undo("recycle", f"Removed {len(result['recycled'])} zero-length file(s)",
@@ -149,4 +178,5 @@ def api_zerolength_delete():
         "errors": result["errors"],
         "message": result["message"],
         "restore_point": payload["restore_point"],
+        "log_id": (op or {}).get("id", ""),
     })

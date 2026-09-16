@@ -82,6 +82,9 @@ app.register_blueprint(scanroots_bp)
 from routes.zerolength import bp as zerolength_bp
 app.register_blueprint(zerolength_bp)
 
+from routes.activity_log import bp as activity_log_bp
+app.register_blueprint(activity_log_bp)
+
 
 if __name__ == "__main__":
     scheduler.start()

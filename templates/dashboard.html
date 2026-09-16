@@ -491,6 +491,23 @@
                         <div id="deepclean-results" style="display:none; margin-top:18px;"></div>
                     </div>
                 </div>
+
+                <!-- Recent activity across every destructive feature, not just Deep Clean -->
+                <div class="panel" style="margin-top:18px;">
+                    <div class="panel-header">
+                        <span class="panel-title">&#x1F4DC; Recent activity</span>
+                        <div class="btn-group">
+                            <button class="btn btn-outline" onclick="App.refreshActivityHistory()">&#x21BB; Refresh</button>
+                        </div>
+                    </div>
+                    <div class="panel-body" style="padding:0;">
+                        <div id="activity-history">
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);padding:12px 14px;">
+                                No clean-up has run yet in this session.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- LARGE FILES PAGE -->

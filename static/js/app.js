@@ -109,7 +109,10 @@ const App = {
         if (pageName === 'profiles') this.refreshProfiles();
         if (pageName === 'maintenance') { this.refreshMaintenance(); this.refreshMaintenanceHistory(); }
         if (pageName === 'debug-logs') this.refreshDebugLogs();
-        if (pageName === 'deepclean' && !this._deepcleanReport) this.deepcleanLoadTargets();
+        if (pageName === 'deepclean') {
+            if (!this._deepcleanReport) this.deepcleanLoadTargets();
+            this.refreshActivityHistory();
+        }
         if (pageName === 'largefiles' && !this._largefilesReport) this.largefilesLoadRoots();
         if (pageName === 'duplicates' && !this._duplicatesReport) this.duplicatesLoadRoots();
         if (pageName === 'zerolength' && !this._zerolengthReport) this.zerolengthLoadRoots();
@@ -3222,6 +3225,150 @@ const App = {
         say('Added and ticked.', 'var(--accent-green)');
     },
 
+    // ══════════════════════════════════════════════════════════
+    // ACTIVITY LOG — one summary panel for every destructive action
+    // ══════════════════════════════════════════════════════════
+    // The server records deep clean, duplicate, large-file and zero-length
+    // removals in one shape, so one renderer serves all four and the file
+    // the user downloads is the same record the panel is drawn from.
+
+    async activityLogLatest() {
+        try {
+            const d = await (await fetch('/api/activity-log/recent?limit=1')).json();
+            return (d.operations || [])[0] || null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    // Content-Disposition does the work; the anchor just triggers it.
+    activityLogDownload(format, scope) {
+        const a = document.createElement('a');
+        a.href = `/api/activity-log/download?format=${encodeURIComponent(format)}`
+               + `&scope=${encodeURIComponent(scope || 'latest')}`;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    },
+
+    _activityDownloadButtons(scope) {
+        return `
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">DOWNLOAD LOG</span>
+                <button class="btn btn-outline" style="padding:4px 12px;font-size:11px;" onclick="App.activityLogDownload('txt','${scope || 'latest'}')">&#x1F4C4; .txt</button>
+                <button class="btn btn-outline" style="padding:4px 12px;font-size:11px;" onclick="App.activityLogDownload('json','${scope || 'latest'}')">&#x1F4CB; .json</button>
+            </div>`;
+    },
+
+    // The post-operation summary: what was removed, per target, with totals,
+    // restore-point status and when it happened.
+    activitySummaryHtml(op) {
+        if (!op) return '';
+        const t = op.totals || {};
+        const rp = op.restore_point;
+        const rpText = !rp ? 'not requested'
+            : (rp.created ? 'created before the batch'
+                          : `not created — ${rp.message || ''}`);
+        const rows = (op.sections || []).map(s => {
+            const skipped = (s.skipped || []).length;
+            const errors = (s.errors || []).length;
+            return `
+            <div style="display:flex;gap:12px;align-items:center;padding:8px 12px;border-top:1px solid var(--border-color,#2a3042);">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:600;">${escapeHtml(s.label || '')}
+                        ${s.permanent ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.14);color:var(--accent-red);margin-left:6px;">PERMANENT</span>` : ''}
+                    </div>
+                    ${s.note ? `<div style="font-size:10px;color:var(--text-muted);margin-top:3px;font-family:'JetBrains Mono',monospace;">${escapeHtml(s.note)}</div>` : ''}
+                    ${skipped ? `<div style="font-size:10px;color:var(--accent-yellow);margin-top:3px;">${skipped} skipped by safety rules</div>` : ''}
+                    ${errors ? `<div style="font-size:10px;color:var(--accent-red);margin-top:3px;">${errors} error(s)</div>` : ''}
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent-green);">${escapeHtml(s.bytes_fmt || '0 B')}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${s.count || 0} item(s)</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        return `
+            <div style="border:1px solid var(--border-color,#2a3042);border-radius:8px;overflow:hidden;">
+                <div style="padding:12px 14px;background:var(--bg-tertiary,#1a1f2e);">
+                    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+                        <div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">OPERATION</div>
+                            <div style="font-size:13px;font-weight:600;">${escapeHtml(op.label || '')}</div>
+                        </div>
+                        <div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">RECLAIMED</div>
+                            <div style="font-size:18px;font-weight:600;color:var(--accent-cyan);">${escapeHtml(t.bytes_fmt || '0 B')}</div>
+                        </div>
+                        <div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">ITEMS</div>
+                            <div style="font-size:18px;font-weight:600;">${t.count || 0}</div>
+                        </div>
+                        <div style="margin-left:auto;text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);line-height:1.7;">
+                            ${escapeHtml(op.completed_at || op.started_at || '')}<br>
+                            restore point: ${escapeHtml(rpText)}
+                        </div>
+                    </div>
+                    ${this._activityDownloadButtons('latest')}
+                </div>
+                ${rows}
+            </div>`;
+    },
+
+    // Fills a container with the summary of the operation that just ran.
+    async renderActivitySummary(containerId) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        const op = await this.activityLogLatest();
+        if (!op) { el.style.display = 'none'; return; }
+        el.style.display = 'block';
+        el.innerHTML = this.activitySummaryHtml(op);
+        // Any finished operation also belongs in the hub's history list.
+        this.refreshActivityHistory();
+    },
+
+    // Short history on the Deep Clean hub — the last few operations of any kind.
+    async refreshActivityHistory() {
+        const el = document.getElementById('activity-history');
+        if (!el) return;
+        let ops = [];
+        try {
+            const d = await (await fetch('/api/activity-log/recent?limit=5')).json();
+            ops = d.operations || [];
+        } catch (e) { return; }
+
+        if (!ops.length) {
+            el.innerHTML = `
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);padding:12px 14px;">
+                    No clean-up has run yet in this session.
+                </div>`;
+            return;
+        }
+
+        const statusColor = { completed: 'var(--accent-green)', blocked: 'var(--accent-yellow)',
+                              failed: 'var(--accent-red)', running: 'var(--accent-cyan)' };
+        el.innerHTML = ops.map(op => {
+            const t = op.totals || {};
+            return `
+            <div style="display:flex;gap:12px;align-items:center;padding:8px 14px;border-top:1px solid var(--border-color);">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:600;">${escapeHtml(op.label || '')}
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${statusColor[op.status] || 'var(--text-muted)'};margin-left:6px;">${escapeHtml((op.status || '').toUpperCase())}</span>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:2px;">${escapeHtml(op.completed_at || op.started_at || '')}</div>
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-green);">${escapeHtml(t.bytes_fmt || '0 B')}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);">${t.count || 0} item(s)</div>
+                </div>
+            </div>`;
+        }).join('') + `<div style="padding:10px 14px;border-top:1px solid var(--border-color);">
+            ${this._activityDownloadButtons('all')}
+        </div>`;
+    },
+
     // ── Review screen (replaces the confirm() popups) ─────────
     // cfg: {title, kindLabel, items:[{path,name,size,size_fmt,meta}],
     //       destination, onDelete(opts), warning}
@@ -3339,7 +3486,10 @@ const App = {
                 </div>
                 ${blocked.length ? `<div style="font-size:11px;color:var(--accent-yellow);margin-top:8px;">${blocked.length} item(s) skipped by the safety rules: ${escapeHtml((blocked[0].reason) || '')}</div>` : ''}
                 ${errors.length ? `<div style="font-size:11px;color:var(--accent-red);margin-top:6px;">${escapeHtml(errors[0].error || '')}</div>` : ''}
-            </div>`;
+            </div>
+            <div id="review-activity" style="display:none;margin-top:12px;"></div>`;
+        // The full record of what just happened, with the download control.
+        this.renderActivitySummary('review-activity');
         this._reviewRestoreStatus(
             (data.restore_point || {}).created ? 'created' : 'pending',
             (data.restore_point || {}).created
@@ -4190,7 +4340,10 @@ const App = {
                     Removed files are in the Recycle Bin and can be restored.
                 </div>
             </div>
-            ${rows}`;
+            ${rows}
+            <div id="deepclean-activity" style="display:none;margin-top:14px;"></div>`;
+        // The full record of what just happened, with the download control.
+        this.renderActivitySummary('deepclean-activity');
         this.showNotification(`Deep Clean complete — ${data.bytes_freed_fmt || '0 B'} reclaimed`, 'success');
         this.refreshLogs();
     },

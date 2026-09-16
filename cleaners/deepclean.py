@@ -53,6 +53,7 @@ import subprocess
 import threading
 from datetime import datetime
 
+from core import activity_log
 from core.state import IS_WINDOWS, _WIN_NO_WINDOW
 from core.util import log_activity, log_undo, format_bytes
 from core.safety import send_to_recycle_bin, guard_batch, check_deletable
@@ -311,7 +312,7 @@ def _run_command(target):
     return entry
 
 
-def _apply_system_permanent(key, target, entry):
+def _apply_system_permanent(key, target, entry, log_items=None):
     """Allowlist-guarded permanent delete for system-only targets.
 
     These are files the Recycle Bin cannot meaningfully hold: a 16 GB
@@ -345,6 +346,9 @@ def _apply_system_permanent(key, target, entry):
             if deleted:
                 freed += fsize
                 count += 1
+                if log_items is not None:
+                    log_items.append({"path": p, "bytes": fsize,
+                                      "action": "permanent"})
         except PermanentDeleteRefused as e:
             # A caller bug, not a per-file error — surface it loudly.
             entry["blocked"].append({"path": p, "reason": str(e)})
@@ -393,11 +397,20 @@ def apply_deepclean(keys, proceed_without_restore_point=False, allow_permanent=F
 
     log_activity(f"Deep Clean apply requested for: {', '.join(selected)}", "TASK")
 
+    # Activity log for this run. It only observes: every deletion decision
+    # below is unchanged, and a logging failure cannot stop a cleanup.
+    op = activity_log.start("deep_clean")
+    for k in refused:
+        activity_log.add_section(op, DEEPCLEAN_TARGETS[k]["label"], key=k,
+                                 note="Report-only target — not cleaned.")
+
     # ── Restore point gate (once, before the whole batch) ──────
     ok, payload = guard_batch(
         selected, proceed_without_restore_point,
         description="MTT Optimizer — before Deep Clean")
+    activity_log.set_restore_point(op, payload.get("restore_point") or {})
     if not ok:
+        activity_log.finish(op, status="blocked", message=payload["message"])
         with _lock:
             deepclean_state.update({
                 "status": "blocked",
@@ -430,12 +443,18 @@ def apply_deepclean(keys, proceed_without_restore_point=False, allow_permanent=F
             entry.update(bytes=r["bytes"], count=r["count"], note=r["note"])
             results.append(entry)
             total_freed += r["bytes"]
+            # Emptying the bin is permanent by definition and reports no
+            # per-item paths — only the count and size it held.
+            activity_log.add_section(op, target["label"], key=key,
+                                     count=r["count"], bytes_freed=r["bytes"],
+                                     permanent=True, note=r["note"])
             continue
 
         if mode == "dism":
             r = _run_dism_cleanup()
             entry.update(note=r["note"], output=r.get("output", ""))
             results.append(entry)
+            activity_log.add_section(op, target["label"], key=key, note=r["note"])
             continue
 
         if mode == "command":
@@ -444,6 +463,9 @@ def apply_deepclean(keys, proceed_without_restore_point=False, allow_permanent=F
                          output=r.get("output", ""))
             results.append(entry)
             total_freed += r["bytes"]
+            activity_log.add_section(op, target["label"], key=key,
+                                     count=r["count"], bytes_freed=r["bytes"],
+                                     note=r["note"])
             continue
 
         # Stop dependent services first (Windows Update cache, font cache).
@@ -459,7 +481,13 @@ def apply_deepclean(keys, proceed_without_restore_point=False, allow_permanent=F
         # caller: system-only caches are permanently deleted behind an
         # allowlist, everything a user could want back is recycled.
         if mode == "system_permanent":
-            _apply_system_permanent(key, target, entry)
+            permanent_items = []
+            _apply_system_permanent(key, target, entry, permanent_items)
+            activity_log.add_section(
+                op, target["label"], key=key, count=entry["count"],
+                bytes_freed=entry["bytes"], items=permanent_items,
+                skipped=entry["blocked"], errors=entry["errors"],
+                permanent=True, note=entry["note"])
             if entry["count"]:
                 log_undo("permanent", f"Deep Clean: {target['label']}",
                          {"target": key, "count": entry["count"],
@@ -485,7 +513,12 @@ def apply_deepclean(keys, proceed_without_restore_point=False, allow_permanent=F
             else:
                 entry["blocked"].append({"path": p, "reason": reason})
 
-        planned_bytes = _bytes_of(safe_paths)
+        # Sized per path rather than in one call: the totals are identical
+        # (_bytes_of sums over the same paths), and the per-path figures are
+        # what the activity log records for each removed item. They must be
+        # read here, before the delete.
+        planned_sizes = {p: _bytes_of([p]) for p in safe_paths}
+        planned_bytes = sum(planned_sizes.values())
         log_activity(f"Deep Clean: {target['label']} — {len(safe_paths)} item(s), "
                      f"{format_bytes(planned_bytes)} before", "INFO")
 
@@ -498,6 +531,15 @@ def apply_deepclean(keys, proceed_without_restore_point=False, allow_permanent=F
         entry["permanent"] = r["permanent"]
         if r["message"]:
             entry["note"] = r["message"]
+
+        activity_log.add_section(
+            op, target["label"], key=key, count=entry["count"],
+            bytes_freed=entry["bytes"],
+            items=activity_log.make_items(
+                r["recycled"], planned_sizes,
+                "permanent" if r["permanent"] else "recycled"),
+            skipped=entry["blocked"], errors=entry["errors"],
+            permanent=r["permanent"], note=entry["note"])
 
         remaining = _bytes_of([p for p in safe_paths if os.path.exists(p)])
         log_activity(f"Deep Clean: {target['label']} — after: {format_bytes(remaining)} "
@@ -530,5 +572,6 @@ def apply_deepclean(keys, proceed_without_restore_point=False, allow_permanent=F
             "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "message": f"Reclaimed {format_bytes(total_freed)}.",
         })
+    activity_log.finish(op, message=f"Reclaimed {format_bytes(total_freed)}.")
     log_activity(f"Deep Clean complete — {format_bytes(total_freed)} reclaimed", "SUCCESS")
     return dict(deepclean_state)

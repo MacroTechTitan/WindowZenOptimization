@@ -8,6 +8,7 @@ import threading
 
 from flask import Blueprint, jsonify, request
 
+from core import activity_log
 from core.util import log_activity, log_undo, format_bytes
 from core.safety import send_to_recycle_bin, guard_batch, check_deletable
 from scanners.largefiles import (
@@ -101,29 +102,58 @@ def api_largefiles_delete():
         ok, reason = check_deletable(p)
         (allowed if ok else blocked).append(p if ok else {"path": p, "reason": reason})
 
+    # Log the operation from here on: this is the point where a delete is
+    # actually attempted. Logging only observes — the deletion path below is
+    # unchanged.
+    op = activity_log.start("large_files")
+    skipped = list(blocked) + [{"path": p, "reason": "not in the current large-file report"}
+                               for p in unknown]
+
     if not allowed:
+        activity_log.add_section(op, "Large files", skipped=skipped)
+        activity_log.finish(op, status="blocked",
+                            message="Every selected file is protected by the safety rules.")
         return jsonify({"status": "blocked", "blocked": blocked,
                         "message": "Every selected file is protected by the safety rules."}), 400
 
-    total = 0
+    # Per-path sizes double as the log's per-item bytes: they must be read
+    # before the delete, and this is the same pass that computes the total.
+    sizes = {}
     for p in allowed:
         try:
-            total += os.path.getsize(p)
+            sizes[p] = os.path.getsize(p)
         except (OSError, PermissionError):
-            pass
+            sizes[p] = 0
+    total = sum(sizes.values())
 
     # Restore point before the batch.
     ok, payload = guard_batch(
         allowed, bool(data.get("proceed_without_restore_point", False)),
         description="MTT Optimizer — before large-file deletion")
+    activity_log.set_restore_point(op, payload.get("restore_point") or {})
     if not ok:
         payload["blocked"] = blocked
+        activity_log.add_section(op, "Large files", skipped=skipped)
+        activity_log.finish(op, status="blocked", message=payload.get("message", ""))
         return jsonify(payload), 409
 
     result = send_to_recycle_bin(
         allowed, allow_permanent=bool(data.get("allow_permanent", False)),
         total_bytes=total)
     result["blocked"].extend(blocked)
+
+    activity_log.add_section(
+        op, "Large files",
+        count=len(result["recycled"]), bytes_freed=result["bytes"],
+        items=activity_log.make_items(
+            result["recycled"], sizes,
+            "permanent" if result["permanent"] else "recycled"),
+        skipped=skipped + [b for b in result["blocked"] if b not in blocked],
+        errors=result["errors"], permanent=result["permanent"],
+        note=result["message"])
+    activity_log.finish(
+        op, message=f"Deleted {len(result['recycled'])} large file(s) — "
+                    f"{format_bytes(result['bytes'])} reclaimed.")
 
     if result["recycled"]:
         log_undo("recycle", f"Large File Finder removed {len(result['recycled'])} file(s)",
@@ -147,4 +177,5 @@ def api_largefiles_delete():
         "errors": result["errors"],
         "message": result["message"],
         "restore_point": payload["restore_point"],
+        "log_id": (op or {}).get("id", ""),
     })

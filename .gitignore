@@ -25,3 +25,4 @@ MTT_InfiniteOptimizer_Setup_v*.exe
 
 # Machine-specific runtime state written by the Internet Optimizer
 network_state.json
+.scratch/

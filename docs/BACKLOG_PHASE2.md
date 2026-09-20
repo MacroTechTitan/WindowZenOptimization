@@ -92,3 +92,20 @@ Edge cases:
 - WSL ext4.vhdx bloat — report-only, advanced
 
 AI-wedge note: package-manager + Docker caches overlap the AI storage report audience (50-100GB hoards) — consider surfacing there, not generic deep clean.
+
+## Deep Clean parity with Windows Disk Cleanup (next build)
+Deep clean missed categories that Windows cleanmgr picks up. Add / verify:
+- Delivery Optimization (verify it actually fires — spec claims it, didn't run)
+- Temporary Internet Files
+- DirectX Shader Cache
+- Windows Update Cleanup (can be GBs)
+- Old Windows Update / upgrade log files
+- Language Resource Files
+- Device driver packages (old versions)
+- System error memory dump + minidump files
+- (Leave Windows ESD installation files OUT by default — removing breaks Reset this PC)
+Implementation note: prefer driving Windows' own handlers via cleanmgr
+StateFlags registry + `cleanmgr /sagerun:N`, run elevated, to guarantee
+parity with Disk Cleanup rather than hand-coding each path. Report bytes
+per category. All system-scoped permanent deletes stay behind the
+existing allowlist guard.

@@ -68,3 +68,27 @@ credential-file contents. A "suspicious indicators" report (unsigned
 startup exes, processes from temp, hosts-file edits) is allowed ONLY
 if clearly labeled "signals to review, not confirmed threats — run a
 real AV scan."
+
+## Additional clutter / edge cases (future)
+Safe/auto (system-scoped, behind allowlist guard):
+- CBS/Windows Update logs (C:\Windows\Logs\CBS)
+- Windows.old (verify existing coverage)
+- LiveKernelReports + per-app AppData CrashDumps
+- Windows Installer orphaned .msp/.msi (C:\Windows\Installer) — REPORT-ONLY, "likely orphaned" heuristic, some needed for repair
+
+Report-only (user decides):
+- Old software installers in Downloads — same product, keep newest, flag older versions (high value)
+- Orphaned AppData for uninstalled programs (cross-ref uninstall registry; conservative, false positives delete real data)
+- Old DriverStore packages (via pnputil/DISM, not manual)
+- hiberfil.sys — offer to disable hibernation, warn it kills fast startup
+- Package caches: npm, pip, yarn, NuGet, Docker (dangling images/build cache — tens of GB)
+- Orphaned node_modules in old projects (dev-focused)
+- VSS shadow copies / old restore points — prune older
+
+Edge cases:
+- Per-drive Recycle Bin ($Recycle.Bin on every drive, not just C:)
+- Skip cloud placeholders (OneDrive/Dropbox online-only) — do NOT trigger downloads/deletes (the 2TB-mirror trap)
+- Non-default browser profiles (each has own cache)
+- WSL ext4.vhdx bloat — report-only, advanced
+
+AI-wedge note: package-manager + Docker caches overlap the AI storage report audience (50-100GB hoards) — consider surfacing there, not generic deep clean.

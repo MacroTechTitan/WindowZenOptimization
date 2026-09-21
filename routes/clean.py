@@ -20,6 +20,7 @@ from core.state import (
 )
 from core.util import log_activity, log_undo, format_bytes
 from core.safety import send_to_recycle_bin, guard_batch, check_deletable
+from core.startup import StartupToggleError, set_startup_enabled
 from core.config import settings, save_settings
 from cleaners.targets import get_active_targets
 from cleaners.runner import run_system_scan, run_system_clean, setup_scheduler
@@ -387,9 +388,16 @@ def api_undo():
                 log_activity(f"Undo requested for deletion — file cannot be restored: {details.get('path')}", "WARN")
             elif action_type == "startup_toggle":
                 name = details.get("name", "")
-                was_enabled = details.get("enabled", True)
-                msg = f"To undo startup toggle: {'disable' if was_enabled else 'enable'} '{name}' manually"
-                log_activity(f"Undo: startup toggle for '{name}' noted — manual action required", "INFO")
+                hive = details.get("hive", "HKCU")
+                restore_enabled = not details.get("enabled", True)
+                if IS_WINDOWS:
+                    try:
+                        set_startup_enabled(name, hive, restore_enabled, details.get("path", ""))
+                    except StartupToggleError as e:
+                        log_activity(f"Undo: startup toggle for '{name}' failed: {e.message}", "ERROR")
+                        return jsonify({"status": "error", "message": e.message}), e.status
+                msg = f"Startup item '{name}' {'enabled' if restore_enabled else 'disabled'} again"
+                log_activity(f"Undo: {msg}", "SUCCESS")
             else:
                 msg = f"Undone: {entry.get('description', '')}"
             entry["undone"] = True

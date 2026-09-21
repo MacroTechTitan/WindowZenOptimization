@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request, current_app
 
 from core.state import IS_WINDOWS, _WIN_NO_WINDOW
 from core.util import log_activity, log_undo
+from core.startup import RUN_PATH, StartupToggleError, read_approved_states, set_startup_enabled
 from scanners.apps import (
     _scan_apps_from_registry, _build_uninstall_invocation, _registry_has_display_name,
 )
@@ -134,12 +135,13 @@ def api_startup():
             # On Windows this is a real failure — report it, don't fabricate data.
             log_activity(f"Startup scan failed: {e}", "ERROR")
             return jsonify({"ok": False, "error": f"Registry access is unavailable: {e}"}), 500
-        for hive, hive_name, path in [
-            (winreg.HKEY_CURRENT_USER, "HKCU", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
-            (winreg.HKEY_LOCAL_MACHINE, "HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+        for hive, hive_name in [
+            (winreg.HKEY_CURRENT_USER, "HKCU"),
+            (winreg.HKEY_LOCAL_MACHINE, "HKLM"),
         ]:
+            approved = read_approved_states(winreg, hive_name)
             try:
-                key = winreg.OpenKey(hive, path)
+                key = winreg.OpenKey(hive, RUN_PATH)
                 i = 0
                 while True:
                     try:
@@ -148,7 +150,7 @@ def api_startup():
                             "name": name,
                             "path": value,
                             "hive": hive_name,
-                            "enabled": True,
+                            "enabled": approved.get(name, True),
                         })
                         i += 1
                     except OSError:
@@ -179,47 +181,34 @@ def _get_demo_startup_items():
 
 @bp.route("/api/startup-items/toggle", methods=["POST"])
 def api_startup_toggle():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     name = data.get("name")
     hive = data.get("hive", "HKCU")
-    enabled = data.get("enabled", True)
+    enabled = bool(data.get("enabled", True))
+    state = "enabled" if enabled else "disabled"
 
     if not name:
         return jsonify({"status": "error", "message": "Name is required"}), 400
+    if hive not in ("HKCU", "HKLM"):
+        return jsonify({"status": "error", "message": f"Unsupported startup location: {hive}"}), 400
 
     if IS_WINDOWS:
         try:
-            import winreg
-            hive_map = {
-                "HKCU": winreg.HKEY_CURRENT_USER,
-                "HKLM": winreg.HKEY_LOCAL_MACHINE,
-            }
-            reg_hive = hive_map.get(hive, winreg.HKEY_CURRENT_USER)
-            reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-            try:
-                key = winreg.OpenKey(reg_hive, reg_path, 0, winreg.KEY_SET_VALUE | winreg.KEY_READ)
-                if enabled:
-                    path_value = data.get("path", "")
-                    if path_value:
-                        winreg.SetValueEx(key, name, 0, winreg.REG_SZ, path_value)
-                        log_activity(f"Enabled startup item: {name}", "SUCCESS")
-                else:
-                    try:
-                        winreg.DeleteValue(key, name)
-                        log_activity(f"Disabled startup item: {name}", "SUCCESS")
-                    except OSError:
-                        log_activity(f"Could not find startup item to disable: {name}", "WARN")
-                winreg.CloseKey(key)
-            except OSError as e:
-                log_activity(f"Registry access error: {e}", "ERROR")
-                return jsonify({"status": "error", "message": str(e)}), 500
-        except ImportError:
-            log_activity(f"Simulated toggle startup item: {name} -> {'enabled' if enabled else 'disabled'}", "INFO")
+            # Reversible: flags the item in StartupApproved, never deletes the Run entry.
+            set_startup_enabled(name, hive, enabled, data.get("path", ""))
+        except StartupToggleError as e:
+            log_activity(f"Startup toggle failed for {name} ({hive}): {e.message}", "ERROR")
+            return jsonify({"status": "error", "message": e.message}), e.status
+        except ImportError as e:
+            log_activity(f"Startup toggle failed: {e}", "ERROR")
+            return jsonify({"status": "error", "message": f"Registry access is unavailable: {e}"}), 500
+        log_activity(f"{'Enabled' if enabled else 'Disabled'} startup item: {name} ({hive})", "SUCCESS")
     else:
-        log_activity(f"Simulated toggle startup item: {name} -> {'enabled' if enabled else 'disabled'}", "INFO")
+        log_activity(f"Simulated toggle startup item: {name} -> {state}", "INFO")
 
-    log_undo("startup_toggle", f"{'Enabled' if enabled else 'Disabled'} startup item: {name}", {"name": name, "hive": hive, "enabled": enabled})
-    return jsonify({"status": "ok", "name": name, "enabled": enabled})
+    log_undo("startup_toggle", f"{'Enabled' if enabled else 'Disabled'} startup item: {name}",
+             {"name": name, "hive": hive, "enabled": enabled, "path": data.get("path", "")})
+    return jsonify({"status": "ok", "name": name, "hive": hive, "enabled": enabled})
 
 
 # ══════════════════════════════════════════════════════════════════════════════

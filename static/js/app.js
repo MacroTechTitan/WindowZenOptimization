@@ -810,7 +810,7 @@ const App = {
                         </span>
                         <label class="toggle">
                             <input type="checkbox" ${item.enabled ? 'checked' : ''}
-                                onchange="App.toggleStartupItem('${nameSafe}', '${hiveSafe}', this.checked, '${pathSafe}')">
+                                onchange="App.toggleStartupItem('${nameSafe}', '${hiveSafe}', this.checked, '${pathSafe}', this)">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>`;
@@ -820,7 +820,7 @@ const App = {
                     <span class="cpu" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.path || 'N/A'}</span>
                     <label class="toggle">
                         <input type="checkbox" ${item.enabled ? 'checked' : ''}
-                            onchange="App.toggleStartupItem('${nameSafe}', '${hiveSafe}', this.checked, '${pathSafe}')">
+                            onchange="App.toggleStartupItem('${nameSafe}', '${hiveSafe}', this.checked, '${pathSafe}', this)">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>`;
@@ -871,17 +871,31 @@ const App = {
         } catch(e) {}
     },
 
-    async toggleStartupItem(name, hive, enabled, path) {
+    async toggleStartupItem(name, hive, enabled, path, el) {
+        const revert = () => { if (el) el.checked = !enabled; };
+        if (el) el.disabled = true;
         try {
-            await fetch('/api/startup-items/toggle', {
+            const res = await fetch('/api/startup-items/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, hive, enabled, path: path || '' })
             });
+            let data = null;
+            try { data = await res.json(); } catch (_) {}
+            if (!res.ok || !data || data.status !== 'ok') {
+                revert();
+                const reason = (data && data.message) || `HTTP ${res.status}`;
+                this.showNotification(`Could not ${enabled ? 'enable' : 'disable'} "${name}": ${reason}`, 'error');
+                return;
+            }
             this.showNotification(`Startup item "${name}" ${enabled ? 'enabled' : 'disabled'}`);
             this.refreshUndoLog();
+            this.refreshStartupItems();
         } catch(e) {
-            this.showNotification('Failed to toggle startup item', 'error');
+            revert();
+            this.showNotification(`Could not ${enabled ? 'enable' : 'disable'} "${name}": ${e.message || 'network error'}`, 'error');
+        } finally {
+            if (el) el.disabled = false;
         }
     },
 
@@ -891,6 +905,7 @@ const App = {
             const data = await res.json();
             if (data.status === 'ok') {
                 this.showNotification(`Undo: ${data.message}`, 'success');
+                if (data.action && data.action.type === 'startup_toggle') this.refreshStartupItems();
             } else if (data.status === 'nothing') {
                 this.showNotification('Nothing to undo', 'info');
             } else {

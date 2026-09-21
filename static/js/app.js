@@ -12,6 +12,7 @@ const App = {
 
     init() {
         this.bindNavigation();
+        this.initPromoBanner();
         this.startClock();
         this.refreshMetrics();
         this.refreshLogs();
@@ -43,6 +44,79 @@ const App = {
                 }
             }
         }, 1000);
+    },
+
+    // ── First-party promo banner (reuses the top brand strip) ──
+
+    // Single Pro gate. No licensing yet, so everyone is free tier; when
+    // licensing lands only this changes and the promos hide for Pro.
+    isPro() {
+        return false;
+    },
+
+    promoTimer: null,
+
+    async initPromoBanner() {
+        const bar = document.getElementById('mtt-brand-bar');
+        const content = document.getElementById('mtt-brand-content');
+        if (!bar || !content) return;
+
+        // Banner links open in the system browser, never inside the webview.
+        bar.addEventListener('click', (e) => {
+            const a = e.target.closest('a[data-external]');
+            if (!a) return;
+            e.preventDefault();
+            this.openExternal(a.href);
+        });
+
+        let dismissed = false;
+        try { dismissed = sessionStorage.getItem('mttBrandBarDismissed') === '1'; } catch (_) {}
+        if (dismissed) { this.dismissBrandBar(); return; }
+        if (this.isPro()) return;  // Pro keeps the plain brand line, no promos.
+
+        let promos = [];
+        try {
+            const res = await fetch('/api/promos');
+            if (res.ok) promos = (await res.json()).promos || [];
+        } catch (_) {}
+        if (!promos.length) return;
+
+        let i = 0;
+        const show = () => {
+            const p = promos[i % promos.length];
+            content.innerHTML = `<a href="${escapeHtml(p.url)}" data-external
+                style="color:#06b6d4;font-weight:600;text-decoration:none;letter-spacing:0.3px;">${escapeHtml(p.text)}</a>`;
+            content.style.opacity = '1';
+        };
+        show();
+        if (promos.length > 1) {
+            this.promoTimer = setInterval(() => {
+                content.style.opacity = '0';
+                setTimeout(() => { i++; show(); }, 400);
+            }, 8000);
+        }
+    },
+
+    async openExternal(url) {
+        try {
+            const res = await fetch('/api/promos/open', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            if (res.ok || res.status === 400) return;  // 400: not a known promo link
+        } catch (_) {}
+        // Server could not launch a browser (e.g. running in a normal browser tab).
+        window.open(url, '_blank', 'noopener');
+    },
+
+    dismissBrandBar() {
+        const bar = document.getElementById('mtt-brand-bar');
+        if (bar) bar.style.display = 'none';
+        const container = document.querySelector('.app-container');
+        if (container) container.style.marginTop = '0';
+        if (this.promoTimer) { clearInterval(this.promoTimer); this.promoTimer = null; }
+        try { sessionStorage.setItem('mttBrandBarDismissed', '1'); } catch (_) {}
     },
 
     bindNavigation() {

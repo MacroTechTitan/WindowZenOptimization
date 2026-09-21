@@ -65,13 +65,20 @@ folder-level dedup, startup/task manager, etc.
   (`windowzen.macrotechtitan.com/updates`, 11 occurrences: the update
   instructions panel, the download-URL placeholder, and the endpoint status
   list). It should point at GitHub Releases or be removed.
-- **Branding assets are NOT wired into the build.** As of 2026-09-14:
-  - No `.ico` file exists in the repo; only PNGs are in `static/images/`
-    (`mtt-logo.png`, `MTT_WindowZen1.png`, `featured-image.png`).
-  - The `pyinstaller` call in `build_installer.bat` has no `--icon`, so the
-    app exe uses the default PyInstaller icon.
-  - `installer.nsi` sets no installer icon or banner (`MUI_ICON` /
-    header/welcome bitmaps); only the uninstall registry `DisplayIcon`
-    points at the app exe.
-  - To do: locate or produce the prepped `.ico` / `.bmp` assets, then add
-    `--icon` to PyInstaller and the icon/bitmap defines to `installer.nsi`.
+- ~~Branding assets not wired into the build~~ **Resolved: branding IS now
+  wired in.** Assets live in `static/branding/` (`mtt-app.ico`,
+  `mtt-installer.ico`, favicons, logos, splash) and ship via the static
+  add-data. `build_installer.bat` passes `--icon static\branding\mtt-app.ico`
+  to PyInstaller; `installer.nsi` sets `MUI_ICON` / `MUI_UNICON` to
+  `mtt-installer.ico` and uses `mtt-app.ico` for the Start Menu and desktop
+  shortcuts. The pages use the `static/branding` favicons.
+
+## First-party promo banner
+
+- The top brand strip rotates first-party MTT promos from
+  `static/branding/promos.json` (served by `GET /api/promos`) every 8s, with
+  a fade. It can be dismissed for the session, and links open in the system
+  browser via `POST /api/promos/open`, which only accepts URLs from
+  promos.json. Spec: `docs/BANNER_SPEC.md`.
+- Pro gate: `App.isPro()` in `static/js/app.js` returns `false` until
+  licensing exists. Pro users will see the plain brand line instead.

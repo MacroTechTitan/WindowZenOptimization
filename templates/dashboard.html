@@ -100,11 +100,14 @@
     </script>
     <div id="mtt-brand-bar" style="background:rgba(6,182,212,0.06);border-bottom:1px solid rgba(6,182,212,0.15);text-align:center;padding:6px 20px;font-family:'Inter',sans-serif;font-size:12px;color:#64748b;position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:6px;">
         <span style="font-size:14px;">⚡</span>
-        For more tools and resources visit
-        <a href="https://macrotechtitan.com" target="_blank" rel="noopener" style="color:#06b6d4;font-weight:600;text-decoration:none;letter-spacing:0.3px;">Macro Tech Titan</a>
-        <span style="color:#334155;margin:0 4px;">·</span>
-        <span style="color:#475569;">macrotechtitan.com</span>
-        <button onclick="document.getElementById('mtt-brand-bar').style.display='none'; document.querySelector('.app-container').style.marginTop='0';" style="margin-left:12px;background:none;border:none;color:#475569;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;" title="Dismiss">×</button>
+        <!-- Default brand line; App.initPromoBanner swaps in rotating first-party promos (free tier). -->
+        <span id="mtt-brand-content" style="display:inline-flex;align-items:center;gap:6px;transition:opacity 0.4s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80vw;">
+            For more tools and resources visit
+            <a href="https://macrotechtitan.com" data-external target="_blank" rel="noopener" style="color:#06b6d4;font-weight:600;text-decoration:none;letter-spacing:0.3px;">Macro Tech Titan</a>
+            <span style="color:#334155;margin:0 4px;">·</span>
+            <span style="color:#475569;">macrotechtitan.com</span>
+        </span>
+        <button onclick="App.dismissBrandBar()" style="margin-left:12px;background:none;border:none;color:#475569;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;" title="Dismiss">×</button>
     </div>
     <div class="app-container" style="margin-top: 34px;">
     <style>body { background: #0a0f1e; }</style>

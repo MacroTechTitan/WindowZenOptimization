@@ -2,7 +2,6 @@
 installer uploads, and counter resets."""
 import os
 import json
-import urllib.request
 from datetime import datetime
 
 from flask import Blueprint, render_template, jsonify, request, session
@@ -207,20 +206,6 @@ def admin_delete_download_file():
     os.remove(fpath)
     log_activity(f"Admin deleted installer: {filename}", "WARN")
     return jsonify({"ok": True})
-
-
-@bp.route("/admin/api/check-remote-manifest")
-def admin_check_remote_manifest():
-    if not _admin_required():
-        return jsonify({"error": "Not authenticated"}), 401
-    local = get_local_version()
-    remote_url = local.get("update_server", "https://windowzen.macrotechtitan.com/updates/version.json")
-    try:
-        with urllib.request.urlopen(remote_url, timeout=8) as resp:
-            remote = json.loads(resp.read().decode())
-        return jsonify(remote)
-    except Exception as e:
-        return jsonify({"error": f"Could not reach {remote_url}: {e}"})
 
 
 @bp.route("/admin/api/reset-counters", methods=["POST"])

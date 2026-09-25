@@ -80,13 +80,62 @@ if defined SIGN_MISSING (
 echo.
 
 echo [3/8] Installing Python dependencies...
-pip install flask psutil apscheduler pywebview pyinstaller
+REM "python -m" everywhere so pip, PyInstaller and the runtime-DLL lookup
+REM below all use the same interpreter.
+python -m pip install flask psutil apscheduler pywebview pyinstaller
 echo.
 
 echo [4/8] Building executable with PyInstaller...
+REM ===========================================================================
+REM Runtime DLLs. A clean Windows machine has no Python and often no VC++
+REM runtime, so force-bundle both instead of trusting PyInstaller's detection.
+REM They are resolved from whichever Python runs this build (sys.base_prefix
+REM also sees through a venv), then its DLLs\ subdir, then System32 - nothing
+REM is hardcoded to one build machine.
+REM ===========================================================================
+set "PYBASE="
+for /f "usebackq delims=" %%p in (`python -c "import sys; print(sys.base_prefix)"`) do set "PYBASE=%%p"
+set "PYDLL="
+for /f "usebackq delims=" %%p in (`python -c "import sys; print(f'python{sys.version_info[0]}{sys.version_info[1]}.dll')"`) do set "PYDLL=%%p"
+if "%PYBASE%"=="" (
+    echo ERROR: could not locate the Python install - is python on PATH?
+    pause
+    exit /b 1
+)
+if "%PYDLL%"=="" (
+    echo ERROR: could not determine the Python DLL name.
+    pause
+    exit /b 1
+)
+set "RUNTIME_DLLS=vcruntime140.dll vcruntime140_1.dll python3.dll %PYDLL%"
+echo    Python install: %PYBASE%
+echo    Force-bundling runtime DLLs:
+set "ADDBIN="
+set "DLL_MISSING="
+for %%d in (%RUNTIME_DLLS%) do (
+    set "FOUND="
+    for %%s in ("%PYBASE%" "%PYBASE%\DLLs" "%SystemRoot%\System32") do (
+        if not defined FOUND if exist "%%~s\%%d" set "FOUND=%%~s\%%d"
+    )
+    if defined FOUND (
+        echo      %%d  from  !FOUND!
+        set ADDBIN=!ADDBIN! --add-binary "!FOUND!;."
+    ) else (
+        set "DLL_MISSING=!DLL_MISSING! %%d"
+    )
+)
+if defined DLL_MISSING (
+    echo ERROR: required runtime DLLs not found on this build machine:!DLL_MISSING!
+    echo        Looked in %PYBASE%, %PYBASE%\DLLs and %SystemRoot%\System32.
+    pause
+    exit /b 1
+)
+echo.
+
 REM static\branding (icons, logos, splash) ships via the static add-data below.
-pyinstaller --noconfirm --onedir --windowed ^
+python -m PyInstaller --noconfirm --onedir --windowed ^
     --uac-admin ^
+    !ADDBIN! ^
     --name "MTT Windows Infinite Optimizer" ^
     --icon "static\branding\mtt-app.ico" ^
     --add-data "templates;templates" ^
@@ -112,6 +161,32 @@ if not exist "dist\MTT Windows Infinite Optimizer\MTT Windows Infinite Optimizer
 
 echo    PyInstaller build complete.
 echo    Output: dist\MTT Windows Infinite Optimizer\
+echo.
+
+REM Confirm the runtime DLLs actually landed in dist. PyInstaller 6 puts
+REM them in _internal\; older layouts put them next to the exe.
+set "DISTAPP=dist\MTT Windows Infinite Optimizer"
+echo    Runtime DLLs shipped in dist:
+set "SHIP_MISSING="
+for %%d in (%RUNTIME_DLLS%) do (
+    if exist "%DISTAPP%\_internal\%%d" (
+        echo      [OK]      _internal\%%d
+    ) else if exist "%DISTAPP%\%%d" (
+        echo      [OK]      %%d
+    ) else (
+        echo      [MISSING] %%d
+        set "SHIP_MISSING=!SHIP_MISSING! %%d"
+    )
+)
+echo    All VC++ / Python runtime DLLs present in dist:
+for %%f in ("%DISTAPP%\_internal\vcruntime*.dll" "%DISTAPP%\_internal\msvcp*.dll" "%DISTAPP%\_internal\python3*.dll" "%DISTAPP%\vcruntime*.dll" "%DISTAPP%\msvcp*.dll" "%DISTAPP%\python3*.dll") do echo      %%~nxf
+if defined SHIP_MISSING (
+    echo.
+    echo ERROR: runtime DLLs missing from dist:!SHIP_MISSING!
+    echo        The installer would fail on a clean machine - aborting.
+    pause
+    exit /b 1
+)
 echo.
 
 REM ===========================================================================
@@ -157,7 +232,34 @@ if "!MAKENSIS!"=="" (
 )
 
 echo    Using: !MAKENSIS!
-"!MAKENSIS!" /DAPPVERSION=%APPVERSION% installer.nsi
+
+REM installer.nsi bundles the official VC++ redistributable and runs it
+REM silently on targets that lack the runtime. Fetch it once into redist\
+REM (git-ignored) and refuse to package it unless Microsoft's signature on it
+REM checks out.
+set "VCREDIST=redist\vc_redist.x64.exe"
+if not exist "%VCREDIST%" (
+    echo    Downloading the VC++ redistributable...
+    if not exist redist md redist
+    powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '%VCREDIST%'"
+)
+if not exist "%VCREDIST%" (
+    echo ERROR: %VCREDIST% is missing and could not be downloaded.
+    echo        Download https://aka.ms/vs/17/release/vc_redist.x64.exe
+    echo        into the redist\ folder, then re-run this script.
+    pause
+    exit /b 1
+)
+powershell -NoProfile -Command "$s = Get-AuthenticodeSignature '%VCREDIST%'; if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { exit 1 }"
+if errorlevel 1 (
+    echo ERROR: %VCREDIST% does not carry a valid Microsoft signature.
+    echo        Delete it and re-run this script to download a fresh copy.
+    pause
+    exit /b 1
+)
+echo    VC++ redistributable: %VCREDIST% (Microsoft signature verified)
+
+"!MAKENSIS!" /DAPPVERSION=%APPVERSION% /DVCREDIST=%VCREDIST% installer.nsi
 echo.
 
 if exist "%SETUPNAME%" (
@@ -202,6 +304,11 @@ if "!SIGNING!"=="1" (
     echo               Set MTT_SIGN_USER, MTT_SIGN_PASS, MTT_SIGN_TOTP
     echo               and re-run to produce a signed build.
 )
+echo  Runtime:   VC++ and Python DLLs bundled; vc_redist runs if absent
+echo.
+echo  REMINDER: the real test is installing on a CLEAN Windows machine
+echo            with no Python or dev tools - this box already has the
+echo            runtime, so a local run proves nothing about missing DLLs.
 echo ============================================
 pause
 exit /b 0

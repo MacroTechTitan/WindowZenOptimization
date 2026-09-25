@@ -1,5 +1,6 @@
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "LogicLib.nsh"
 
 ;---------------------------------
 ; Version — sourced from version.json, never hardcoded
@@ -22,6 +23,18 @@
 ; files under _internal\, so static\branding lands here after install.
 !define APPICON     "_internal\static\branding\mtt-app.ico"
 !define REGUNINST   "Software\Microsoft\Windows\CurrentVersion\Uninstall\MTTInfiniteOptimizer"
+
+; Official VC++ 2015-2022 x64 redistributable. build_installer.bat downloads
+; it into redist\ and passes /DVCREDIST; the default covers a manual makensis.
+!ifndef VCREDIST
+    !define VCREDIST "redist\vc_redist.x64.exe"
+!endif
+!if /FileExists "${VCREDIST}"
+!else
+    !error "${VCREDIST} not found. Run build_installer.bat, or download https://aka.ms/vs/17/release/vc_redist.x64.exe into redist\."
+!endif
+; Python 3.12 is built with VS 2022; runtimes older than 14.40 get upgraded.
+!define VCRT_MIN_MINOR 40
 
 ;---------------------------------
 ; General
@@ -79,6 +92,40 @@ VIAddVersionKey "LegalCopyright"  "Copyright ${PUBLISHER}"
 ;---------------------------------
 ; Installer Sections
 ;---------------------------------
+; Hidden, runs first. The app also carries its own vcruntime140*.dll in
+; _internal\, so this is belt-and-suspenders for a clean machine: install
+; the system-wide VC++ runtime silently when it is missing or too old.
+Section "-VC++ Runtime" SecVCRedist
+    SetRegView 64
+    ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
+    ReadRegDWORD $1 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Major"
+    ReadRegDWORD $2 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Minor"
+    SetRegView lastused
+
+    ${If} $0 == 1
+    ${AndIf} $1 == 14
+    ${AndIf} $2 >= ${VCRT_MIN_MINOR}
+        DetailPrint "Visual C++ runtime 14.$2 already installed."
+    ${Else}
+        DetailPrint "Installing the Microsoft Visual C++ runtime..."
+        InitPluginsDir
+        SetOutPath "$PLUGINSDIR"
+        File "/oname=vc_redist.x64.exe" "${VCREDIST}"
+        ExecWait '"$PLUGINSDIR\vc_redist.x64.exe" /install /quiet /norestart' $3
+        ; 0 = installed, 1638 = a newer version is already present,
+        ; 3010 = installed, reboot pending (the bundled DLLs cover this run).
+        ${If} $3 == 0
+        ${OrIf} $3 == 1638
+        ${OrIf} $3 == 3010
+            DetailPrint "Visual C++ runtime ready (exit code $3)."
+        ${Else}
+            DetailPrint "Visual C++ runtime install failed (exit code $3)."
+            MessageBox MB_OK|MB_ICONEXCLAMATION "The Microsoft Visual C++ runtime could not be installed (error $3).$\r$\n$\r$\n${APPNAME} will still be installed, but if it fails to start, install the runtime from:$\r$\nhttps://aka.ms/vs/17/release/vc_redist.x64.exe" /SD IDOK
+        ${EndIf}
+        Delete "$PLUGINSDIR\vc_redist.x64.exe"
+    ${EndIf}
+SectionEnd
+
 Section "!${APPNAME}" SecMain
     SectionIn RO                       ; required, cannot be unticked
     SetOutPath "$INSTDIR"

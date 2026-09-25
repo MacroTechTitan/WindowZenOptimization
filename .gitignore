@@ -26,3 +26,6 @@ MTT_InfiniteOptimizer_Setup_v*.exe
 # Machine-specific runtime state written by the Internet Optimizer
 network_state.json
 .scratch/
+
+# VC++ redistributable fetched by build_installer.bat for installer.nsi
+redist/

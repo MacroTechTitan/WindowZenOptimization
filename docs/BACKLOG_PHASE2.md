@@ -109,3 +109,14 @@ StateFlags registry + `cleanmgr /sagerun:N`, run elevated, to guarantee
 parity with Disk Cleanup rather than hand-coding each path. Report bytes
 per category. All system-scoped permanent deletes stay behind the
 existing allowlist guard.
+
+## Large File Finder + cleanup UI (next)
+Large File Finder:
+- Show full filename (currently truncated), full path, file type, modified + last-accessed dates
+- "Open location" link — reveal file in Explorer, folder open with file selected
+- Flag installers already installed: .exe/.msi in Downloads whose product is in the uninstall registry -> mark "safe to delete, re-downloadable". Cross-ref product name/version. Report-only, user deletes.
+
+Cleanup result display:
+- After a clean, show per-file what was removed inline (unify with existing activity log, don't build twice)
+- "Open location" link where the path still exists (e.g. archived, not deleted)
+- Both finders: consistent open-in-Explorer affordance

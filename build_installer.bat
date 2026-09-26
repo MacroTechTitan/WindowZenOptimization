@@ -132,6 +132,20 @@ if defined DLL_MISSING (
 )
 echo.
 
+REM static\downloads holds the website's installer/zip downloads. Shipping
+REM them would pack the installer inside the app (bloat, and an exe-inside-exe
+REM antivirus trigger), and --add-data cannot exclude a subfolder, so bundle
+REM a mirrored copy of static\ without it. /MIR also drops stale files.
+set "STATICBUNDLE=build\static_bundle"
+echo    Staging static\ without static\downloads into %STATICBUNDLE%...
+robocopy "static" "%STATICBUNDLE%" /MIR /XD "%CD%\static\downloads" /NFL /NDL /NJH /NJS /NP >nul
+if errorlevel 8 (
+    echo ERROR: could not stage static\ into %STATICBUNDLE%.
+    pause
+    exit /b 1
+)
+echo.
+
 REM static\branding (icons, logos, splash) ships via the static add-data below.
 python -m PyInstaller --noconfirm --onedir --windowed ^
     --uac-admin ^
@@ -139,7 +153,7 @@ python -m PyInstaller --noconfirm --onedir --windowed ^
     --name "MTT Windows Infinite Optimizer" ^
     --icon "static\branding\mtt-app.ico" ^
     --add-data "templates;templates" ^
-    --add-data "static;static" ^
+    --add-data "%STATICBUNDLE%;static" ^
     --add-data "settings.json;." ^
     --add-data "version.json;." ^
     --hidden-import "apscheduler.triggers.cron" ^
@@ -187,6 +201,22 @@ if defined SHIP_MISSING (
     pause
     exit /b 1
 )
+echo.
+
+REM No installer or other exe may ride along inside the app's static files.
+set "STATIC_EXES="
+for /f "delims=" %%x in ('dir /s /b "%DISTAPP%\_internal\static\*.exe" 2^>nul') do (
+    echo    [UNEXPECTED] %%x
+    set "STATIC_EXES=1"
+)
+if exist "%DISTAPP%\_internal\static\downloads\" set "STATIC_EXES=1"
+if defined STATIC_EXES (
+    echo ERROR: dist still contains static\downloads or an .exe under static\.
+    echo        Those must not ship inside the app - aborting.
+    pause
+    exit /b 1
+)
+echo    OK: no static\downloads and no .exe under _internal\static in dist.
 echo.
 
 REM ===========================================================================

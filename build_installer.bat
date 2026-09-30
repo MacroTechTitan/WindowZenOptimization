@@ -280,7 +280,7 @@ if not exist "%VCREDIST%" (
     pause
     exit /b 1
 )
-powershell -NoProfile -Command "$s = Get-AuthenticodeSignature '%VCREDIST%'; if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { exit 1 }"
+powershell -NoProfile -Command "Import-Module Microsoft.PowerShell.Security; $s = Get-AuthenticodeSignature '%VCREDIST%'; if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { exit 1 }"
 if errorlevel 1 (
     echo ERROR: %VCREDIST% does not carry a valid Microsoft signature.
     echo        Delete it and re-run this script to download a fresh copy.

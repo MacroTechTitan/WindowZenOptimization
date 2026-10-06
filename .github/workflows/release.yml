@@ -1,0 +1,230 @@
+# Release build for WindowZen (MTT Windows Infinite Optimizer).
+#
+# Pushing a tag like v1.2.0 builds the app with PyInstaller, signs the app
+# exe, packages it with NSIS, signs the installer and publishes a GitHub
+# Release with the signed installer attached. This mirrors build_installer.bat
+# step for step; keep the two in sync.
+#
+# Signing uses SSL.com eSigner (see docs/SIGNING.md). The only credentials are
+# the repository secrets ES_USERNAME, ES_PASSWORD and ES_TOTP_SECRET.
+# ES_TOTP_SECRET must be the ORIGINAL base64 string from the cert page, not a
+# base32 conversion. Secrets are passed as action inputs, never through a
+# shell, so a `$` in the password cannot be expanded.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  APP_NAME: MTT Windows Infinite Optimizer
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install flask psutil apscheduler pywebview pyinstaller
+
+      - name: Read version from version.json
+        id: version
+        run: |
+          $version = (Get-Content -Raw version.json | ConvertFrom-Json).version
+          if (-not $version) { Write-Error "Could not read the version from version.json"; exit 1 }
+          $tagVersion = '${{ github.ref_name }}'.TrimStart('v')
+          if ($tagVersion -ne $version) {
+            Write-Error "Tag ${{ github.ref_name }} does not match version.json ($version)"
+            exit 1
+          }
+          $setup = "MTT_InfiniteOptimizer_Setup_v$version.exe"
+          Write-Host "Version:   $version"
+          Write-Host "Installer: $setup"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "setup_name=$setup" >> $env:GITHUB_OUTPUT
+
+      - name: Build executable with PyInstaller
+        run: |
+          # Runtime DLLs: a clean Windows machine has no Python and often no
+          # VC++ runtime, so force-bundle both. Resolved from the runner's
+          # Python install, then its DLLs\ subdir, then System32.
+          $pyBase = python -c "import sys; print(sys.base_prefix)"
+          $pyDll  = python -c "import sys; print(f'python{sys.version_info[0]}{sys.version_info[1]}.dll')"
+          if (-not $pyBase -or -not $pyDll) { Write-Error "Could not locate the Python install"; exit 1 }
+          Write-Host "Python install: $pyBase"
+
+          $runtimeDlls = @('vcruntime140.dll', 'vcruntime140_1.dll', 'python3.dll', $pyDll)
+          $searchDirs  = @($pyBase, (Join-Path $pyBase 'DLLs'), (Join-Path $env:SystemRoot 'System32'))
+          $addBinary = @()
+          $missing   = @()
+          foreach ($dll in $runtimeDlls) {
+            $found = $searchDirs | ForEach-Object { Join-Path $_ $dll } | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($found) {
+              Write-Host "  $dll  from  $found"
+              $addBinary += @('--add-binary', "$found;.")
+            } else {
+              $missing += $dll
+            }
+          }
+          if ($missing) { Write-Error "Runtime DLLs not found: $($missing -join ', ')"; exit 1 }
+
+          # Stage static\ without static\downloads (website downloads must not
+          # ship inside the app). /MIR also drops stale files.
+          $staticBundle = 'build\static_bundle'
+          robocopy static $staticBundle /MIR /XD (Join-Path $PWD 'static\downloads') /NFL /NDL /NJH /NJS /NP
+          if ($LASTEXITCODE -ge 8) { Write-Error "Could not stage static\ into $staticBundle"; exit 1 }
+
+          $pyiArgs = @(
+            '--noconfirm', '--onedir', '--windowed',
+            '--uac-admin'
+          ) + $addBinary + @(
+            '--name', $env:APP_NAME,
+            '--icon', 'static\branding\mtt-app.ico',
+            '--add-data', 'templates;templates',
+            '--add-data', "$staticBundle;static",
+            '--add-data', 'settings.json;.',
+            '--add-data', 'version.json;.',
+            '--hidden-import', 'apscheduler.triggers.cron',
+            '--hidden-import', 'apscheduler.schedulers.background',
+            '--hidden-import', 'apscheduler.triggers.interval',
+            '--hidden-import', 'apscheduler.triggers.date',
+            '--hidden-import', 'webview',
+            '--exclude-module', 'resend',
+            '--exclude-module', 'httpx',
+            '--exclude-module', 'anyio',
+            'desktop_launcher.py'
+          )
+          python -m PyInstaller @pyiArgs
+          if ($LASTEXITCODE -ne 0) { Write-Error "PyInstaller failed"; exit 1 }
+
+          $distApp = "dist\$env:APP_NAME"
+          if (-not (Test-Path "$distApp\$env:APP_NAME.exe")) { Write-Error "PyInstaller produced no app exe"; exit 1 }
+
+          # Confirm the runtime DLLs landed in dist (_internal\ on PyInstaller 6).
+          $shipMissing = @()
+          foreach ($dll in $runtimeDlls) {
+            if (Test-Path "$distApp\_internal\$dll") { Write-Host "  [OK]      _internal\$dll" }
+            elseif (Test-Path "$distApp\$dll")       { Write-Host "  [OK]      $dll" }
+            else { Write-Host "  [MISSING] $dll"; $shipMissing += $dll }
+          }
+          if ($shipMissing) { Write-Error "Runtime DLLs missing from dist: $($shipMissing -join ', ')"; exit 1 }
+
+          # No installer or other exe may ride along inside the app's static files.
+          $bad = $false
+          if (Test-Path "$distApp\_internal\static\downloads") {
+            Write-Host "  [UNEXPECTED] $distApp\_internal\static\downloads"
+            $bad = $true
+          }
+          Get-ChildItem "$distApp\_internal\static" -Recurse -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "  [UNEXPECTED] $($_.FullName)"
+            $bad = $true
+          }
+          if ($bad) { Write-Error "dist contains static\downloads or an .exe under _internal\static"; exit 1 }
+          Write-Host "OK: no static\downloads and no .exe under _internal\static in dist."
+
+      # eSigner writes the signed file to output_path rather than in place, and
+      # the app exe name has spaces, so sign a space-free copy and copy the
+      # signed result back over the original before NSIS packages it.
+      - name: Stage app exe for signing
+        run: |
+          New-Item -ItemType Directory -Force signing\app-in, signing\app-out | Out-Null
+          Copy-Item "dist\$env:APP_NAME\$env:APP_NAME.exe" signing\app-in\app.exe
+
+      - name: Sign app exe
+        uses: sslcom/esigner-codesign@develop
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ${{ github.workspace }}\signing\app-in\app.exe
+          output_path: ${{ github.workspace }}\signing\app-out
+          environment_name: PROD
+
+      - name: Copy signed app exe back and verify
+        run: |
+          $signed = 'signing\app-out\app.exe'
+          if (-not (Test-Path $signed)) { Write-Error "eSigner produced no signed app exe"; exit 1 }
+          $target = "dist\$env:APP_NAME\$env:APP_NAME.exe"
+          Copy-Item $signed $target -Force
+          Import-Module Microsoft.PowerShell.Security
+          $sig = Get-AuthenticodeSignature $target
+          Write-Host "Status: $($sig.Status)  Signer: $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { Write-Error "App exe signature is not valid"; exit 1 }
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      # installer.nsi bundles the official VC++ redistributable; refuse to
+      # package it unless Microsoft's signature checks out.
+      - name: Download and verify VC++ redistributable
+        run: |
+          New-Item -ItemType Directory -Force redist | Out-Null
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -UseBasicParsing -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile 'redist\vc_redist.x64.exe'
+          Import-Module Microsoft.PowerShell.Security
+          $s = Get-AuthenticodeSignature 'redist\vc_redist.x64.exe'
+          if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') {
+            Write-Error "redist\vc_redist.x64.exe does not carry a valid Microsoft signature"
+            exit 1
+          }
+          Write-Host "VC++ redistributable: Microsoft signature verified"
+
+      - name: Build NSIS installer
+        run: |
+          $makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source
+          if (-not $makensis) { $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe" }
+          if (-not (Test-Path $makensis)) { Write-Error "makensis not found"; exit 1 }
+          & $makensis "/DAPPVERSION=${{ steps.version.outputs.version }}" '/DVCREDIST=redist\vc_redist.x64.exe' installer.nsi
+          if ($LASTEXITCODE -ne 0) { Write-Error "makensis failed"; exit 1 }
+          if (-not (Test-Path '${{ steps.version.outputs.setup_name }}')) { Write-Error "Installer was not produced"; exit 1 }
+
+      - name: Stage installer for signing
+        run: |
+          New-Item -ItemType Directory -Force signing\setup-in, signing\setup-out | Out-Null
+          Copy-Item '${{ steps.version.outputs.setup_name }}' signing\setup-in\
+
+      - name: Sign installer
+        uses: sslcom/esigner-codesign@develop
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ${{ github.workspace }}\signing\setup-in\${{ steps.version.outputs.setup_name }}
+          output_path: ${{ github.workspace }}\signing\setup-out
+          environment_name: PROD
+
+      - name: Copy signed installer back and verify
+        run: |
+          $signed = 'signing\setup-out\${{ steps.version.outputs.setup_name }}'
+          if (-not (Test-Path $signed)) { Write-Error "eSigner produced no signed installer"; exit 1 }
+          Copy-Item $signed '${{ steps.version.outputs.setup_name }}' -Force
+          Import-Module Microsoft.PowerShell.Security
+          $sig = Get-AuthenticodeSignature '${{ steps.version.outputs.setup_name }}'
+          Write-Host "Status: $($sig.Status)  Signer: $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { Write-Error "Installer signature is not valid"; exit 1 }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: WindowZen ${{ github.ref_name }}
+          files: ${{ steps.version.outputs.setup_name }}
+          fail_on_unmatched_files: true

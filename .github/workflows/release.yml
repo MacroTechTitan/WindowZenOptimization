@@ -147,7 +147,7 @@ jobs:
           Copy-Item "dist\$env:APP_NAME\$env:APP_NAME.exe" signing\app-in\app.exe
 
       - name: Sign app exe
-        uses: sslcom/esigner-codesign@develop
+        uses: sslcom/esigner-codesign@v1.3.2
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
@@ -201,7 +201,7 @@ jobs:
           Copy-Item '${{ steps.version.outputs.setup_name }}' signing\setup-in\
 
       - name: Sign installer
-        uses: sslcom/esigner-codesign@develop
+        uses: sslcom/esigner-codesign@v1.3.2
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}

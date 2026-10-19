@@ -1,13 +1,13 @@
 {
   "version": "1.1.1",
   "build": 100,
-  "release_date": "2026-03-26",
+  "release_date": "2026-10-18",
   "channel": "stable",
   "changelog": [
     "Initial release"
   ],
   "download_url": "https://windowzen.macrotechtitan.com/static/downloads/latest.zip",
-  "installer_url": "https://windowzen.macrotechtitan.com/static/downloads/MTT_InfiniteOptimizer_Setup_v1.1.0.zip",
+  "installer_url": "https://github.com/MacroTechTitan/WindowZenOptimization/releases/download/v1.1.1/MTT_InfiniteOptimizer_Setup_v1.1.1.exe",
   "min_supported_version": "1.0.0",
   "update_server": "https://windowzen.macrotechtitan.com/updates/version.json"
 }
